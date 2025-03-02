@@ -1,21 +1,13 @@
 #pragma once
-#include <iostream>
-#include <stdexcept>
 #include <string>
-#include <unordered_map>
-#include <vector>
+#include <utility>
 
 #include "log.hpp"
 #include "token.hpp"
 
-// ---------------------------------------------------------
-// 5) Tokenizer
-// ---------------------------------------------------------
 class Tokenizer {
    public:
-    explicit Tokenizer(const std::string& contents)
-        : m_contents(contents), m_position(0), m_row(1), m_col(0), m_peeked(false), m_nextTokenIsCommand(false) {
-    }
+    explicit Tokenizer(std::string contents) : m_contents(std::move(contents)) {}
 
     // Peek the next token without consuming
     const Token& peekToken() {
@@ -44,20 +36,15 @@ class Tokenizer {
 
    private:
     std::string m_contents;
-    size_t m_position;
-    int m_row;
-    int m_col;
+    size_t m_position{};
+    int m_row{};
+    int m_col{};
 
-    bool m_peeked;
+    bool m_peeked{};
     Token m_nextToken;
 
-    // If true, next token returned should be Command (the entire rest of the line).
-    bool m_nextTokenIsCommand;
+    bool m_nextTokenIsCommand{};
 
-   private:
-    // ------------------------------------------------------------------------
-    // getNextToken: returns the next token from the file
-    // ------------------------------------------------------------------------
     Token getNextToken() {
         skipWhitespaceAndComments();
 
@@ -117,9 +104,7 @@ class Tokenizer {
         return Token{TokenType::Modifier, text, startRow, startCol};
     }
 
-    // ------------------------------------------------------------------------
-    // readCommandToken: read the rest of the line as a single token
-    // ------------------------------------------------------------------------
+    // read the rest of the line as a single token
     Token readCommandToken() {
         int startRow = m_row;
         int startCol = m_col;
@@ -139,9 +124,6 @@ class Tokenizer {
         return Token{TokenType::Command, line, startRow, startCol};
     }
 
-    // ------------------------------------------------------------------------
-    // readEventType: e.g. "~up", "~down", "~both"
-    // ------------------------------------------------------------------------
     std::string readEventType() {
         std::string result;
         while (m_position < m_contents.size()) {
@@ -156,9 +138,7 @@ class Tokenizer {
         return result;  // e.g. "~up"
     }
 
-    // ------------------------------------------------------------------------
-    // readUntilDelimiter: read until whitespace, newline, plus, colon, '#'
-    // ------------------------------------------------------------------------
+    // read until whitespace, newline, plus, colon, '#'
     std::string readUntilDelimiter() {
         std::string result;
         while (m_position < m_contents.size()) {
@@ -173,9 +153,7 @@ class Tokenizer {
         return result;
     }
 
-    // ------------------------------------------------------------------------
-    // skipWhitespaceAndComments
-    // ------------------------------------------------------------------------
+    // skip whitespace and comments
     void skipWhitespaceAndComments() {
         while (true) {
             skipWhitespace();

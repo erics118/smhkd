@@ -3,9 +3,6 @@
 #include <format>
 #include <string>
 
-// ---------------------------------------------------------
-// 3) Token Types
-// ---------------------------------------------------------
 enum class TokenType {
     DefineModifier,  // new token type for "define_modifier"
     Modifier,        // built-in or user-defined
@@ -18,7 +15,6 @@ enum class TokenType {
     EndOfFile,
 };
 
-// Specialize std::formatter for Color
 template <>
 struct std::formatter<TokenType> : std::formatter<std::string_view> {
     auto format(TokenType tt, std::format_context& ctx) const {
@@ -38,9 +34,6 @@ struct std::formatter<TokenType> : std::formatter<std::string_view> {
     }
 };
 
-// ---------------------------------------------------------
-// 4) Token
-// ---------------------------------------------------------
 struct Token {
     TokenType type;
     std::string text;
@@ -49,10 +42,9 @@ struct Token {
 };
 
 
-// Specialize std::formatter for Token
 template <>
 struct std::formatter<Token> : std::formatter<std::string_view> {
     auto format(const Token& t, std::format_context& ctx) const {
-        return std::format_to(ctx.out(), "{} (\"{}\", {}, {})", t.type, t.text, t.row, t.col);
+        return std::format_to(ctx.out(), "'{}' ({}, {}, {})",t.text, t.type,   t.row, t.col);
     }
 };

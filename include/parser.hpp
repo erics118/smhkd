@@ -1,20 +1,17 @@
-#include <iostream>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
+
 #include "hotkey.hpp"
 #include "log.hpp"
 #include "tokenizer.hpp"
 
-
-// ---------------------------------------------------------
-// 6) Parser
-// ---------------------------------------------------------
 class Parser {
    public:
-    explicit Parser(Tokenizer& tokenizer)
-        : m_tokenizer(tokenizer) {
+    explicit Parser(Tokenizer tokenizer)
+        : m_tokenizer(std::move(tokenizer)) {
     }
 
     std::vector<Hotkey> parseFile() {
@@ -22,7 +19,7 @@ class Parser {
 
         // Keep parsing until EndOfFile
         while (m_tokenizer.hasMoreTokens()) {
-            debug( "Parsing next token");
+            debug("Parsing next token");
             Token tk = m_tokenizer.peekToken();
             if (tk.type == TokenType::EndOfFile) {
                 break;
@@ -45,16 +42,10 @@ class Parser {
     }
 
    private:
-    Tokenizer& m_tokenizer;
+    Tokenizer m_tokenizer;
 
-    // This map stores expansions of custom modifiers.
-    // e.g. "ham" -> ["cmd", "ctrl"]
     std::unordered_map<std::string, std::vector<std::string>> m_customModifiers;
 
-    // ---------------------------------------------------------
-    // parseDefineModifier: handle lines like:
-    //   define_modifier ham = cmd + ctrl
-    // ---------------------------------------------------------
     void parseDefineModifier() {
         debug("Parsing define_modifier");
         // consume the "define_modifier"
@@ -123,10 +114,6 @@ class Parser {
         m_customModifiers[customName] = expansions;
     }
 
-    // ---------------------------------------------------------
-    // parseHotkey: gather a sequence of modifiers/keys/eventTypes (with plus),
-    // then a colon, then a command.
-    // ---------------------------------------------------------
     Hotkey parseHotkey() {
         Hotkey hk;
         bool foundColon = false;
@@ -190,13 +177,11 @@ class Parser {
         return KeyEventType::Down;
     }
 
-    // ---------------------------------------------------------
     // expandModifier: if it's one of the built-ins or the "customModifiers" map
     //    - If "cmd", "ctrl", "alt", or "shift", return that alone.
     //    - Else if we have a user-defined name, expand it to the underlying list
     //      (which may include built-in or *other* custom modifiers).
     //    - Potentially do a recursive expansion if needed (be careful of infinite loops).
-    // ---------------------------------------------------------
     std::vector<std::string> expandModifier(const std::string& mod, int row, int col) {
         // If it's a built-in
         if (mod == "cmd" || mod == "ctrl" || mod == "alt" || mod == "shift") {

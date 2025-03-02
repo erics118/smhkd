@@ -39,6 +39,6 @@ int main(int argc, char* argv[]) {
             debug("Hotkey: {}", hk);
         }
     } catch (const std::exception& ex) {
-        std::cerr << "Error while parsing hotkeys: " << ex.what() << std::endl;
+        error("Error while parsing hotkeys: {}\n", ex.what());
     }
 }
