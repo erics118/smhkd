@@ -1,8 +1,10 @@
 #include <fstream>
 
 #include "cli.hpp"
+#include "locale.hpp"
 #include "log.hpp"
 #include "parser.hpp"
+#include "service.hpp"
 #include "utils.hpp"
 
 int main(int argc, char* argv[]) {
@@ -27,17 +29,25 @@ int main(int argc, char* argv[]) {
         std::istreambuf_iterator<char>());
 
     try {
-        // 1) Initialize tokenizer with file contents
+        initializeKeycodeMap();
+
         Tokenizer tokenizer(configFileContents);
 
-        // 2) Parse hotkeys
         Parser parser(tokenizer);
+
         std::vector<Hotkey> hotkeys = parser.parseFile();
 
         // 3) Print out the results
         for (const auto& hk : hotkeys) {
             debug("Hotkey: {}", hk);
         }
+
+        auto service = std::make_unique<Service>(hotkeys);
+
+        service->init();
+
+        service->run();
+
     } catch (const std::exception& ex) {
         error("Error while parsing hotkeys: {}\n", ex.what());
     }

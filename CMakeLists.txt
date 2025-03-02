@@ -11,10 +11,13 @@ find_library(CORE_FOUNDATION_FRAMEWORK CoreFoundation REQUIRED)
 
 add_executable(${PROJECT_NAME}
     src/cli.cpp
+    src/hotkey.cpp
+    src/locale.cpp
     src/main.cpp
-    src/utils.cpp
-    src/tokenizer.cpp
     src/parser.cpp
+    src/service.cpp
+    src/tokenizer.cpp
+    src/utils.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE

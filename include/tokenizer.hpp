@@ -6,6 +6,17 @@
 #include "token.hpp"
 
 class Tokenizer {
+   private:
+    std::string m_contents;
+    size_t m_position{};
+    int m_row{};
+    int m_col{};
+
+    bool m_peeked{};
+    Token m_nextToken;
+
+    bool m_nextTokenIsCommand{};
+
    public:
     explicit Tokenizer(std::string contents) : m_contents(std::move(contents)) {}
 
@@ -18,16 +29,6 @@ class Tokenizer {
     bool hasMoreTokens();
 
    private:
-    std::string m_contents;
-    size_t m_position{};
-    int m_row{};
-    int m_col{};
-
-    bool m_peeked{};
-    Token m_nextToken;
-
-    bool m_nextTokenIsCommand{};
-
     Token getNextToken();
 
     // read the rest of the line as a single token

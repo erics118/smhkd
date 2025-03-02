@@ -2,7 +2,6 @@
 
 #include <string>
 
-#include "log.hpp"
 #include "token.hpp"
 
 // Peek the next token without consuming
@@ -17,7 +16,6 @@ const Token& Tokenizer::peekToken() {
 // Get the next token and consume it
 Token Tokenizer::nextToken() {
     Token token = m_peeked ? m_nextToken : getNextToken();
-    debug("next token: {}", token);
     m_peeked = false;
     return token;
 }
@@ -30,6 +28,7 @@ bool Tokenizer::hasMoreTokens() {
     return (m_position < m_contents.size());
 }
 
+// NOLINTNEXTLINE(misc-no-recursion)
 Token Tokenizer::getNextToken() {
     skipWhitespaceAndComments();
 

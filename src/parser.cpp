@@ -1,5 +1,6 @@
 #include "parser.hpp"
 
+#include <algorithm>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -7,6 +8,7 @@
 #include <vector>
 
 #include "hotkey.hpp"
+#include "locale.hpp"
 #include "log.hpp"
 #include "tokenizer.hpp"
 
@@ -15,20 +17,18 @@ std::vector<Hotkey> Parser::parseFile() {
 
     // Keep parsing until EndOfFile
     while (m_tokenizer.hasMoreTokens()) {
-        debug("Parsing next token");
         Token tk = m_tokenizer.peekToken();
         if (tk.type == TokenType::EndOfFile) {
             break;
         }
         // If line starts with "define_modifier", parse a custom modifier
         if (tk.type == TokenType::DefineModifier) {
-            debug("Parsing define_modifier");
             parseDefineModifier();
         }
         // Otherwise, parse a hotkey
         else {
             Hotkey hk = parseHotkey();
-            if (!hk.modifiers.empty() || !hk.key.empty() || !hk.command.empty()) {
+            if (!hk.command.empty()) {
                 hotkeys.push_back(hk);
             }
         }
@@ -106,6 +106,7 @@ void Parser::parseDefineModifier() {
 }
 
 Hotkey Parser::parseHotkey() {
+    debug("Parsing hotkey");
     Hotkey hk;
     bool foundColon = false;
 
@@ -131,17 +132,16 @@ Hotkey Parser::parseHotkey() {
             continue;
         }
         if (tk.type == TokenType::Modifier) {
-            // Could be built-in or custom
-            auto expanded = expandModifier(tk.text, tk.row, tk.col);
-            for (auto& e : expanded) {
-                hk.modifiers.push_back(e);
-            }
+            hk.flags = getModifierFlag(tk.text, tk.row, tk.col);
             m_tokenizer.nextToken();
             continue;
         }
         if (tk.type == TokenType::Key) {
             // single char => the 'key'
-            hk.key = tk.text;
+            hk.keyCode = getKeyCode(tk.text);
+            if (hk.keyCode == -1) {
+                throw std::runtime_error("Invalid key: " + tk.text);
+            }
             m_tokenizer.nextToken();
             continue;
         }
@@ -168,39 +168,51 @@ KeyEventType Parser::parseEventType(const std::string& text) {
     return KeyEventType::Down;
 }
 
-// expandModifier: if it's one of the built-ins or the "customModifiers" map
-//    - If "cmd", "ctrl", "alt", or "shift", return that alone.
-//    - Else if we have a user-defined name, expand it to the underlying list
-//      (which may include built-in or *other* custom modifiers).
-//    - Potentially do a recursive expansion if needed (be careful of infinite loops).
-std::vector<std::string> Parser::expandModifier(const std::string& mod, int row, int col) {
-    // If it's a built-in
-    if (mod == "cmd" || mod == "ctrl" || mod == "alt" || mod == "shift") {
-        return {mod};
+int Parser::getBuiltinModifierFlag(const std::string& mod) {
+    const auto* it1 = std::ranges::find(hotkey_flag_names, mod);
+    if (it1 != hotkey_flag_names.end()) {
+        return hotkey_flags[it1 - hotkey_flag_names.begin()];
     }
+    return 0;
+}
 
-    // If custom
+// NOLINTNEXTLINE(misc-no-recursion)
+int Parser::getCustomModifierFlag(const std::string& mod, int row, int col) {
+    int flags = 0;
     auto it = m_customModifiers.find(mod);
     if (it != m_customModifiers.end()) {
-        // Return expansions (we *could* also do a deeper expansion if needed)
-        // For now, we do a shallow expansion, trusting that define_modifier
-        // has only built-ins or previously-defined expansions.
-        // If we wanted full recursion, we'd map them again, but that can lead
-        // to cycles if not careful.
-        std::vector<std::string> expandedAll;
+        // todo: support simple recursive expansion, requiring modifiers to be
+        // previously defined
         for (auto& sub : it->second) {
             // If sub is also a custom, we could recursively expand
             // but let's do a single-level expansion for demonstration:
-            if (sub == "cmd" || sub == "ctrl" || sub == "alt" || sub == "shift") {
-                expandedAll.push_back(sub);
-            } else {
-                error("AnUnknown modifier '{}' at row {}, col {}", sub, row, col);
+            int subFlags = getModifierFlag(sub, row, col);
+            if (subFlags == 0) {
+                error("Nested custom modifiers are not supported. Found '{}' at row {}, col {}", sub, row, col);
             }
+            flags |= subFlags;
         }
-        return expandedAll;
+        return flags;
+    }
+    return 0;
+}
+
+// NOLINTNEXTLINE(misc-no-recursion)
+int Parser::getModifierFlag(const std::string& mod, int row, int col) {
+    int flags = 0;
+
+    // If built-in
+    flags = getBuiltinModifierFlag(mod);
+    if (flags != 0) {
+        return flags;
     }
 
-    // If we get here, it's not built-in and not in custom map => error
-    throw std::runtime_error(
-        "Unknown modifier '" + mod + "' at row " + std::to_string(row) + ", col " + std::to_string(col));
+    // If custom
+    flags = getCustomModifierFlag(mod, row, col);
+    if (flags != 0) {
+        return flags;
+    }
+
+    // If we get here, it's not built-in and not in custom map, so error
+    throw std::runtime_error("Unknown modifier '" + mod + "' at row " + std::to_string(row) + ", col " + std::to_string(col));
 }
