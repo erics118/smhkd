@@ -126,6 +126,16 @@ Hotkey Parser::parseHotkey() {
             m_tokenizer.nextToken();
             continue;
         }
+        if (tk.type == TokenType::At) {
+            hk.passthrough = true;
+            m_tokenizer.nextToken();
+            continue;
+        }
+        if (tk.type == TokenType::Repeat) {
+            hk.repeat = true;
+            m_tokenizer.nextToken();
+            continue;
+        }
         if (tk.type == TokenType::EventType) {
             hk.eventType = parseEventType(tk.text);
             m_tokenizer.nextToken();
@@ -138,7 +148,7 @@ Hotkey Parser::parseHotkey() {
         }
         if (tk.type == TokenType::Key) {
             // single char => the 'key'
-            hk.keyCode = getKeyCode(tk.text);
+            hk.keyCode = getKeycode(tk.text);
             if (hk.keyCode == -1) {
                 throw std::runtime_error("Invalid key: " + tk.text);
             }

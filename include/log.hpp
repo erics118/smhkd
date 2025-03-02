@@ -30,8 +30,7 @@ inline void print(level ll, const T& msg) {
 // format string version
 template <typename... Args>
 inline void print(level ll, const std::format_string<Args...> fmt, Args&&... args) {
-    std::string formatted = std::format(fmt, std::forward<Args>(args)...);
-    print(ll, formatted);
+    print(ll, std::format(fmt, std::forward<Args>(args)...));
 }
 
 #define MAKE_LOG_FUNC(name, level)                                            \

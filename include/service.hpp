@@ -25,7 +25,7 @@ struct Service {
 
     bool setupEventTap();
 
-    static CGEventRef eventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void* refcon);
+    [[nodiscard]] static CGEventRef eventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void* refcon);
 
-    bool handleKeyEvent(CGEventRef event, CGEventType type);
+    [[nodiscard]] bool handleKeyEvent(CGEventRef event, CGEventType type);
 };

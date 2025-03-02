@@ -2,8 +2,10 @@
 
 #include "utils.hpp"
 
+namespace {
+
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-int cgevent_lrmod_flag_to_hotkey_flags(CGEventFlags eventflags, int mod) {
+int eventLRModifierFlagsToHotkeyFlags(CGEventFlags eventflags, int mod) {
     int flags = 0;
 
     int mask = cgevent_flags[mod];
@@ -22,22 +24,8 @@ int cgevent_lrmod_flag_to_hotkey_flags(CGEventFlags eventflags, int mod) {
     return flags;
 }
 
-int convert_cgevent_flags_to_hotkey_flags(CGEventFlags flags) {
-    int res = 0;
-
-    res |= cgevent_lrmod_flag_to_hotkey_flags(flags, alt_mod);
-    res |= cgevent_lrmod_flag_to_hotkey_flags(flags, shift_mod);
-    res |= cgevent_lrmod_flag_to_hotkey_flags(flags, cmd_mod);
-    res |= cgevent_lrmod_flag_to_hotkey_flags(flags, ctrl_mod);
-
-    if ((flags & cgevent_flags[fn_mod]) == cgevent_flags[fn_mod]) {
-        res |= hotkey_flags[fn_mod];
-    }
-    return res;
-}
-
 // first hotkey should be the config, second hotkey should be the event
-bool compare_lr_mod(const Hotkey& a, const Hotkey& b, int mod) {
+bool compareLRModifier(const Hotkey& a, const Hotkey& b, int mod) {
     // Check if generic modifier is set in hotkey a
     if (has_flags(a, hotkey_flags[mod])) {
         // If generic modifier is set in a, then b must have either:
@@ -55,20 +43,31 @@ bool compare_lr_mod(const Hotkey& a, const Hotkey& b, int mod) {
         && has_flags(a, hotkey_flags[mod]) == has_flags(b, hotkey_flags[mod]);
 }
 
-bool compare_fn(const Hotkey& a, const Hotkey& b) {
+bool compareFn(const Hotkey& a, const Hotkey& b) {
     return has_flags(a, hotkey_flags[fn_mod]) == has_flags(b, hotkey_flags[fn_mod]);
 }
 
-bool compare_key(const Hotkey& a, const Hotkey& b) {
-    return a.keyCode == b.keyCode;
+}  // namespace
+
+int eventModifierFlagsToHotkeyFlags(CGEventFlags flags) {
+    int res = 0;
+
+    res |= eventLRModifierFlagsToHotkeyFlags(flags, alt_mod);
+    res |= eventLRModifierFlagsToHotkeyFlags(flags, shift_mod);
+    res |= eventLRModifierFlagsToHotkeyFlags(flags, cmd_mod);
+    res |= eventLRModifierFlagsToHotkeyFlags(flags, ctrl_mod);
+
+    if ((flags & cgevent_flags[fn_mod]) == cgevent_flags[fn_mod]) {
+        res |= hotkey_flags[fn_mod];
+    }
+    return res;
 }
 
-// first hotkey should be the config, second hotkey should be the event
-bool same_hotkey(const Hotkey& a, const Hotkey& b) {
-    return compare_lr_mod(a, b, alt_mod)
-        && compare_lr_mod(a, b, shift_mod)
-        && compare_lr_mod(a, b, cmd_mod)
-        && compare_lr_mod(a, b, ctrl_mod)
-        && compare_fn(a, b)
-        && compare_key(a, b);
+bool Hotkey::operator==(const Hotkey& other) const {
+    return compareLRModifier(*this, other, alt_mod)
+        && compareLRModifier(*this, other, shift_mod)
+        && compareLRModifier(*this, other, cmd_mod)
+        && compareLRModifier(*this, other, ctrl_mod)
+        && compareFn(*this, other)
+        && this->keyCode == other.keyCode;
 }

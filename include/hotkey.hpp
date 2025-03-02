@@ -25,8 +25,6 @@ enum HotkeyFlag {
     Hotkey_Flag_LControl = (1 << 10),
     Hotkey_Flag_RControl = (1 << 11),
     Hotkey_Flag_Fn = (1 << 12),
-
-    Hotkey_Flag_Passthrough = (1 << 13),
 };
 
 inline const int l_offset = 1;
@@ -129,25 +127,19 @@ struct Hotkey {
     uint32_t keyCode = 0;
     std::string command;
     KeyEventType eventType = KeyEventType::Down;
+    bool passthrough = false;
+    bool repeat = false;
+
+    bool operator==(const Hotkey& other) const;
 };
 
 template <>
 struct std::formatter<Hotkey> : std::formatter<std::string_view> {
     auto format(Hotkey hk, std::format_context& ctx) const {
         // print out each part
-        std::format_to(ctx.out(), "{} {} ({}): {}", getCharFromKeycode(hk.keyCode), hk.flags, hk.eventType, hk.command);
+        std::format_to(ctx.out(), "{} {} ({}{}{}): {}", getNameOfKeycode(hk.keyCode), hk.flags, hk.eventType, hk.passthrough ? " passthrough" : "", hk.repeat ? " repeat" : "", hk.command);
         return ctx.out();
     }
 };
 
-int cgevent_lrmod_flag_to_hotkey_flags(CGEventFlags eventflags, int mod);
-
-int convert_cgevent_flags_to_hotkey_flags(CGEventFlags flags);
-
-bool compare_lr_mod(const Hotkey& a, const Hotkey& b, int mod);
-
-bool compare_fn(const Hotkey& a, const Hotkey& b);
-
-bool compare_key(const Hotkey& a, const Hotkey& b);
-
-bool same_hotkey(const Hotkey& a, const Hotkey& b);
+int eventModifierFlagsToHotkeyFlags(CGEventFlags flags);

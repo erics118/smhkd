@@ -13,54 +13,30 @@ struct ArgsConfig {
 struct Args {
     std::unordered_map<std::string, std::string> args;
 
-    [[nodiscard]] bool contains(const std::string& long_arg) const {
-        return args.contains(long_arg);
+    [[nodiscard]] bool contains(const std::string& arg) const {
+        return args.contains(arg);
     }
 
     [[nodiscard]] bool contains(char short_arg) const {
         return contains(std::string{short_arg});
     }
 
-    [[nodiscard]] bool contains(char short_arg, const std::string& long_arg) const {
-        return contains(short_arg) || contains(long_arg);
-    }
-
-    [[nodiscard]] std::string get(const std::string& long_arg) const {
-        if (args.contains(long_arg)) {
-            return args.at(long_arg);
-        }
-        return "";
-    }
-
-    [[nodiscard]] std::string get(char short_arg) const {
-        return get(std::string{short_arg});
-    }
-
-    [[nodiscard]] std::string get(char short_arg, const std::string& long_arg) const {
-        auto short_arg_str = get(short_arg);
-        if (!short_arg_str.empty()) {
-            return short_arg_str;
-        }
-        return get(long_arg);
-    }
-
-    [[nodiscard]] std::optional<std::string> get_opt(const std::string& long_arg) const {
-        if (args.contains(long_arg)) {
-            return args.at(long_arg);
+    [[nodiscard]] std::optional<std::string> get(const std::string& arg) const {
+        if (args.contains(arg)) {
+            return args.at(arg);
         }
         return std::nullopt;
     }
 
-    [[nodiscard]] std::optional<std::string> get_opt(char short_arg) const {
-        return get_opt(std::string{short_arg});
+    [[nodiscard]] std::optional<std::string> get(char short_arg) const {
+        return get(std::string{short_arg});
     }
 
-    [[nodiscard]] std::optional<std::string> get_opt(char short_arg, const std::string& long_arg) const {
-        auto short_arg_str = get_opt(short_arg);
-        if (short_arg_str.has_value()) {
-            return short_arg_str;
+    [[nodiscard]] std::optional<std::string> get(char short_arg, const std::string& long_arg) const {
+        if (auto short_result = get(short_arg)) {
+            return short_result;
         }
-        return get_opt(long_arg);
+        return get(long_arg);
     }
 };
 

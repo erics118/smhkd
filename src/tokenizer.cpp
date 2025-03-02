@@ -66,6 +66,14 @@ Token Tokenizer::getNextToken() {
         std::string et = readEventType();
         return Token{TokenType::EventType, et, startRow, startCol};
     }
+    if (c == '@') {
+        advance();
+        return Token{TokenType::At, "@", startRow, startCol};
+    }
+    if (c == '&') {
+        advance();
+        return Token{TokenType::Repeat, "&", startRow, startCol};
+    }
 
     // Otherwise, read text until a delimiter
     std::string text = readUntilDelimiter();
@@ -119,7 +127,7 @@ std::string Tokenizer::readEventType() {
         result.push_back(c);
         advance();
     }
-    return result;  // e.g. "~up"
+    return result;  // e.g. '~up'
 }
 
 // read until whitespace, newline, plus, colon, '#'

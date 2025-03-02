@@ -4,14 +4,16 @@
 #include <string>
 
 enum class TokenType {
-    DefineModifier,  // new token type for "define_modifier"
+    DefineModifier,  // 'define_modifier'
     Modifier,        // built-in or user-defined
     Key,             // single character
     Plus,            // '+'
     Equals,          // '='
     Colon,           // ':'
     Command,         // entire line after ':'
-    EventType,       // e.g. "~up", "~down", "~both"
+    EventType,       // '~up', '~down', '~both'
+    At,              // for passthrough '@'
+    Repeat,          // for repeat '&'
     EndOfFile,
 };
 

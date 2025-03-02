@@ -3,6 +3,7 @@
 #include <Carbon/Carbon.h>
 #include <CoreFoundation/CoreFoundation.h>
 
+#include <algorithm>
 #include <cstdlib>
 
 #include "log.hpp"
@@ -92,7 +93,7 @@ bool Service::handleKeyEvent(CGEventRef event, CGEventType type) {
     }
 
     Hotkey current;
-    int flags_from_event = convert_cgevent_flags_to_hotkey_flags(flags);
+    int flags_from_event = eventModifierFlagsToHotkeyFlags(flags);
 
     current.flags = flags_from_event;
     current.keyCode = keyCode;
@@ -105,28 +106,37 @@ bool Service::handleKeyEvent(CGEventRef event, CGEventType type) {
     }
 
     // Skip if this is a repeat and we've already triggered this hotkey
-    if (isRepeat && lastTriggeredHotkey && same_hotkey(*lastTriggeredHotkey, current)) {
-        debug("skipping repeat of last triggered hotkey");
-        return true;  // Consume the repeat event
-    }
-    for (const auto& hotkey : hotkeys) {
-        if (same_hotkey(hotkey, current) && (hotkey.eventType == KeyEventType::Both || hotkey.eventType == current.eventType)) {
-            debug("consumed");
-            if (!hotkey.command.empty()) {
-                debug("executing command: {}", hotkey.command);
-                system(hotkey.command.c_str());
+    // if (isRepeat && lastTriggeredHotkey && *lastTriggeredHotkey == current) {
+    //     debug("skipping repeat of last triggered hotkey");
+    //     return true;  // Consume the repeat event
+    // }
 
-                // Store this hotkey as the last triggered one if it's a key down event
-                if (type == kCGEventKeyDown) {
-                    lastTriggeredHotkey = current;
-                    lastTriggeredHotkey->command = hotkey.command;
-                }
+    // find the hotkey in hotkeys that == current
+    auto it = std::ranges::find(hotkeys, current);
+    if (it != hotkeys.end()) {
+        debug("found hotkey: {}", *it);
+    } else {
+        return false;
+    }
+    const auto& hotkey = *it;
+
+    if ((hotkey.eventType == KeyEventType::Both || hotkey.eventType == current.eventType)
+        && (isRepeat && hotkey.repeat || !isRepeat)) {
+        debug("consumed");
+        if (!hotkey.command.empty()) {
+            debug("executing command: {}", hotkey.command);
+            system(hotkey.command.c_str());
+
+            // Store this hotkey as the last triggered one if it's a key down event
+            if (type == kCGEventKeyDown) {
+                lastTriggeredHotkey = current;
+                lastTriggeredHotkey->command = hotkey.command;
             }
-            if (has_flags(hotkey, Hotkey_Flag_Passthrough)) {
-                return false;  // Let the event pass through
-            }
-            return true;  // Consume the event
         }
+        if (hotkey.passthrough) {
+            return false;  // Let the event pass through
+        }
+        return true;  // Consume the event
     }
     return false;  // Let all other events pass through
 }

@@ -21,23 +21,23 @@ class Tokenizer {
     explicit Tokenizer(std::string contents) : m_contents(std::move(contents)) {}
 
     // Peek the next token without consuming
-    const Token& peekToken();
+    [[nodiscard]] const Token& peekToken();
 
     // Get the next token and consume it
     Token nextToken();
 
-    bool hasMoreTokens();
+    [[nodiscard]] bool hasMoreTokens();
 
    private:
     Token getNextToken();
 
     // read the rest of the line as a single token
-    Token readCommandToken();
+    [[nodiscard]] Token readCommandToken();
 
-    std::string readEventType();
+    [[nodiscard]] std::string readEventType();
 
     // read until whitespace, newline, plus, colon, '#'
-    std::string readUntilDelimiter();
+    [[nodiscard]] std::string readUntilDelimiter();
 
     // skip whitespace and comments
     void skipWhitespaceAndComments();
