@@ -1,0 +1,13 @@
+Language: Cpp
+BasedOnStyle: Google
+ColumnLimit: 0
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+DerivePointerAlignment: false
+PointerAlignment: Left
+BreakBeforeBinaryOperators: NonAssignment
+AlignAfterOpenBracket: DontAlign
+AlignOperands: AlignAfterOperator
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortIfStatementsOnASingleLine: AllIfsAndElse
