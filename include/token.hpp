@@ -41,10 +41,9 @@ struct Token {
     int col;
 };
 
-
 template <>
 struct std::formatter<Token> : std::formatter<std::string_view> {
     auto format(const Token& t, std::format_context& ctx) const {
-        return std::format_to(ctx.out(), "'{}' ({}, {}, {})",t.text, t.type,   t.row, t.col);
+        return std::format_to(ctx.out(), "'{}' ({}, {}, {})", t.text, t.type, t.row, t.col);
     }
 };

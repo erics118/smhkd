@@ -13,6 +13,8 @@ add_executable(${PROJECT_NAME}
     src/cli.cpp
     src/main.cpp
     src/utils.cpp
+    src/tokenizer.cpp
+    src/parser.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
