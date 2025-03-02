@@ -25,8 +25,7 @@ int main(int argc, char* argv[]) {
     std::ifstream file(config_file);
 
     // Read entire file into string
-    std::string configFileContents((std::istreambuf_iterator<char>(file)),
-        std::istreambuf_iterator<char>());
+    std::string configFileContents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 
     try {
         initializeKeycodeMap();
@@ -37,7 +36,6 @@ int main(int argc, char* argv[]) {
 
         std::vector<Hotkey> hotkeys = parser.parseFile();
 
-        // 3) Print out the results
         for (const auto& hk : hotkeys) {
             debug("Hotkey: {}", hk);
         }

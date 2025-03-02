@@ -7,24 +7,24 @@
 
 class Tokenizer {
    private:
-    std::string m_contents;
-    size_t m_position{};
-    int m_row{};
-    int m_col{};
+    std::string contents;
+    size_t position{};
+    int row{};
+    int col{};
 
-    bool m_peeked{};
-    Token m_nextToken;
+    bool peeked{};
+    Token nextToken_;
 
-    bool m_nextTokenIsCommand{};
+    bool nextTokenIsCommand{};
 
    public:
-    explicit Tokenizer(std::string contents) : m_contents(std::move(contents)) {}
+    explicit Tokenizer(std::string contents) : contents(std::move(contents)) {}
 
-    // Peek the next token without consuming
-    [[nodiscard]] const Token& peekToken();
+    // peek the next token without consuming
+    [[nodiscard]] const Token& peek();
 
-    // Get the next token and consume it
-    Token nextToken();
+    // get the next token and consume it
+    Token next();
 
     [[nodiscard]] bool hasMoreTokens();
 

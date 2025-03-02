@@ -30,6 +30,7 @@ Diagnostics:
       - cppcoreguidelines-pro-bounds-constant-array-index
       - modernize-use-designated-initializers
       - readability-convert-member-functions-to-static
+      - google-readability-todo
     CheckOptions:
       misc-unused-parameters.StrictMode: false
   UnusedIncludes: Strict

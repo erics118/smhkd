@@ -11,10 +11,10 @@ enum class TokenType {
     Equals,          // '='
     Colon,           // ':'
     Command,         // entire line after ':'
-    EventType,       // '~up', '~down', '~both'
-    At,              // for passthrough '@'
-    Repeat,          // for repeat '&'
-    EndOfFile,
+    EventType,       // event type '~up', '~down', '~both'
+    At,              // passthrough '@'
+    Repeat,          // repeat '&'
+    EndOfFile,       // end of file
 };
 
 template <>

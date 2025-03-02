@@ -10,15 +10,15 @@
 
 class Parser {
    private:
-    Tokenizer m_tokenizer;
+    Tokenizer tokenizer;
 
    public:
-    explicit Parser(Tokenizer tokenizer) : m_tokenizer(std::move(tokenizer)) {}
+    explicit Parser(Tokenizer tokenizer) : tokenizer(std::move(tokenizer)) {}
 
     std::vector<Hotkey> parseFile();
 
    private:
-    std::unordered_map<std::string, std::vector<std::string>> m_customModifiers;
+    std::unordered_map<std::string, std::vector<std::string>> customModifiers;
 
     void parseDefineModifier();
 

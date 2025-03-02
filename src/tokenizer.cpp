@@ -4,28 +4,29 @@
 
 #include "token.hpp"
 
-// Peek the next token without consuming
-const Token& Tokenizer::peekToken() {
-    if (!m_peeked) {
-        m_nextToken = getNextToken();
-        m_peeked = true;
+// peek the next token without consuming
+const Token& Tokenizer::peek() {
+    if (!peeked) {
+        nextToken_ = getNextToken();
+        peeked = true;
     }
-    return m_nextToken;
+    return nextToken_;
 }
 
-// Get the next token and consume it
-Token Tokenizer::nextToken() {
-    Token token = m_peeked ? m_nextToken : getNextToken();
-    m_peeked = false;
+// get the next token and consume it
+// public facing function that handles peeking, while getNextToken does the actual work
+Token Tokenizer::next() {
+    Token token = peeked ? nextToken_ : getNextToken();
+    peeked = false;
     return token;
 }
 
 bool Tokenizer::hasMoreTokens() {
-    if (m_peeked && m_nextToken.type == TokenType::EndOfFile) {
+    if (peeked && nextToken_.type == TokenType::EndOfFile) {
         return false;
     }
     skipWhitespaceAndComments();
-    return (m_position < m_contents.size());
+    return (position < contents.size());
 }
 
 // NOLINTNEXTLINE(misc-no-recursion)
@@ -33,75 +34,80 @@ Token Tokenizer::getNextToken() {
     skipWhitespaceAndComments();
 
     // If at EOF
-    if (m_position >= m_contents.size()) {
-        return Token{TokenType::EndOfFile, "", m_row, m_col};
+    if (position >= contents.size()) {
+        return Token{TokenType::EndOfFile, "", row, col};
     }
 
     // If next token must be a Command
-    if (m_nextTokenIsCommand) {
-        m_nextTokenIsCommand = false;
+    if (nextTokenIsCommand) {
+        nextTokenIsCommand = false;
         return readCommandToken();
     }
 
     char c = peekChar();
-    int startRow = m_row;
-    int startCol = m_col;
+    int startRow = row;
+    int startCol = col;
 
-    // Single-character tokens
+    // single-character tokens
     if (c == '+') {
         advance();
         return Token{TokenType::Plus, "+", startRow, startCol};
     }
+
     if (c == '=') {
         advance();
         return Token{TokenType::Equals, "=", startRow, startCol};
     }
+
     if (c == ':') {
         advance();
-        // Next token is entire line => Command
-        m_nextTokenIsCommand = true;
+        // next token is a command, taking the entire line
+        nextTokenIsCommand = true;
         return Token{TokenType::Colon, ":", startRow, startCol};
     }
+
     if (c == '~') {
         std::string et = readEventType();
         return Token{TokenType::EventType, et, startRow, startCol};
     }
+
     if (c == '@') {
         advance();
         return Token{TokenType::At, "@", startRow, startCol};
     }
+
     if (c == '&') {
         advance();
         return Token{TokenType::Repeat, "&", startRow, startCol};
     }
 
-    // Otherwise, read text until a delimiter
+    // otherwise, read until delimiter
     std::string text = readUntilDelimiter();
     if (text.empty()) {
-        // Possibly a newline or comment – skip and re-fetch
+        // newline or comment, so get next token
         return getNextToken();
     }
 
-    // Special check: "define_modifier"
+    // special case: "define_modifier"
     if (text == "define_modifier") {
         return Token{TokenType::DefineModifier, text, startRow, startCol};
     }
 
-    // If single char => Key
+    // if single char, key
     if (text.size() == 1) {
         return Token{TokenType::Key, text, startRow, startCol};
     }
 
-    // Otherwise => treat as "Modifier" for now (could be built-in or custom)
+    // otherwise, modifier
     return Token{TokenType::Modifier, text, startRow, startCol};
 }
 
 // read the rest of the line as a single token
 Token Tokenizer::readCommandToken() {
-    int startRow = m_row;
-    int startCol = m_col;
+    int startRow = row;
+    int startCol = col;
     std::string line;
-    while (m_position < m_contents.size()) {
+    while (position < contents.size()) {
         char c = peekChar();
         if (c == '\n') {
             break;
@@ -109,16 +115,18 @@ Token Tokenizer::readCommandToken() {
         line.push_back(c);
         advance();
     }
+
     // consume newline if present
-    if (m_position < m_contents.size() && peekChar() == '\n') {
+    if (position < contents.size() && peekChar() == '\n') {
         advanceNewline();
     }
+
     return Token{TokenType::Command, line, startRow, startCol};
 }
 
 std::string Tokenizer::readEventType() {
     std::string result;
-    while (m_position < m_contents.size()) {
+    while (position < contents.size()) {
         char c = peekChar();
         if (c == ' ' || c == '\t' || c == '\r' || c == '\n'
             || c == '+' || c == ':' || c == '#') {
@@ -133,7 +141,7 @@ std::string Tokenizer::readEventType() {
 // read until whitespace, newline, plus, colon, '#'
 std::string Tokenizer::readUntilDelimiter() {
     std::string result;
-    while (m_position < m_contents.size()) {
+    while (position < contents.size()) {
         char c = peekChar();
         if (c == ' ' || c == '\t' || c == '\r' || c == '\n'
             || c == '+' || c == ':' || c == '#' || c == '=') {
@@ -149,7 +157,7 @@ std::string Tokenizer::readUntilDelimiter() {
 void Tokenizer::skipWhitespaceAndComments() {
     while (true) {
         skipWhitespace();
-        if (m_position < m_contents.size() && peekChar() == '#') {
+        if (position < contents.size() && peekChar() == '#') {
             eatComment();
         } else {
             break;
@@ -158,8 +166,8 @@ void Tokenizer::skipWhitespaceAndComments() {
 }
 
 void Tokenizer::skipWhitespace() {
-    while (m_position < m_contents.size()) {
-        char c = m_contents[m_position];
+    while (position < contents.size()) {
+        char c = contents[position];
         if (c == ' ' || c == '\t' || c == '\r') {
             advance();
         } else if (c == '\n') {
@@ -171,7 +179,7 @@ void Tokenizer::skipWhitespace() {
 }
 
 void Tokenizer::eatComment() {
-    while (m_position < m_contents.size()) {
+    while (position < contents.size()) {
         if (peekChar() == '\n') {
             advanceNewline();
             return;
@@ -181,19 +189,19 @@ void Tokenizer::eatComment() {
 }
 
 void Tokenizer::advance() {
-    if (m_position < m_contents.size()) {
-        m_position++;
-        m_col++;
+    if (position < contents.size()) {
+        position++;
+        col++;
     }
 }
 
 void Tokenizer::advanceNewline() {
-    m_position++;
-    m_row++;
-    m_col = 0;
+    position++;
+    row++;
+    col = 0;
 }
 
 char Tokenizer::peekChar() const {
-    if (m_position >= m_contents.size()) return '\0';
-    return m_contents[m_position];
+    if (position >= contents.size()) return '\0';
+    return contents[position];
 }

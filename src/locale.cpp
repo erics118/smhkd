@@ -79,7 +79,7 @@ bool initializeKeycodeMap() {
 }
 
 uint32_t getKeycode(const std::string& key) {
-    if (key.length() != 1) return -1;  // todo: handle identifiers, ie enter, space, tab, etc
+    if (key.length() != 1) return -1;  // TODO: handle identifiers, ie enter, space, tab, etc
 
     auto it = keycodeMap.find(key);
     if (it != keycodeMap.end()) {
@@ -90,12 +90,10 @@ uint32_t getKeycode(const std::string& key) {
 }
 
 std::string getNameOfKeycode(uint32_t keycode) {
-    // Search through the keycode map for the matching keycode
     for (const auto& [key, code] : keycodeMap) {
         if (code == keycode) {
             return key;
         }
     }
-    // Return null character if keycode not found
     return "";
 }
