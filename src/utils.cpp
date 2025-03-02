@@ -37,8 +37,3 @@ std::optional<std::string> get_config_file(const std::string& name) {
 
     return {};
 }
-
-bool has_flags(const Hotkey& hotkey, uint32_t flag) {
-    bool result = hotkey.flags & flag;
-    return result;
-}

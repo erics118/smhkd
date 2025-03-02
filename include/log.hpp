@@ -2,6 +2,7 @@
 
 #include <format>
 #include <iostream>
+#include <print>
 #include <string>
 
 enum class level : std::uint8_t {
@@ -23,8 +24,7 @@ inline void print(level ll, const T& msg) {
         case level::error: type = "\u001b[31merror\u001b[0m"; break;
     }
 
-    auto& out = (ll >= level::warn) ? std::cerr : std::clog;
-    out << type << ": " << msg << '\n';
+    std::print("{}: {}\n", type, msg);
 }
 
 // format string version

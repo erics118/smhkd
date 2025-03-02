@@ -11,10 +11,7 @@ find_library(CORE_FOUNDATION_FRAMEWORK CoreFoundation REQUIRED)
 
 add_executable(${PROJECT_NAME}
     src/cli.cpp
-    src/hotkey.cpp
     src/main.cpp
-    src/parser.cpp
-    src/tokenizer.cpp
     src/utils.cpp
 )
 
