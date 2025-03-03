@@ -10,8 +10,6 @@ custom modifiers:
     mod2 = cmd + rshift
     mod3 = ctrl + lshift + mod1
 
-
-
 flags
     passthrough
     determines if the keybind should have its usual behavior
@@ -41,10 +39,3 @@ definitions:
     keysym - a hotkey with zero or more flags
 
     keybind - a keysym followed by the command to be executed
-
-example keysyms:
-    ctrl + t
-    cmd + shift + a @
-    ralt + lalt + ctrl + 4 ~down &
-    a @ &
-

@@ -1,0 +1,33 @@
+cmd + u :
+    cmd u
+
+define_modifier hyper = cmd + ctrl + alt + shift
+
+hyper + a:
+    sleep 3; echo hyper a
+
+# left bracket
+cmd + 0x21:
+    echo cmd [
+
+fn + c @:
+    echo fn c passthrough
+
+shift + k & :
+    echo shift k repeat
+
+ctrl + i ~both :
+    echo ctrl i both
+
+define_modifier aaa = cmd + rctrl
+define_modifier bbb = aaa + lctrl
+
+aaa + t ~up :
+    echo cmd ctrl t up
+
+aaa + t ~down :
+    echo cmd ctrl t down
+
+bbb + p ~down & @:
+    echo cmd ctrl shift b down repeat passthrough
+
