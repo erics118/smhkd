@@ -44,3 +44,23 @@ bool has_flags(const Hotkey& hotkey, uint32_t flag) {
     bool result = hotkey.flags & flag;
     return result;
 }
+
+void executeCommand(const std::string& command) {
+    pid_t cpid = fork();
+
+    if (cpid < 0) {
+        return;
+    }
+
+    if (cpid == 0) {
+        setsid();
+
+        // NOLINTNEXTLINE
+        char* args[] = {const_cast<char*>("/bin/bash"), const_cast<char*>("-c"), const_cast<char*>(command.c_str()), nullptr};
+
+        // NOLINTNEXTLINE
+        int status = execvp(args[0], args);
+
+        exit(status);
+    }
+}

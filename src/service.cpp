@@ -3,10 +3,10 @@
 #include <Carbon/Carbon.h>
 #include <CoreFoundation/CoreFoundation.h>
 
-#include <algorithm>
 #include <cstdlib>
 
 #include "log.hpp"
+#include "utils.hpp"
 
 bool Service::init() {
     // Get the main run loop
@@ -105,7 +105,7 @@ bool Service::handleKeyEvent(CGEventRef event, CGEventType type) {
                 debug("consumed");
                 if (!hotkey.command.empty()) {
                     debug("executing command: {}", hotkey.command);
-                    system(hotkey.command.c_str());
+                    executeCommand(hotkey.command);
 
                     // Store this hotkey as the last triggered one if it's a key down event
                     if (type == kCGEventKeyDown) {
