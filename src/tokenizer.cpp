@@ -1,7 +1,9 @@
 #include "tokenizer.hpp"
 
+#include <algorithm>
 #include <string>
 
+#include "hotkey.hpp"
 #include "token.hpp"
 
 // peek the next token without consuming
@@ -17,6 +19,7 @@ const Token& Tokenizer::peek() {
 // public facing function that handles peeking, while getNextToken does the actual work
 Token Tokenizer::next() {
     Token token = peeked ? nextToken_ : getNextToken();
+    // debug("token: {}", token);
     peeked = false;
     return token;
 }
@@ -85,6 +88,11 @@ Token Tokenizer::getNextToken() {
     if (text.empty()) {
         // newline or comment, so get next token
         return getNextToken();
+    }
+
+    // check if literal
+    if (std::ranges::contains(literal_keycode_str, text)) {
+        return Token{TokenType::Literal, text, startRow, startCol};
     }
 
     // special case: "define_modifier"

@@ -98,6 +98,19 @@ void Parser::parseDefineModifier() {
     customModifiers[customName] = expansions;
 }
 
+int Parser::getImplicitFlags(const std::string& literal) {
+    const auto* it = std::ranges::find(literal_keycode_str, literal);
+    auto literal_index = std::distance(literal_keycode_str.begin(), it);
+
+    int flags{};
+    if ((literal_index > key_has_implicit_fn_mod) && (literal_index < key_has_implicit_nx_mod)) {
+        flags = Hotkey_Flag_Fn;
+    } else if (literal_index >= key_has_implicit_nx_mod) {
+        flags = Hotkey_Flag_NX;
+    }
+    return flags;
+}
+
 Hotkey Parser::parseHotkey() {
     debug("Parsing hotkey");
     Hotkey hk;
@@ -134,8 +147,14 @@ Hotkey Parser::parseHotkey() {
             tokenizer.next();
             continue;
         }
+        if (tk.type == TokenType::Literal) {
+            hk.keyCode = getKeycode(tk.text);
+            hk.flags |= getImplicitFlags(tk.text);
+            tokenizer.next();
+            continue;
+        }
         if (tk.type == TokenType::Modifier) {
-            hk.flags = getModifierFlag(tk.text, tk.row, tk.col);
+            hk.flags |= getModifierFlag(tk.text, tk.row, tk.col);
             tokenizer.next();
             continue;
         }
@@ -187,9 +206,9 @@ int Parser::getCustomModifierFlag(const std::string& mod, int row, int col) {
         // TODO: support simple recursive expansion
         for (auto& sub : it->second) {
             int subFlags = getModifierFlag(sub, row, col);
-            if (subFlags == 0) {
-                return 0;
-            }
+
+            if (subFlags == 0) return 0;
+
             flags |= subFlags;
         }
         return flags;
@@ -209,4 +228,8 @@ int Parser::getModifierFlag(const std::string& mod, int row, int col) {
 
     error("Unknown modifier '{}' at row {}, col {}", mod, row, col);
     return 0;
+}
+
+bool Parser::isModifier(const std::string& mod) {
+    return getBuiltinModifierFlag(mod) != 0 || getCustomModifierFlag(mod, 0, 0) != 0;
 }

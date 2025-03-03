@@ -77,18 +77,10 @@ bool Service::handleKeyEvent(CGEventRef event, CGEventType type) {
     CGEventFlags flags = CGEventGetFlags(event);
     bool isRepeat = CGEventGetIntegerValueField(event, kCGKeyboardEventAutorepeat) != 0;
 
-    // debug("handling key event: {}", getCharFromKeycode(keyCode));
-
     // Special handling for Ctrl-C
     if (keyCode == 8 && (flags & kCGEventFlagMaskControl) && !(flags & (kCGEventFlagMaskCommand | kCGEventFlagMaskAlternate | kCGEventFlagMaskShift))) {
         debug("ctrl-c detected, ending program");
-        exit(1);
-    }
-
-    // special handling for escape
-    if (keyCode == 53) {
-        debug("escape detected, ending program");
-        exit(1);
+        exit(0);
     }
 
     Hotkey current;
@@ -97,6 +89,8 @@ bool Service::handleKeyEvent(CGEventRef event, CGEventType type) {
     current.flags = flags_from_event;
     current.keyCode = keyCode;
     current.eventType = (type == kCGEventKeyDown) ? KeyEventType::Down : KeyEventType::Up;
+
+    debug("handling hotkey: {}", current);
 
     // Clear last triggered hotkey on key up
     if (type == kCGEventKeyUp && lastTriggeredHotkey && lastTriggeredHotkey->keyCode == keyCode) {
@@ -149,7 +143,6 @@ void Service::run() const {
 
     // Run the main loop
     info("running service");
-    while (true) {
-        CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.1, true);
-    }
+
+    CFRunLoopRun();
 }

@@ -24,6 +24,8 @@ class Parser {
 
     Hotkey parseHotkey();
 
+    int getImplicitFlags(const std::string& literal);
+
     KeyEventType parseEventType(const std::string& text);
 
     int getBuiltinModifierFlag(const std::string& mod);
@@ -31,4 +33,6 @@ class Parser {
     int getCustomModifierFlag(const std::string& mod, int row, int col);
 
     int getModifierFlag(const std::string& mod, int row, int col);
+
+    bool isModifier(const std::string& mod);
 };

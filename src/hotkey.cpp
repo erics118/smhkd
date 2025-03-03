@@ -47,6 +47,10 @@ bool compareFn(const Hotkey& a, const Hotkey& b) {
     return has_flags(a, hotkey_flags[fn_mod_offset]) == has_flags(b, hotkey_flags[fn_mod_offset]);
 }
 
+bool compareNX(const Hotkey& a, const Hotkey& b) {
+    return has_flags(a, hotkey_flags[nx_mod_offset]) == has_flags(b, hotkey_flags[nx_mod_offset]);
+}
+
 }  // namespace
 
 int eventModifierFlagsToHotkeyFlags(CGEventFlags flags) {
@@ -69,5 +73,6 @@ bool Hotkey::operator==(const Hotkey& other) const {
         && compareLRModifier(*this, other, cmd_mod_offset)
         && compareLRModifier(*this, other, ctrl_mod_offset)
         && compareFn(*this, other)
+        && compareNX(*this, other)
         && this->keyCode == other.keyCode;
 }

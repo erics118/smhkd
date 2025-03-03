@@ -3,6 +3,9 @@
 #include <Carbon/Carbon.h>
 #include <CoreFoundation/CoreFoundation.h>
 
+#include <algorithm>
+
+#include "hotkey.hpp"
 #include "log.hpp"
 
 std::string cfStringToString(CFStringRef cfString) {
@@ -78,12 +81,21 @@ bool initializeKeycodeMap() {
 }
 
 uint32_t getKeycode(const std::string& key) {
-    if (key.length() != 1) return -1;  // TODO: handle identifiers, ie enter, space, tab, etc
+    debug("getting keycode for '{}'", key);
 
-    auto it = keycodeMap.find(key);
-    if (it != keycodeMap.end()) {
-        return static_cast<uint32_t>(it->second);
+    if (key.length() == 1) {
+        auto it = keycodeMap.find(key);
+        if (it != keycodeMap.end()) {
+            return static_cast<uint32_t>(it->second);
+        }
     }
+
+    // handle literals, ie enter, space, tab, etc
+    const auto* it = std::ranges::find(literal_keycode_str, key);
+    if (it != literal_keycode_str.end()) {
+        return literal_keycode_value[std::distance(literal_keycode_str.begin(), it)];
+    }
+
     error("Keycode not found for '{}'", key);
     return -1;
 }
@@ -94,5 +106,12 @@ std::string getNameOfKeycode(uint32_t keycode) {
             return key;
         }
     }
+
+    for (int i = 0; i < literal_keycode_str.size(); i++) {
+        if (literal_keycode_value[i] == keycode) {
+            return literal_keycode_str[i];
+        }
+    }
+
     return "";
 }

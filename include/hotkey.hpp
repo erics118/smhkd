@@ -1,12 +1,59 @@
 #pragma once
 
 #include <CoreGraphics/CGEventTypes.h>
+#include <IOKit/hidsystem/ev_keymap.h>
 
 #include <array>
 #include <print>
 #include <string>
 
 #include "locale.hpp"
+
+inline const int key_has_implicit_fn_mod = 4;
+inline const int key_has_implicit_nx_mod = 35;
+
+// clang-format off
+inline const std::array<std::string, 47> literal_keycode_str =
+{
+    "return",          "tab",             "space",
+    "backspace",       "escape",          "delete",
+    "home",            "end",             "pageup",
+    "pagedown",        "insert",          "left",
+    "right",           "up",              "down",
+    "f1",              "f2",              "f3",
+    "f4",              "f5",              "f6",
+    "f7",              "f8",              "f9",
+    "f10",             "f11",             "f12",
+    "f13",             "f14",             "f15",
+    "f16",             "f17",             "f18",
+    "f19",             "f20",
+
+    "sound_up",        "sound_down",      "mute",
+    "play",            "previous",        "next",
+    "rewind",          "fast",            "brightness_up",
+    "brightness_down", "illumination_up", "illumination_down"
+};
+
+inline const std::array<uint32_t, 47> literal_keycode_value = {
+    kVK_Return,     kVK_Tab,           kVK_Space,
+    kVK_Delete,     kVK_Escape,        kVK_ForwardDelete,
+    kVK_Home,       kVK_End,           kVK_PageUp,
+    kVK_PageDown,   kVK_Help,          kVK_LeftArrow,
+    kVK_RightArrow, kVK_UpArrow,       kVK_DownArrow,
+    kVK_F1,         kVK_F2,            kVK_F3,
+    kVK_F4,         kVK_F5,            kVK_F6,
+    kVK_F7,         kVK_F8,            kVK_F9,
+    kVK_F10,        kVK_F11,           kVK_F12,
+    kVK_F13,        kVK_F14,           kVK_F15,
+    kVK_F16,        kVK_F17,           kVK_F18,
+    kVK_F19,        kVK_F20,
+
+    NX_KEYTYPE_SOUND_UP,        NX_KEYTYPE_SOUND_DOWN,      NX_KEYTYPE_MUTE,
+    NX_KEYTYPE_PLAY,            NX_KEYTYPE_PREVIOUS,        NX_KEYTYPE_NEXT,
+    NX_KEYTYPE_REWIND,          NX_KEYTYPE_FAST,            NX_KEYTYPE_BRIGHTNESS_UP,
+    NX_KEYTYPE_BRIGHTNESS_DOWN, NX_KEYTYPE_ILLUMINATION_UP, NX_KEYTYPE_ILLUMINATION_DOWN
+};
+// clang-format on
 
 enum HotkeyFlag {
     Hotkey_Flag_Alt = (1 << 0),
@@ -24,7 +71,10 @@ enum HotkeyFlag {
     Hotkey_Flag_Control = (1 << 9),
     Hotkey_Flag_LControl = (1 << 10),
     Hotkey_Flag_RControl = (1 << 11),
+
     Hotkey_Flag_Fn = (1 << 12),
+
+    Hotkey_Flag_NX = (1 << 13),
 };
 
 inline const int l_offset = 1;
@@ -95,6 +145,7 @@ inline const int shift_mod_offset = 3;
 inline const int cmd_mod_offset = 6;
 inline const int ctrl_mod_offset = 9;
 inline const int fn_mod_offset = 12;
+inline const int nx_mod_offset = 13;
 
 enum class KeyEventType {
     Down,  // default
@@ -138,13 +189,15 @@ struct std::formatter<Hotkey> : std::formatter<std::string_view> {
     auto format(Hotkey hk, std::format_context& ctx) const {
         // print out each part
 
-        std::string str = getNameOfKeycode(hk.keyCode);
+        std::string str;
 
         for (int i = 0; i < hotkey_flags.size(); i++) {
             if (hk.flags & hotkey_flags[i]) {
-                str += " + " + hotkey_flag_names[i];
+                str += hotkey_flag_names[i] + " + ";
             }
         }
+
+        str += getNameOfKeycode(hk.keyCode) + " (" + std::to_string(hk.keyCode) + ")";
 
         std::format_to(
             ctx.out(), "{} ({}{}{}): {}",
