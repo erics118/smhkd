@@ -29,6 +29,7 @@ class Tokenizer {
     [[nodiscard]] bool hasMoreTokens();
 
    private:
+    // actual implementation of next()
     Token getNextToken();
 
     // read the rest of the line as a single token
@@ -36,10 +37,11 @@ class Tokenizer {
 
     [[nodiscard]] std::string readEventType();
 
-    // read until whitespace, newline, plus, colon, '#'
-    [[nodiscard]] std::string readUntilDelimiter();
+    [[nodiscard]] bool isIdentifierChar(char c);
 
-    // skip whitespace and comments
+    // read until whitespace, newline, plus, colon, '#'
+    [[nodiscard]] std::string readIdentifier();
+
     void skipWhitespaceAndComments();
 
     void skipWhitespace();
@@ -50,5 +52,5 @@ class Tokenizer {
 
     void advanceNewline();
 
-    [[nodiscard]] char peekChar() const;
+    [[nodiscard]] char peekChar();
 };

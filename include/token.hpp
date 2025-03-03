@@ -12,6 +12,7 @@ enum class TokenType {
     Colon,           // ':'
     Command,         // entire line after ':'
     EventType,       // event type '~up', '~down', '~both'
+    Identifier,      // identifier
     At,              // passthrough '@'
     Repeat,          // repeat '&'
     EndOfFile,       // end of file

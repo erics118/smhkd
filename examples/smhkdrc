@@ -1,0 +1,50 @@
+modifiers:
+    cmd, lcmd, rcmd
+    shift, lshift, rshift
+    ctrl, lctrl, rctrl
+    alt, lalt, ralt
+    fn
+
+custom modifiers:
+    mod1 = ctrl + alt
+    mod2 = cmd + rshift
+    mod3 = ctrl + lshift + mod1
+
+
+
+flags
+    passthrough
+    determines if the keybind should have its usual behavior
+    by default, disabled
+        enable with @
+
+    repeat
+    determines of keybind should be activated upon key repeat
+    by default, disabled
+        enable with &
+    
+    event type
+        determines when a keybind activates
+        ~up cannot be combined with &, as an up event cannot be repeated
+        by default, ~down is selected
+            ~up
+            ~down
+            ~both
+
+definitions:
+    literal - a letter, number, or hex code corresponding to a macos virtual keycode
+    
+    hotkey - zero or more modifiers and a single literal
+    
+    flags - passthrough, repeat, or event type
+    
+    keysym - a hotkey with zero or more flags
+
+    keybind - a keysym followed by the command to be executed
+
+example keysyms:
+    ctrl + t
+    cmd + shift + a @
+    ralt + lalt + ctrl + 4 ~down &
+    a @ &
+

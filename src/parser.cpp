@@ -164,9 +164,9 @@ Hotkey Parser::parseHotkey() {
 }
 
 KeyEventType Parser::parseEventType(const std::string& text) {
-    if (text == "~up") return KeyEventType::Up;
-    if (text == "~down") return KeyEventType::Down;
-    if (text == "~both") return KeyEventType::Both;
+    if (text == "up") return KeyEventType::Up;
+    if (text == "down") return KeyEventType::Down;
+    if (text == "both") return KeyEventType::Both;
     return KeyEventType::Down;
 }
 
@@ -187,13 +187,12 @@ int Parser::getCustomModifierFlag(const std::string& mod, int row, int col) {
         for (auto& sub : it->second) {
             int subFlags = getModifierFlag(sub, row, col);
             if (subFlags == 0) {
-                error("Unknown modifier '{}' at row {}, col {}", sub, row, col);
+                return 0;
             }
             flags |= subFlags;
         }
         return flags;
     }
-    error("Unknown modifier '{}' at row {}, col {}", mod, row, col);
     return 0;
 }
 
@@ -208,4 +207,5 @@ int Parser::getModifierFlag(const std::string& mod, int row, int col) {
     if (flags != 0) return flags;
 
     error("Unknown modifier '{}' at row {}, col {}", mod, row, col);
+    return 0;
 }

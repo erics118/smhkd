@@ -2,6 +2,7 @@
 
 #include <string>
 
+#include "log.hpp"
 #include "token.hpp"
 
 // peek the next token without consuming
@@ -25,7 +26,6 @@ bool Tokenizer::hasMoreTokens() {
     if (peeked && nextToken_.type == TokenType::EndOfFile) {
         return false;
     }
-    skipWhitespaceAndComments();
     return (position < contents.size());
 }
 
@@ -82,7 +82,7 @@ Token Tokenizer::getNextToken() {
     }
 
     // otherwise, read until delimiter
-    std::string text = readUntilDelimiter();
+    std::string text = readIdentifier();
     if (text.empty()) {
         // newline or comment, so get next token
         return getNextToken();
@@ -116,8 +116,8 @@ Token Tokenizer::readCommandToken() {
         advance();
     }
 
-    // consume newline if present
-    if (position < contents.size() && peekChar() == '\n') {
+    // consume newline
+    if (peekChar() == '\n') {
         advanceNewline();
     }
 
@@ -125,11 +125,13 @@ Token Tokenizer::readCommandToken() {
 }
 
 std::string Tokenizer::readEventType() {
+    // consume the ~
+    advance();
     std::string result;
-    while (position < contents.size()) {
+    while (hasMoreTokens()) {
         char c = peekChar();
-        if (c == ' ' || c == '\t' || c == '\r' || c == '\n'
-            || c == '+' || c == ':' || c == '#') {
+        debug("readEventType: peekChar() = {}", c);
+        if (!isIdentifierChar(c)) {
             break;
         }
         result.push_back(c);
@@ -138,13 +140,16 @@ std::string Tokenizer::readEventType() {
     return result;  // e.g. '~up'
 }
 
+bool Tokenizer::isIdentifierChar(char c) {
+    return std::isalnum(c) || c == '_';
+}
+
 // read until whitespace, newline, plus, colon, '#'
-std::string Tokenizer::readUntilDelimiter() {
+std::string Tokenizer::readIdentifier() {
     std::string result;
-    while (position < contents.size()) {
+    while (hasMoreTokens()) {
         char c = peekChar();
-        if (c == ' ' || c == '\t' || c == '\r' || c == '\n'
-            || c == '+' || c == ':' || c == '#' || c == '=') {
+        if (!isIdentifierChar(c)) {
             break;
         }
         result.push_back(c);
@@ -155,9 +160,9 @@ std::string Tokenizer::readUntilDelimiter() {
 
 // skip whitespace and comments
 void Tokenizer::skipWhitespaceAndComments() {
-    while (true) {
+    while (hasMoreTokens()) {
         skipWhitespace();
-        if (position < contents.size() && peekChar() == '#') {
+        if (peekChar() == '#') {
             eatComment();
         } else {
             break;
@@ -166,12 +171,12 @@ void Tokenizer::skipWhitespaceAndComments() {
 }
 
 void Tokenizer::skipWhitespace() {
-    while (position < contents.size()) {
-        char c = contents[position];
-        if (c == ' ' || c == '\t' || c == '\r') {
-            advance();
-        } else if (c == '\n') {
+    while (hasMoreTokens()) {
+        char c = peekChar();
+        if (c == '\n') {
             advanceNewline();
+        } else if (std::isspace(c)) {
+            advance();
         } else {
             break;
         }
@@ -179,7 +184,7 @@ void Tokenizer::skipWhitespace() {
 }
 
 void Tokenizer::eatComment() {
-    while (position < contents.size()) {
+    while (hasMoreTokens()) {
         if (peekChar() == '\n') {
             advanceNewline();
             return;
@@ -189,7 +194,7 @@ void Tokenizer::eatComment() {
 }
 
 void Tokenizer::advance() {
-    if (position < contents.size()) {
+    if (hasMoreTokens()) {
         position++;
         col++;
     }
@@ -201,7 +206,7 @@ void Tokenizer::advanceNewline() {
     col = 0;
 }
 
-char Tokenizer::peekChar() const {
-    if (position >= contents.size()) return '\0';
+char Tokenizer::peekChar() {
+    if (!hasMoreTokens()) return '\0';
     return contents[position];
 }
