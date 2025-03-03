@@ -98,39 +98,29 @@ bool Service::handleKeyEvent(CGEventRef event, CGEventType type) {
         debug("cleared last triggered hotkey");
     }
 
-    // Skip if this is a repeat and we've already triggered this hotkey
-    // if (isRepeat && lastTriggeredHotkey && *lastTriggeredHotkey == current) {
-    //     debug("skipping repeat of last triggered hotkey");
-    //     return true;  // Consume the repeat event
-    // }
+    for (const auto& hotkey : hotkeys) {
+        if (hotkey == current) {
+            if ((hotkey.eventType == KeyEventType::Both || hotkey.eventType == current.eventType)
+                && (isRepeat && hotkey.repeat || !isRepeat)) {
+                debug("consumed");
+                if (!hotkey.command.empty()) {
+                    debug("executing command: {}", hotkey.command);
+                    system(hotkey.command.c_str());
 
-    // find the hotkey in hotkeys that == current
-    auto it = std::ranges::find(hotkeys, current);
-    if (it != hotkeys.end()) {
-        debug("found hotkey: {}", *it);
-    } else {
-        return false;
-    }
-    const auto& hotkey = *it;
-
-    if ((hotkey.eventType == KeyEventType::Both || hotkey.eventType == current.eventType)
-        && (isRepeat && hotkey.repeat || !isRepeat)) {
-        debug("consumed");
-        if (!hotkey.command.empty()) {
-            debug("executing command: {}", hotkey.command);
-            system(hotkey.command.c_str());
-
-            // Store this hotkey as the last triggered one if it's a key down event
-            if (type == kCGEventKeyDown) {
-                lastTriggeredHotkey = current;
-                lastTriggeredHotkey->command = hotkey.command;
+                    // Store this hotkey as the last triggered one if it's a key down event
+                    if (type == kCGEventKeyDown) {
+                        lastTriggeredHotkey = current;
+                        lastTriggeredHotkey->command = hotkey.command;
+                    }
+                }
+                if (hotkey.passthrough) {
+                    return false;  // Let the event pass through
+                }
+                return true;  // Consume the event
             }
         }
-        if (hotkey.passthrough) {
-            return false;  // Let the event pass through
-        }
-        return true;  // Consume the event
     }
+
     return false;  // Let all other events pass through
 }
 
