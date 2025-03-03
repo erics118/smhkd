@@ -113,5 +113,6 @@ std::string getNameOfKeycode(uint32_t keycode) {
         }
     }
 
-    return "";
+    // return as hex
+    return std::format("0x{:x}", keycode);
 }

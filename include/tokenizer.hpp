@@ -26,11 +26,13 @@ class Tokenizer {
     // get the next token and consume it
     Token next();
 
-    [[nodiscard]] bool hasMoreTokens();
+    [[nodiscard]] bool hasMoreTokens(int offset = 0);
 
    private:
     // actual implementation of next()
     Token getNextToken();
+
+    [[nodiscard]] std::string readHex();
 
     // read the rest of the line as a single token
     [[nodiscard]] Token readCommandToken();
@@ -52,5 +54,5 @@ class Tokenizer {
 
     void advanceNewline();
 
-    [[nodiscard]] char peekChar();
+    [[nodiscard]] char peekChar(int offset = 0);
 };

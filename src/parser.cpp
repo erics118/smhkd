@@ -167,6 +167,11 @@ Hotkey Parser::parseHotkey() {
             tokenizer.next();
             continue;
         }
+        if (tk.type == TokenType::KeyHex) {
+            hk.keyCode = std::stoi(tk.text, nullptr, 16);  
+            tokenizer.next();
+            continue;
+        }
         break;
     }
 

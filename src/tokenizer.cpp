@@ -24,11 +24,11 @@ Token Tokenizer::next() {
     return token;
 }
 
-bool Tokenizer::hasMoreTokens() {
+bool Tokenizer::hasMoreTokens(int offset) {
     if (peeked && nextToken_.type == TokenType::EndOfFile) {
         return false;
     }
-    return (position < contents.size());
+    return (position + offset < contents.size());
 }
 
 // NOLINTNEXTLINE(misc-no-recursion)
@@ -83,6 +83,11 @@ Token Tokenizer::getNextToken() {
         return Token{TokenType::Repeat, "&", startRow, startCol};
     }
 
+    if (c == '0' && peekChar(1) == 'x') {
+        std::string hex = readHex();
+        return Token{TokenType::KeyHex, hex, startRow, startCol};
+    }
+
     // otherwise, read until delimiter
     std::string text = readIdentifier();
     if (text.empty()) {
@@ -107,6 +112,23 @@ Token Tokenizer::getNextToken() {
 
     // otherwise, modifier
     return Token{TokenType::Modifier, text, startRow, startCol};
+}
+
+std::string Tokenizer::readHex() {
+    std::string result;
+    // consume the 0x
+    advance();
+    advance();
+
+    while (hasMoreTokens()) {
+        char c = peekChar();
+        if (!std::isxdigit(c)) {
+            break;
+        }
+        result.push_back(c);
+        advance();
+    }
+    return result;
 }
 
 // read the rest of the line as a single token
@@ -212,7 +234,7 @@ void Tokenizer::advanceNewline() {
     col = 0;
 }
 
-char Tokenizer::peekChar() {
+char Tokenizer::peekChar(int offset) {
     if (!hasMoreTokens()) return '\0';
-    return contents[position];
+    return contents[position + offset];
 }

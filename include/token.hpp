@@ -7,6 +7,7 @@ enum class TokenType {
     DefineModifier,  // 'define_modifier'
     Modifier,        // built-in or user-defined
     Key,             // single character
+    KeyHex,          // hex keycode
     Plus,            // '+'
     Equals,          // '='
     Colon,           // ':'
@@ -27,6 +28,7 @@ struct std::formatter<TokenType> : std::formatter<std::string_view> {
             case TokenType::DefineModifier: name = "DefineModifier"; break;
             case TokenType::Modifier: name = "Modifier"; break;
             case TokenType::Key: name = "Key"; break;
+            case TokenType::KeyHex: name = "KeyHex"; break;
             case TokenType::Plus: name = "Plus"; break;
             case TokenType::Equals: name = "Equals"; break;
             case TokenType::Colon: name = "Colon"; break;
