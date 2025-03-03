@@ -2,7 +2,6 @@
 
 #include <string>
 
-#include "log.hpp"
 #include "token.hpp"
 
 // peek the next token without consuming
@@ -130,7 +129,6 @@ std::string Tokenizer::readEventType() {
     std::string result;
     while (hasMoreTokens()) {
         char c = peekChar();
-        debug("readEventType: peekChar() = {}", c);
         if (!isIdentifierChar(c)) {
             break;
         }

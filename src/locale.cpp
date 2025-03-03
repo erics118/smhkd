@@ -21,7 +21,6 @@ std::string cfStringToString(CFStringRef cfString) {
 }
 
 bool initializeKeycodeMap() {
-    debug("Initializing keycode map");
     static const std::array<uint32_t, 36> layoutDependentKeycodes = {
         kVK_ANSI_A, kVK_ANSI_B, kVK_ANSI_C, kVK_ANSI_D, kVK_ANSI_E,
         kVK_ANSI_F, kVK_ANSI_G, kVK_ANSI_H, kVK_ANSI_I, kVK_ANSI_J,

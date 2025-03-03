@@ -6,7 +6,7 @@ namespace {
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 int eventLRModifierFlagsToHotkeyFlags(CGEventFlags eventflags, int mod) {
-    int flags = 0;
+    int flags{};
 
     int mask = cgevent_flags[mod];
     int lmask = cgevent_flags[mod + l_offset];
@@ -44,30 +44,30 @@ bool compareLRModifier(const Hotkey& a, const Hotkey& b, int mod) {
 }
 
 bool compareFn(const Hotkey& a, const Hotkey& b) {
-    return has_flags(a, hotkey_flags[fn_mod]) == has_flags(b, hotkey_flags[fn_mod]);
+    return has_flags(a, hotkey_flags[fn_mod_offset]) == has_flags(b, hotkey_flags[fn_mod_offset]);
 }
 
 }  // namespace
 
 int eventModifierFlagsToHotkeyFlags(CGEventFlags flags) {
-    int res = 0;
+    int res{};
 
-    res |= eventLRModifierFlagsToHotkeyFlags(flags, alt_mod);
-    res |= eventLRModifierFlagsToHotkeyFlags(flags, shift_mod);
-    res |= eventLRModifierFlagsToHotkeyFlags(flags, cmd_mod);
-    res |= eventLRModifierFlagsToHotkeyFlags(flags, ctrl_mod);
+    res |= eventLRModifierFlagsToHotkeyFlags(flags, alt_mod_offset);
+    res |= eventLRModifierFlagsToHotkeyFlags(flags, shift_mod_offset);
+    res |= eventLRModifierFlagsToHotkeyFlags(flags, cmd_mod_offset);
+    res |= eventLRModifierFlagsToHotkeyFlags(flags, ctrl_mod_offset);
 
-    if ((flags & cgevent_flags[fn_mod]) == cgevent_flags[fn_mod]) {
-        res |= hotkey_flags[fn_mod];
+    if ((flags & cgevent_flags[fn_mod_offset]) == cgevent_flags[fn_mod_offset]) {
+        res |= hotkey_flags[fn_mod_offset];
     }
     return res;
 }
 
 bool Hotkey::operator==(const Hotkey& other) const {
-    return compareLRModifier(*this, other, alt_mod)
-        && compareLRModifier(*this, other, shift_mod)
-        && compareLRModifier(*this, other, cmd_mod)
-        && compareLRModifier(*this, other, ctrl_mod)
+    return compareLRModifier(*this, other, alt_mod_offset)
+        && compareLRModifier(*this, other, shift_mod_offset)
+        && compareLRModifier(*this, other, cmd_mod_offset)
+        && compareLRModifier(*this, other, ctrl_mod_offset)
         && compareFn(*this, other)
         && this->keyCode == other.keyCode;
 }

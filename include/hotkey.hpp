@@ -90,11 +90,11 @@ inline const std::array<std::string, 13> hotkey_flag_names = {
     "fn",
 };
 
-inline const int alt_mod = 0;
-inline const int shift_mod = 3;
-inline const int cmd_mod = 6;
-inline const int ctrl_mod = 9;
-inline const int fn_mod = 12;
+inline const int alt_mod_offset = 0;
+inline const int shift_mod_offset = 3;
+inline const int cmd_mod_offset = 6;
+inline const int ctrl_mod_offset = 9;
+inline const int fn_mod_offset = 12;
 
 enum class KeyEventType {
     Down,  // default
@@ -123,12 +123,12 @@ struct CustomModifier {
 };
 
 struct Hotkey {
-    int flags = 0;
-    uint32_t keyCode = 0;
+    int flags{};
+    uint32_t keyCode{};
     std::string command;
     KeyEventType eventType = KeyEventType::Down;
-    bool passthrough = false;
-    bool repeat = false;
+    bool passthrough{};
+    bool repeat{};
 
     bool operator==(const Hotkey& other) const;
 };
@@ -137,7 +137,23 @@ template <>
 struct std::formatter<Hotkey> : std::formatter<std::string_view> {
     auto format(Hotkey hk, std::format_context& ctx) const {
         // print out each part
-        std::format_to(ctx.out(), "{} {} ({}{}{}): {}", getNameOfKeycode(hk.keyCode), hk.flags, hk.eventType, hk.passthrough ? " passthrough" : "", hk.repeat ? " repeat" : "", hk.command);
+
+        std::string str = getNameOfKeycode(hk.keyCode);
+
+        for (int i = 0; i < hotkey_flags.size(); i++) {
+            if (hk.flags & hotkey_flags[i]) {
+                str += " + " + hotkey_flag_names[i];
+            }
+        }
+
+        std::format_to(
+            ctx.out(), "{} ({}{}{}): {}",
+            str,
+            hk.eventType,
+            hk.passthrough ? " Passthrough" : "",
+            hk.repeat ? " Repeat" : "",
+            hk.command);
+
         return ctx.out();
     }
 };

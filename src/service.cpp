@@ -7,7 +7,6 @@
 #include <cstdlib>
 
 #include "log.hpp"
-#include "utils.hpp"
 
 bool Service::init() {
     // Get the main run loop

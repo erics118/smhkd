@@ -25,6 +25,7 @@ std::vector<Hotkey> Parser::parseFile() {
         } else {
             Hotkey hk = parseHotkey();
             if (!hk.command.empty()) {
+                debug("Storing hotkey: {}", hk);
                 hotkeys.push_back(hk);
             }
         }
@@ -180,7 +181,7 @@ int Parser::getBuiltinModifierFlag(const std::string& mod) {
 
 // NOLINTNEXTLINE(misc-no-recursion)
 int Parser::getCustomModifierFlag(const std::string& mod, int row, int col) {
-    int flags = 0;
+    int flags{};
     auto it = customModifiers.find(mod);
     if (it != customModifiers.end()) {
         // TODO: support simple recursive expansion
@@ -198,7 +199,7 @@ int Parser::getCustomModifierFlag(const std::string& mod, int row, int col) {
 
 // NOLINTNEXTLINE(misc-no-recursion)
 int Parser::getModifierFlag(const std::string& mod, int row, int col) {
-    int flags = 0;
+    int flags{};
 
     flags = getBuiltinModifierFlag(mod);
     if (flags != 0) return flags;
