@@ -31,3 +31,5 @@ aaa + t ~down :
 bbb + p ~down & @:
     echo cmd ctrl shift b down repeat passthrough
 
+cmd + {1,2,3} :
+    echo cmd {1,2,3}

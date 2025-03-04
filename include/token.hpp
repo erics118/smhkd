@@ -18,6 +18,9 @@ enum class TokenType {
     At,              // passthrough '@'
     Repeat,          // repeat '&'
     EndOfFile,       // end of file
+    OpenBrace,       // '{'
+    CloseBrace,      // '}'
+    Comma,           // ','
 };
 
 template <>
@@ -39,6 +42,9 @@ struct std::formatter<TokenType> : std::formatter<std::string_view> {
             case TokenType::At: name = "At"; break;
             case TokenType::Repeat: name = "Repeat"; break;
             case TokenType::EndOfFile: name = "EndOfFile"; break;
+            case TokenType::OpenBrace: name = "OpenBrace"; break;
+            case TokenType::CloseBrace: name = "CloseBrace"; break;
+            case TokenType::Comma: name = "Comma"; break;
             default: name = "Unknown";
         }
         return std::format_to(ctx.out(), "{}", name);

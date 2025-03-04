@@ -23,8 +23,8 @@ std::vector<Hotkey> Parser::parseFile() {
         if (tk.type == TokenType::DefineModifier) {
             parseDefineModifier();
         } else {
-            Hotkey hk = parseHotkey();
-            if (!hk.command.empty()) {
+            auto hks = parseHotkeyWithExpansion();
+            for (const auto& hk : hks) {
                 debug("Storing hotkey: {}", hk);
                 hotkeys.push_back(hk);
             }
@@ -111,83 +111,6 @@ int Parser::getImplicitFlags(const std::string& literal) {
     return flags;
 }
 
-Hotkey Parser::parseHotkey() {
-    debug("Parsing hotkey");
-    Hotkey hk;
-    bool foundColon = false;
-
-    // read until eof or colon
-    while (true) {
-        const Token& tk = tokenizer.peek();
-        if (tk.type == TokenType::EndOfFile) {
-            return hk;
-        }
-        if (tk.type == TokenType::Colon) {
-            // consume colon
-            tokenizer.next();
-            foundColon = true;
-            break;
-        }
-        if (tk.type == TokenType::Plus) {
-            tokenizer.next();
-            continue;
-        }
-        if (tk.type == TokenType::At) {
-            hk.passthrough = true;
-            tokenizer.next();
-            continue;
-        }
-        if (tk.type == TokenType::Repeat) {
-            hk.repeat = true;
-            tokenizer.next();
-            continue;
-        }
-        if (tk.type == TokenType::EventType) {
-            hk.eventType = parseEventType(tk.text);
-            tokenizer.next();
-            continue;
-        }
-        if (tk.type == TokenType::Literal) {
-            hk.keyCode = getKeycode(tk.text);
-            hk.flags |= getImplicitFlags(tk.text);
-            tokenizer.next();
-            continue;
-        }
-        if (tk.type == TokenType::Modifier) {
-            hk.flags |= getModifierFlag(tk.text, tk.row, tk.col);
-            tokenizer.next();
-            continue;
-        }
-        if (tk.type == TokenType::Key) {
-            // single char => the 'key'
-            hk.keyCode = getKeycode(tk.text);
-            if (hk.keyCode == -1) {
-                throw std::runtime_error("Invalid key: " + tk.text);
-            }
-            tokenizer.next();
-            continue;
-        }
-        if (tk.type == TokenType::KeyHex) {
-            hk.keyCode = std::stoi(tk.text, nullptr, 16);  
-            tokenizer.next();
-            continue;
-        }
-        break;
-    }
-
-    // if colon, next token should be command
-    if (foundColon) {
-        const Token& nextTk = tokenizer.next();
-        if (nextTk.type == TokenType::Command) {
-            hk.command = nextTk.text;
-        } else {
-            throw std::runtime_error("Expected command after colon");
-        }
-    }
-
-    return hk;
-}
-
 KeyEventType Parser::parseEventType(const std::string& text) {
     if (text == "up") return KeyEventType::Up;
     if (text == "down") return KeyEventType::Down;
@@ -237,4 +160,190 @@ int Parser::getModifierFlag(const std::string& mod, int row, int col) {
 
 bool Parser::isModifier(const std::string& mod) {
     return getBuiltinModifierFlag(mod) != 0 || getCustomModifierFlag(mod, 0, 0) != 0;
+}
+
+std::vector<std::string> Parser::parseKeyBraceExpansion() {
+    std::vector<std::string> items;
+    std::string current;
+
+    // Consume opening brace
+    Token tk = tokenizer.next();
+    if (tk.type != TokenType::OpenBrace) {
+        throw std::runtime_error("Expected opening brace");
+    }
+
+    while (true) {
+        tk = tokenizer.next();
+
+        if (tk.type == TokenType::CloseBrace) {
+            if (!current.empty()) {
+                items.push_back(current);
+            }
+            break;
+        }
+
+        if (tk.type == TokenType::Comma) {
+            if (!current.empty()) {
+                items.push_back(current);
+                current.clear();
+            }
+            continue;
+        }
+
+        if (tk.type == TokenType::Key || tk.type == TokenType::Identifier || tk.type == TokenType::Literal) {
+            current += tk.text;
+        } else {
+            throw std::runtime_error("Unexpected token in brace expansion");
+        }
+    }
+
+    return items;
+}
+
+std::vector<std::string> Parser::expandCommandString(const std::string& command) {
+    std::vector<std::string> result;
+
+    // Find the positions of '{' and '}'
+    size_t start = command.find('{');
+    size_t end = command.find('}');
+
+    if (start == std::string::npos || end == std::string::npos || start > end) {
+        // If no valid braces found, return the input as is
+        result.push_back(command);
+        return result;
+    }
+
+    // Extract prefix, content inside braces, and suffix
+    std::string prefix = command.substr(0, start);
+    std::string content = command.substr(start + 1, end - start - 1);
+    std::string suffix = command.substr(end + 1);
+
+    // Manually split content by commas
+    size_t pos = 0;
+    while (pos < content.size()) {
+        size_t comma = content.find(',', pos);
+        if (comma == std::string::npos) {
+            comma = content.size();  // Last token
+        }
+
+        std::string token = content.substr(pos, comma - pos);
+        result.push_back(prefix + token + suffix);
+
+        pos = comma + 1;  // Move past the comma
+    }
+
+    debug("Expanded command string '{}' to {}", command, result);
+
+    return result;
+}
+
+std::vector<Hotkey> Parser::expandHotkey(const Hotkey& base, const std::vector<std::string>& items, const std::vector<std::string>& expandedCommands) {
+    std::vector<Hotkey> expanded;
+
+    for (int i = 0; i < items.size(); i++) {
+        const auto& item = items[i];
+        Hotkey hk = base;
+        if (std::ranges::contains(literal_keycode_str, item)) {
+            hk.keyCode = getKeycode(item);
+            hk.flags |= getImplicitFlags(item);
+        } else if (item.size() == 1) {
+            hk.keyCode = getKeycode(item);
+        } else {
+            // Try to parse as hex if it's not a literal or single char
+            try {
+                hk.keyCode = std::stoi(item, nullptr, 16);
+            } catch (...) {
+                throw std::runtime_error("Invalid key in expansion: " + item);
+            }
+        }
+        if (!expandedCommands.empty()) {
+            hk.command = expandedCommands[i];
+        }
+        expanded.push_back(hk);
+    }
+
+    return expanded;
+}
+
+std::vector<Hotkey> Parser::parseHotkeyWithExpansion() {
+    Hotkey base;
+    std::vector<std::string> expansionItems;
+    std::vector<std::string> expandedCommands;
+    bool foundColon = false;
+
+    // read until eof or colon
+    while (true) {
+        const Token& tk = tokenizer.peek();
+        if (tk.type == TokenType::EndOfFile) {
+            return {base};
+        }
+        if (tk.type == TokenType::Colon) {
+            tokenizer.next();
+            foundColon = true;
+            break;
+        }
+        if (tk.type == TokenType::Plus) {
+            tokenizer.next();
+            continue;
+        }
+        if (tk.type == TokenType::At) {
+            base.passthrough = true;
+            tokenizer.next();
+            continue;
+        }
+        if (tk.type == TokenType::Repeat) {
+            base.repeat = true;
+            tokenizer.next();
+            continue;
+        }
+        if (tk.type == TokenType::EventType) {
+            base.eventType = parseEventType(tk.text);
+            tokenizer.next();
+            continue;
+        }
+        if (tk.type == TokenType::Modifier) {
+            base.flags |= getModifierFlag(tk.text, tk.row, tk.col);
+            tokenizer.next();
+            continue;
+        }
+        if (tk.type == TokenType::OpenBrace) {
+            expansionItems = parseKeyBraceExpansion();
+            continue;
+        }
+        if (tk.type == TokenType::Literal || tk.type == TokenType::Key || tk.type == TokenType::KeyHex) {
+            if (tk.type == TokenType::Literal) {
+                base.keyCode = getKeycode(tk.text);
+                base.flags |= getImplicitFlags(tk.text);
+            } else if (tk.type == TokenType::Key) {
+                base.keyCode = getKeycode(tk.text);
+            } else {
+                base.keyCode = std::stoi(tk.text, nullptr, 16);
+            }
+            tokenizer.next();
+            continue;
+        }
+        break;
+    }
+
+    // if colon, next token should be command
+    if (foundColon) {
+        const Token& nextTk = tokenizer.next();
+        if (nextTk.type == TokenType::Command) {
+            if (expansionItems.size() > 1) {
+                // expand the command
+                expandedCommands = expandCommandString(nextTk.text);
+            } else {
+                base.command = nextTk.text;
+            }
+        } else {
+            throw std::runtime_error("Expected command after colon");
+        }
+    }
+
+    // If we found expansion items, expand the base hotkey
+    if (!expansionItems.empty()) {
+        return expandHotkey(base, expansionItems, expandedCommands);
+    }
+
+    return {base};
 }

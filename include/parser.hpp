@@ -22,8 +22,6 @@ class Parser {
 
     void parseDefineModifier();
 
-    Hotkey parseHotkey();
-
     int getImplicitFlags(const std::string& literal);
 
     KeyEventType parseEventType(const std::string& text);
@@ -35,4 +33,15 @@ class Parser {
     int getModifierFlag(const std::string& mod, int row, int col);
 
     bool isModifier(const std::string& mod);
+
+    std::vector<std::string> expandCommandString(const std::string& command);
+
+    // Parse a brace expansion like {1,2,3} into a vector of strings
+    std::vector<std::string> parseKeyBraceExpansion();
+
+    // Create a hotkey for each item in the expansion
+    std::vector<Hotkey> expandHotkey(const Hotkey& base, const std::vector<std::string>& items, const std::vector<std::string>& expandedCommands);
+
+    // Parse a hotkey that may contain brace expansions
+    std::vector<Hotkey> parseHotkeyWithExpansion();
 };
