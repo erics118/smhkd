@@ -238,6 +238,7 @@ std::vector<std::string> Parser::expandCommandString(const std::string& command)
 
 std::vector<Hotkey> Parser::expandHotkey(const Hotkey& base, const std::vector<std::string>& items, const std::vector<std::string>& expandedCommands) {
     std::vector<Hotkey> expanded;
+    warn("expanding hotkey: {}", base);
 
     for (int i = 0; i < items.size(); i++) {
         const auto& item = items[i];

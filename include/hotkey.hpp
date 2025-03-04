@@ -181,9 +181,15 @@ struct Hotkey {
     KeyEventType eventType = KeyEventType::Down;
     bool passthrough{};
     bool repeat{};
+
+    // optional vector of hotkeys, with no command
     std::vector<Hotkey> sequence;
 
-    bool operator==(const Hotkey& other) const;
+    // call on the hotkey, ie hotkey.isActivatedBy(current)
+    [[nodiscard]] bool isActivatedBy(const Hotkey& other) const;
+
+    // only used internally for hashing for unordered_map
+    bool operator==(const Hotkey& other) = delete;
 };
 
 template <>
@@ -211,12 +217,12 @@ struct std::formatter<Hotkey> : std::formatter<std::string_view> {
         str += getNameOfKeycode(hk.keyCode) + " (" + std::to_string(hk.keyCode) + ")";
 
         std::format_to(
-            ctx.out(), "{} ({}{}{}): {}",
+            ctx.out(), "{} ({}{}{}){}",
             str,
             hk.eventType,
             hk.passthrough ? " Passthrough" : "",
             hk.repeat ? " Repeat" : "",
-            hk.command);
+            hk.command.size() > 0 ? (": `" + hk.command + "`") : "");
 
         return ctx.out();
     }
@@ -244,3 +250,9 @@ struct std::hash<Hotkey> {
     }
 };
 
+template <>
+struct std::equal_to<Hotkey> {
+    bool operator()(const Hotkey& a, const Hotkey& b) const {
+        return a.isActivatedBy(b) && b.isActivatedBy(a);
+    }
+};

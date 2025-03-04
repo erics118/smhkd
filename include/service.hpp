@@ -15,26 +15,43 @@
 struct Service {
     CFRunLoopRef runLoop{};
     CFMachPortRef eventTap{};
-    std::unordered_map<Hotkey, std::string> hotkeys;  // Map of hotkey to command
-    std::optional<Hotkey> lastTriggeredHotkey;        // Track last triggered hotkey for repeat detection
-    std::vector<Hotkey> currentSequence;              // Track current chord sequence
-    double lastKeyPressTime{};                        // Track timing between chord presses
+
+    // map of hotkey to command
+    std::unordered_map<Hotkey, std::string> hotkeys;
+
+    // track last triggered hotkey for repeat detection
+    std::optional<Hotkey> lastTriggeredHotkey;
+
+    // track current chord sequence
+    std::vector<Hotkey> currentSequence;
+
+    // track timing between chord presses
+    double lastKeyPressTime{};
 
     explicit Service(std::unordered_map<Hotkey, std::string> hotkeys) : hotkeys{std::move(hotkeys)} {}
 
+    // initialize the service
     bool init();
 
+    // run the service
     void run() const;
 
+    // load the config file
     bool loadConfig(const std::string& configFile);
 
+    // setup the event tap
     bool setupEventTap();
 
+    // event callback
     [[nodiscard]] static CGEventRef eventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void* refcon);
 
+    // handle a key event
     [[nodiscard]] bool handleKeyEvent(CGEventRef event, CGEventType type);
 
    private:
-    void clearSequence();                                 // Clear the current sequence
-    bool checkAndExecuteSequence(const Hotkey& current);  // Check if sequence matches and execute
+    // clear the current sequence
+    void clearSequence();
+
+    // check if sequence matches and execute
+    bool checkAndExecuteSequence(const Hotkey& current);
 };

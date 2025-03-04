@@ -67,7 +67,7 @@ int eventModifierFlagsToHotkeyFlags(CGEventFlags flags) {
     return res;
 }
 
-bool Hotkey::operator==(const Hotkey& other) const {
+bool Hotkey::isActivatedBy(const Hotkey& other) const {
     return compareLRModifier(*this, other, alt_mod_offset)
         && compareLRModifier(*this, other, shift_mod_offset)
         && compareLRModifier(*this, other, cmd_mod_offset)

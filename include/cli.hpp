@@ -5,6 +5,7 @@
 #include <unordered_set>
 #include <vector>
 
+// format for cli args
 struct ArgsConfig {
     std::unordered_set<std::string> short_args;
     std::unordered_set<std::string> long_args;
@@ -13,14 +14,17 @@ struct ArgsConfig {
 struct Args {
     std::unordered_map<std::string, std::string> args;
 
+    // contains a long arg
     [[nodiscard]] bool contains(const std::string& arg) const {
         return args.contains(arg);
     }
 
+    // contains a short arg
     [[nodiscard]] bool contains(char short_arg) const {
         return contains(std::string{short_arg});
     }
 
+    // get the value of a long arg
     [[nodiscard]] std::optional<std::string> get(const std::string& arg) const {
         if (args.contains(arg)) {
             return args.at(arg);
@@ -28,10 +32,12 @@ struct Args {
         return std::nullopt;
     }
 
+    // get the value of a short arg
     [[nodiscard]] std::optional<std::string> get(char short_arg) const {
         return get(std::string{short_arg});
     }
 
+    // get the value of a short arg, or corresponding long arg
     [[nodiscard]] std::optional<std::string> get(char short_arg, const std::string& long_arg) const {
         if (auto short_result = get(short_arg)) {
             return short_result;

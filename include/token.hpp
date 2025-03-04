@@ -53,6 +53,7 @@ struct std::formatter<TokenType> : std::formatter<std::string_view> {
     }
 };
 
+// individual token
 struct Token {
     TokenType type;
     std::string text;

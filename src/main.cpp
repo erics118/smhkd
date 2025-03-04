@@ -24,15 +24,11 @@ int main(int argc, char* argv[]) {
 
     std::ifstream file(config_file);
 
-    // Read entire file into string
+    // read entire file into string
     std::string configFileContents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 
     try {
-        initializeKeycodeMap();
-
-        Tokenizer tokenizer(configFileContents);
-
-        Parser parser(tokenizer);
+        Parser parser(configFileContents);
 
         auto hotkeys = parser.parseFile();
 

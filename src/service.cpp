@@ -88,7 +88,7 @@ bool Service::checkAndExecuteSequence(const Hotkey& current) {
     double currentTime = std::chrono::duration<double>(now.time_since_epoch()).count();
 
     if (lastKeyPressTime > 0 && (currentTime - lastKeyPressTime) > MAX_CHORD_INTERVAL) {
-        debug("Chord sequence timed out, clearing");
+        // debug("Chord sequence timed out, clearing");
         clearSequence();
         return false;
     }
@@ -111,7 +111,7 @@ bool Service::checkAndExecuteSequence(const Hotkey& current) {
         // Check if what we have so far matches
         bool matches = true;
         for (size_t i = 0; i < currentSequence.size(); i++) {
-            if (!(hotkey.sequence[i] == currentSequence[i])) {
+            if (!(hotkey.sequence[i].isActivatedBy(currentSequence[i]))) {
                 matches = false;
                 break;
             }
@@ -138,7 +138,7 @@ bool Service::checkAndExecuteSequence(const Hotkey& current) {
     }
 
     // If we get here, current sequence doesn't match any prefix
-    debug("Chord sequence doesn't match any prefix, clearing");
+    // debug("Chord sequence doesn't match any prefix, clearing");
     clearSequence();
     return false;
 }
@@ -161,7 +161,7 @@ bool Service::handleKeyEvent(CGEventRef event, CGEventType type) {
         .keyCode = 8,
         .eventType = KeyEventType::Down,
     };
-    if (exitHotkey == current) {
+    if (exitHotkey.isActivatedBy(current)) {
         debug("exit hotkey, ralt-c, detected, ending program");
         exit(0);
     }
@@ -188,7 +188,7 @@ bool Service::handleKeyEvent(CGEventRef event, CGEventType type) {
             continue;
         }
 
-        if (hotkey == current) {
+        if (hotkey.isActivatedBy(current)) {
             if ((hotkey.eventType == KeyEventType::Both || hotkey.eventType == current.eventType)
                 && (isRepeat && hotkey.repeat || !isRepeat)) {
                 debug("consumed");

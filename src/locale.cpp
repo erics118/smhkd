@@ -81,7 +81,7 @@ bool initializeKeycodeMap() {
 }
 
 uint32_t getKeycode(const std::string& key) {
-    debug("getting keycode for '{}'", key);
+    // debug("getting keycode for '{}'", key);
 
     if (key.length() == 1) {
         auto it = keycodeMap.find(key);
