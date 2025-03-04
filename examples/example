@@ -31,8 +31,12 @@ aaa + t ~down :
 bbb + p ~down & @:
     echo cmd ctrl shift p down repeat passthrough
 
-cmd + {1,2,3} :
-    echo cmd {1,2,3}
+alt + {1,2,3} :
+    echo ctrl {1,2,3}
 
-ctrl +  t ; ctrl + a :
-    echo chorded ctrl t then ctrl a 
+alt +  t ; alt + a :
+    echo chorded ctrl t, then ctrl a 
+
+# TODO: this is broken currently yet
+alt + i ; alt + {1,2,3} :
+    echo chorded ctrl t, then ctr, {1,2,3}

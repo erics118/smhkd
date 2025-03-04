@@ -131,7 +131,6 @@ int Parser::getCustomModifierFlag(const std::string& mod, int row, int col) {
     int flags{};
     auto it = customModifiers.find(mod);
     if (it != customModifiers.end()) {
-        // TODO: support simple recursive expansion
         for (auto& sub : it->second) {
             int subFlags = getModifierFlag(sub, row, col);
 

@@ -10,7 +10,8 @@
 #include "utils.hpp"
 
 // Maximum time between chord presses (in seconds)
-constexpr double MAX_CHORD_INTERVAL = 1.0;
+// TODO: make this configurable
+constexpr double MAX_CHORD_INTERVAL = 3.0;
 
 bool Service::init() {
     // Get the main run loop
