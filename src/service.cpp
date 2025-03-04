@@ -199,7 +199,6 @@ bool Service::handleKeyEvent(CGEventRef event, CGEventType type) {
                     // Store this hotkey as the last triggered one if it's a key down event
                     if (type == kCGEventKeyDown) {
                         lastTriggeredHotkey = current;
-                        lastTriggeredHotkey->command = command;
                     }
                 }
                 if (hotkey.passthrough) {

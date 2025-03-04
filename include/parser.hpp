@@ -50,8 +50,8 @@ class Parser {
     std::vector<std::string> expandCommandString(const std::string& command);
 
     // create a hotkey for each item in the expansion
-    std::vector<Hotkey> expandHotkey(const Hotkey& base, const std::vector<std::string>& items, const std::vector<std::string>& expandedCommands);
+    std::vector<std::pair<Hotkey, std::string>> expandHotkey(const Hotkey& base, const std::vector<std::string>& items, const std::vector<std::string>& expandedCommands);
 
     // Parse a hotkey that may contain brace expansions
-    std::vector<Hotkey> parseHotkeyWithExpansion();
+    std::vector<std::pair<Hotkey, std::string>> parseHotkeyWithExpansion();
 };

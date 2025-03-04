@@ -24,9 +24,9 @@ std::unordered_map<Hotkey, std::string> Parser::parseFile() {
             parseDefineModifier();
         } else {
             auto hks = parseHotkeyWithExpansion();
-            for (const auto& hk : hks) {
-                debug("Storing hotkey: {}", hk);
-                hotkeys[hk] = hk.command;
+            for (const auto& [hk, command] : hks) {
+                debug("Storing hotkey: {} : {}", hk, command);
+                hotkeys[hk] = command;
             }
         }
     }
@@ -236,13 +236,14 @@ std::vector<std::string> Parser::expandCommandString(const std::string& command)
     return result;
 }
 
-std::vector<Hotkey> Parser::expandHotkey(const Hotkey& base, const std::vector<std::string>& items, const std::vector<std::string>& expandedCommands) {
-    std::vector<Hotkey> expanded;
-    warn("expanding hotkey: {}", base);
+std::vector<std::pair<Hotkey, std::string>> Parser::expandHotkey(const Hotkey& base, const std::vector<std::string>& items, const std::vector<std::string>& expandedCommands) {
+    std::vector<std::pair<Hotkey, std::string>> expanded;
 
     for (int i = 0; i < items.size(); i++) {
         const auto& item = items[i];
         Hotkey hk = base;
+        std::string command = expandedCommands.empty() ? "" : expandedCommands[i];
+
         if (std::ranges::contains(literal_keycode_str, item)) {
             hk.keyCode = getKeycode(item);
             hk.flags |= getImplicitFlags(item);
@@ -256,18 +257,16 @@ std::vector<Hotkey> Parser::expandHotkey(const Hotkey& base, const std::vector<s
                 throw std::runtime_error("Invalid key in expansion: " + item);
             }
         }
-        if (!expandedCommands.empty()) {
-            hk.command = expandedCommands[i];
-        }
-        expanded.push_back(hk);
+        expanded.push_back({hk, command});
     }
 
     return expanded;
 }
 
-std::vector<Hotkey> Parser::parseHotkeyWithExpansion() {
+std::vector<std::pair<Hotkey, std::string>> Parser::parseHotkeyWithExpansion() {
     std::vector<Hotkey> sequence;
     Hotkey base;
+    std::string command;
     std::vector<std::string> expansionItems;
     std::vector<std::string> expandedCommands;
     bool foundColon = false;
@@ -277,11 +276,12 @@ std::vector<Hotkey> Parser::parseHotkeyWithExpansion() {
         while (true) {
             const Token& tk = tokenizer.peek();
             if (tk.type == TokenType::EndOfFile) {
+                error("Unexpected end of file");
                 if (sequence.empty()) {
-                    return {base};
+                    return {{base, command}};
                 }
                 base.sequence = sequence;
-                return {base};
+                return {{base, command}};
             }
             if (tk.type == TokenType::Colon) {
                 tokenizer.next();
@@ -350,7 +350,7 @@ std::vector<Hotkey> Parser::parseHotkeyWithExpansion() {
                 // expand the command
                 expandedCommands = expandCommandString(nextTk.text);
             } else {
-                base.command = nextTk.text;
+                command = nextTk.text;
             }
         } else {
             throw std::runtime_error("Expected command after colon");
@@ -362,7 +362,7 @@ std::vector<Hotkey> Parser::parseHotkeyWithExpansion() {
         auto expanded = expandHotkey(base, expansionItems, expandedCommands);
         // Apply sequence to all expanded hotkeys
         if (!sequence.empty()) {
-            for (auto& hk : expanded) {
+            for (auto& [hk, command] : expanded) {
                 hk.sequence = sequence;
             }
         }
@@ -375,5 +375,5 @@ std::vector<Hotkey> Parser::parseHotkeyWithExpansion() {
         base.sequence = sequence;
     }
 
-    return {base};
+    return {{base, command}};
 }

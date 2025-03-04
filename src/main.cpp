@@ -1,7 +1,6 @@
 #include <fstream>
 
 #include "cli.hpp"
-#include "locale.hpp"
 #include "log.hpp"
 #include "parser.hpp"
 #include "service.hpp"
@@ -31,10 +30,6 @@ int main(int argc, char* argv[]) {
         Parser parser(configFileContents);
 
         auto hotkeys = parser.parseFile();
-
-        for (const auto& [hk, cmd] : hotkeys) {
-            debug("Hotkey: {}", hk);
-        }
 
         auto service = std::make_unique<Service>(hotkeys);
 

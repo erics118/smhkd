@@ -177,12 +177,11 @@ struct CustomModifier {
 struct Hotkey {
     int flags{};
     uint32_t keyCode{};
-    std::string command;
     KeyEventType eventType = KeyEventType::Down;
     bool passthrough{};
     bool repeat{};
 
-    // optional vector of hotkeys, with no command
+    // optional vector of hotkeys
     std::vector<Hotkey> sequence;
 
     // call on the hotkey, ie hotkey.isActivatedBy(current)
@@ -217,12 +216,13 @@ struct std::formatter<Hotkey> : std::formatter<std::string_view> {
         str += getNameOfKeycode(hk.keyCode) + " (" + std::to_string(hk.keyCode) + ")";
 
         std::format_to(
-            ctx.out(), "{} ({}{}{}){}",
+            ctx.out(), "{} ({}{}{})",
             str,
             hk.eventType,
             hk.passthrough ? " Passthrough" : "",
-            hk.repeat ? " Repeat" : "",
-            hk.command.size() > 0 ? (": `" + hk.command + "`") : "");
+            hk.repeat ? " Repeat" : ""
+            // hk.command.size() > 0 ? (": `" + hk.command + "`") : ""
+        );
 
         return ctx.out();
     }
