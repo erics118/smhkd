@@ -15,6 +15,11 @@ enum class level : std::uint8_t {
 // helper function for non-format string cases
 template <typename T>
 inline void print(level ll, const T& msg) {
+// Skip debug and info messages in release builds
+#ifdef NDEBUG
+    if (ll <= level::debug) return;
+#endif
+
     std::string type{};
 
     switch (ll) {
