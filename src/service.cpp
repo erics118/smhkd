@@ -148,18 +148,23 @@ bool Service::handleKeyEvent(CGEventRef event, CGEventType type) {
     CGEventFlags flags = CGEventGetFlags(event);
     bool isRepeat = CGEventGetIntegerValueField(event, kCGKeyboardEventAutorepeat) != 0;
 
-    // Special handling for Ctrl-C
-    if (keyCode == 8 && (flags & kCGEventFlagMaskControl) && !(flags & (kCGEventFlagMaskCommand | kCGEventFlagMaskAlternate | kCGEventFlagMaskShift))) {
-        debug("ctrl-c detected, ending program");
-        exit(0);
-    }
-
     Hotkey current;
     int flags_from_event = eventModifierFlagsToHotkeyFlags(flags);
 
     current.flags = flags_from_event;
     current.keyCode = keyCode;
     current.eventType = (type == kCGEventKeyDown) ? KeyEventType::Down : KeyEventType::Up;
+
+    // Special handling for to exit
+    Hotkey exitHotkey = Hotkey{
+        .flags = Hotkey_Flag_RAlt,
+        .keyCode = 8,
+        .eventType = KeyEventType::Down,
+    };
+    if (exitHotkey == current) {
+        debug("exit hotkey, ralt-c, detected, ending program");
+        exit(0);
+    }
 
     debug("handling hotkey: {}", current);
 
