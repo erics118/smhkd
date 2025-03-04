@@ -223,3 +223,24 @@ struct std::formatter<Hotkey> : std::formatter<std::string_view> {
 };
 
 int eventModifierFlagsToHotkeyFlags(CGEventFlags flags);
+
+template <>
+struct std::hash<KeyEventType> {
+    std::size_t operator()(const KeyEventType& et) const {
+        return std::hash<int>{}(static_cast<int>(et));
+    }
+};
+
+template <>
+struct std::hash<Hotkey> {
+    std::size_t operator()(const Hotkey& hk) const {
+        std::size_t h1 = std::hash<int>{}(hk.flags);
+        std::size_t h2 = std::hash<uint32_t>{}(hk.keyCode);
+        std::size_t h3 = std::hash<bool>{}(hk.passthrough);
+        std::size_t h4 = std::hash<bool>{}(hk.repeat);
+        std::size_t h5 = std::hash<KeyEventType>{}(hk.eventType);
+
+        return h1 ^ (h2 << 1) ^ (h3 << 2) ^ (h4 << 3) ^ (h5 << 4);
+    }
+};
+

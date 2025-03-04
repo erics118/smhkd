@@ -98,7 +98,7 @@ bool Service::checkAndExecuteSequence(const Hotkey& current) {
     currentSequence.push_back(current);
 
     // check hotkeys with sequences
-    for (const auto& hotkey : hotkeys) {
+    for (const auto& [hotkey, command] : hotkeys) {
         if (hotkey.sequence.empty()) {
             continue;
         }
@@ -124,9 +124,9 @@ bool Service::checkAndExecuteSequence(const Hotkey& current) {
         // If we've matched the complete sequence
         if (currentSequence.size() == hotkey.sequence.size()) {
             debug("Matched complete chord sequence");
-            if (!hotkey.command.empty()) {
-                debug("executing command: {}", hotkey.command);
-                executeCommand(hotkey.command);
+            if (!command.empty()) {
+                debug("executing command: {}", command);
+                executeCommand(command);
             }
             clearSequence();
             return true;
@@ -182,7 +182,7 @@ bool Service::handleKeyEvent(CGEventRef event, CGEventType type) {
     }
 
     // Check for single hotkeys
-    for (const auto& hotkey : hotkeys) {
+    for (const auto& [hotkey, command] : hotkeys) {
         // Skip sequence hotkeys
         if (!hotkey.sequence.empty()) {
             continue;
@@ -192,14 +192,14 @@ bool Service::handleKeyEvent(CGEventRef event, CGEventType type) {
             if ((hotkey.eventType == KeyEventType::Both || hotkey.eventType == current.eventType)
                 && (isRepeat && hotkey.repeat || !isRepeat)) {
                 debug("consumed");
-                if (!hotkey.command.empty()) {
-                    debug("executing command: {}", hotkey.command);
-                    executeCommand(hotkey.command);
+                if (!command.empty()) {
+                    debug("executing command: {}", command);
+                    executeCommand(command);
 
                     // Store this hotkey as the last triggered one if it's a key down event
                     if (type == kCGEventKeyDown) {
                         lastTriggeredHotkey = current;
-                        lastTriggeredHotkey->command = hotkey.command;
+                        lastTriggeredHotkey->command = command;
                     }
                 }
                 if (hotkey.passthrough) {

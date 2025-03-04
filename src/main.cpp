@@ -34,9 +34,9 @@ int main(int argc, char* argv[]) {
 
         Parser parser(tokenizer);
 
-        std::vector<Hotkey> hotkeys = parser.parseFile();
+        auto hotkeys = parser.parseFile();
 
-        for (const auto& hk : hotkeys) {
+        for (const auto& [hk, cmd] : hotkeys) {
             debug("Hotkey: {}", hk);
         }
 

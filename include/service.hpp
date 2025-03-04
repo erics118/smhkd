@@ -5,6 +5,7 @@
 
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "hotkey.hpp"
@@ -14,13 +15,12 @@
 struct Service {
     CFRunLoopRef runLoop{};
     CFMachPortRef eventTap{};
-    // TODO: make this a map of hotkey -> command
-    std::vector<Hotkey> hotkeys;
-    std::optional<Hotkey> lastTriggeredHotkey;  // Track last triggered hotkey for repeat detection
-    std::vector<Hotkey> currentSequence;        // Track current chord sequence
-    double lastKeyPressTime{};                  // Track timing between chord presses
+    std::unordered_map<Hotkey, std::string> hotkeys;  // Map of hotkey to command
+    std::optional<Hotkey> lastTriggeredHotkey;        // Track last triggered hotkey for repeat detection
+    std::vector<Hotkey> currentSequence;              // Track current chord sequence
+    double lastKeyPressTime{};                        // Track timing between chord presses
 
-    explicit Service(std::vector<Hotkey> hotkeys) : hotkeys{std::move(hotkeys)} {}
+    explicit Service(std::unordered_map<Hotkey, std::string> hotkeys) : hotkeys{std::move(hotkeys)} {}
 
     bool init();
 

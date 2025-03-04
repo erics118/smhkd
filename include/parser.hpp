@@ -15,7 +15,7 @@ class Parser {
    public:
     explicit Parser(Tokenizer tokenizer) : tokenizer(std::move(tokenizer)) {}
 
-    std::vector<Hotkey> parseFile();
+    std::unordered_map<Hotkey, std::string> parseFile();
 
    private:
     std::unordered_map<std::string, std::vector<std::string>> customModifiers;

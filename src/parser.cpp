@@ -12,8 +12,8 @@
 #include "log.hpp"
 #include "tokenizer.hpp"
 
-std::vector<Hotkey> Parser::parseFile() {
-    std::vector<Hotkey> hotkeys;
+std::unordered_map<Hotkey, std::string> Parser::parseFile() {
+    std::unordered_map<Hotkey, std::string> hotkeys;
 
     while (tokenizer.hasMoreTokens()) {
         Token tk = tokenizer.peek();
@@ -26,7 +26,7 @@ std::vector<Hotkey> Parser::parseFile() {
             auto hks = parseHotkeyWithExpansion();
             for (const auto& hk : hks) {
                 debug("Storing hotkey: {}", hk);
-                hotkeys.push_back(hk);
+                hotkeys[hk] = hk.command;
             }
         }
     }
