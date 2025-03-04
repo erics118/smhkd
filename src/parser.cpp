@@ -266,63 +266,80 @@ std::vector<Hotkey> Parser::expandHotkey(const Hotkey& base, const std::vector<s
 }
 
 std::vector<Hotkey> Parser::parseHotkeyWithExpansion() {
+    std::vector<Hotkey> sequence;
     Hotkey base;
     std::vector<std::string> expansionItems;
     std::vector<std::string> expandedCommands;
     bool foundColon = false;
 
-    // read until eof or colon
     while (true) {
-        const Token& tk = tokenizer.peek();
-        if (tk.type == TokenType::EndOfFile) {
-            return {base};
-        }
-        if (tk.type == TokenType::Colon) {
-            tokenizer.next();
-            foundColon = true;
+        // Parse a single hotkey in the sequence
+        while (true) {
+            const Token& tk = tokenizer.peek();
+            if (tk.type == TokenType::EndOfFile) {
+                if (sequence.empty()) {
+                    return {base};
+                }
+                base.sequence = sequence;
+                return {base};
+            }
+            if (tk.type == TokenType::Colon) {
+                tokenizer.next();
+                foundColon = true;
+                break;
+            }
+            if (tk.type == TokenType::Semicolon) {
+                tokenizer.next();
+                sequence.push_back(base);
+                base = Hotkey{};  // Reset for next in sequence
+                break;
+            }
+            if (tk.type == TokenType::Plus) {
+                tokenizer.next();
+                continue;
+            }
+            if (tk.type == TokenType::At) {
+                base.passthrough = true;
+                tokenizer.next();
+                continue;
+            }
+            if (tk.type == TokenType::Repeat) {
+                base.repeat = true;
+                tokenizer.next();
+                continue;
+            }
+            if (tk.type == TokenType::EventType) {
+                base.eventType = parseEventType(tk.text);
+                tokenizer.next();
+                continue;
+            }
+            if (tk.type == TokenType::Modifier) {
+                base.flags |= getModifierFlag(tk.text, tk.row, tk.col);
+                tokenizer.next();
+                continue;
+            }
+            if (tk.type == TokenType::OpenBrace) {
+                expansionItems = parseKeyBraceExpansion();
+                continue;
+            }
+            if (tk.type == TokenType::Literal || tk.type == TokenType::Key || tk.type == TokenType::KeyHex) {
+                if (tk.type == TokenType::Literal) {
+                    base.keyCode = getKeycode(tk.text);
+                    base.flags |= getImplicitFlags(tk.text);
+                } else if (tk.type == TokenType::Key) {
+                    base.keyCode = getKeycode(tk.text);
+                } else {
+                    base.keyCode = std::stoi(tk.text, nullptr, 16);
+                }
+                tokenizer.next();
+                continue;
+            }
             break;
         }
-        if (tk.type == TokenType::Plus) {
-            tokenizer.next();
-            continue;
+
+        if (foundColon) {
+            break;
         }
-        if (tk.type == TokenType::At) {
-            base.passthrough = true;
-            tokenizer.next();
-            continue;
-        }
-        if (tk.type == TokenType::Repeat) {
-            base.repeat = true;
-            tokenizer.next();
-            continue;
-        }
-        if (tk.type == TokenType::EventType) {
-            base.eventType = parseEventType(tk.text);
-            tokenizer.next();
-            continue;
-        }
-        if (tk.type == TokenType::Modifier) {
-            base.flags |= getModifierFlag(tk.text, tk.row, tk.col);
-            tokenizer.next();
-            continue;
-        }
-        if (tk.type == TokenType::OpenBrace) {
-            expansionItems = parseKeyBraceExpansion();
-            continue;
-        }
-        if (tk.type == TokenType::Literal || tk.type == TokenType::Key || tk.type == TokenType::KeyHex) {
-            if (tk.type == TokenType::Literal) {
-                base.keyCode = getKeycode(tk.text);
-                base.flags |= getImplicitFlags(tk.text);
-            } else if (tk.type == TokenType::Key) {
-                base.keyCode = getKeycode(tk.text);
-            } else {
-                base.keyCode = std::stoi(tk.text, nullptr, 16);
-            }
-            tokenizer.next();
-            continue;
-        }
-        break;
     }
 
     // if colon, next token should be command
@@ -342,7 +359,20 @@ std::vector<Hotkey> Parser::parseHotkeyWithExpansion() {
 
     // If we found expansion items, expand the base hotkey
     if (!expansionItems.empty()) {
-        return expandHotkey(base, expansionItems, expandedCommands);
+        auto expanded = expandHotkey(base, expansionItems, expandedCommands);
+        // Apply sequence to all expanded hotkeys
+        if (!sequence.empty()) {
+            for (auto& hk : expanded) {
+                hk.sequence = sequence;
+            }
+        }
+        return expanded;
+    }
+
+    // If we have a sequence, add it to base
+    if (!sequence.empty()) {
+        sequence.push_back(base);
+        base.sequence = sequence;
     }
 
     return {base};

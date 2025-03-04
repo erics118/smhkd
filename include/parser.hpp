@@ -34,10 +34,11 @@ class Parser {
 
     bool isModifier(const std::string& mod);
 
-    std::vector<std::string> expandCommandString(const std::string& command);
-
     // Parse a brace expansion like {1,2,3} into a vector of strings
     std::vector<std::string> parseKeyBraceExpansion();
+
+    // Expand command string with brace expansion
+    std::vector<std::string> expandCommandString(const std::string& command);
 
     // Create a hotkey for each item in the expansion
     std::vector<Hotkey> expandHotkey(const Hotkey& base, const std::vector<std::string>& items, const std::vector<std::string>& expandedCommands);

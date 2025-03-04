@@ -6,6 +6,7 @@
 #include <array>
 #include <print>
 #include <string>
+#include <vector>
 
 #include "locale.hpp"
 
@@ -180,6 +181,7 @@ struct Hotkey {
     KeyEventType eventType = KeyEventType::Down;
     bool passthrough{};
     bool repeat{};
+    std::vector<Hotkey> sequence;
 
     bool operator==(const Hotkey& other) const;
 };
@@ -188,9 +190,18 @@ template <>
 struct std::formatter<Hotkey> : std::formatter<std::string_view> {
     auto format(Hotkey hk, std::format_context& ctx) const {
         // print out each part
-
         std::string str;
 
+        // If this is part of a chord, format all hotkeys
+        if (!hk.sequence.empty()) {
+            for (size_t i = 0; i < hk.sequence.size(); i++) {
+                if (i > 0) str += " ; ";
+                str += std::format("{}", hk.sequence[i]);
+            }
+            return std::format_to(ctx.out(), "{}", str);
+        }
+
+        // Format single hotkey
         for (int i = 0; i < hotkey_flags.size(); i++) {
             if (hk.flags & hotkey_flags[i]) {
                 str += hotkey_flag_names[i] + " + ";

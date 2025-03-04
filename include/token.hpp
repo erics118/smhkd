@@ -21,6 +21,7 @@ enum class TokenType {
     OpenBrace,       // '{'
     CloseBrace,      // '}'
     Comma,           // ','
+    Semicolon,       // ';'
 };
 
 template <>
@@ -45,6 +46,7 @@ struct std::formatter<TokenType> : std::formatter<std::string_view> {
             case TokenType::OpenBrace: name = "OpenBrace"; break;
             case TokenType::CloseBrace: name = "CloseBrace"; break;
             case TokenType::Comma: name = "Comma"; break;
+            case TokenType::Semicolon: name = "Semicolon"; break;
             default: name = "Unknown";
         }
         return std::format_to(ctx.out(), "{}", name);

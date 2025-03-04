@@ -1,9 +1,9 @@
 cmd + u :
     cmd u
 
-define_modifier hyper = cmd + ctrl + alt + shift
+define_modifier rhyper = rcmd + rctrl + ralt + rshift
 
-hyper + a:
+rhyper + lcmd + a:
     sleep 3; echo hyper a
 
 # left bracket
@@ -19,8 +19,8 @@ shift + k & :
 ctrl + i ~both :
     echo ctrl i both
 
-define_modifier aaa = cmd + rctrl
-define_modifier bbb = aaa + lctrl
+define_modifier aaa = cmd + rshift
+define_modifier bbb = aaa + lshift
 
 aaa + t ~up :
     echo cmd ctrl t up
@@ -29,7 +29,10 @@ aaa + t ~down :
     echo cmd ctrl t down
 
 bbb + p ~down & @:
-    echo cmd ctrl shift b down repeat passthrough
+    echo cmd ctrl shift p down repeat passthrough
 
 cmd + {1,2,3} :
     echo cmd {1,2,3}
+
+ctrl +  t ; ctrl + a :
+    echo chorded ctrl t then ctrl a 

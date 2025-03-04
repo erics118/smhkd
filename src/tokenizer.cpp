@@ -98,6 +98,11 @@ Token Tokenizer::getNextToken() {
         return Token{TokenType::Comma, ",", startRow, startCol};
     }
 
+    if (c == ';') {
+        advance();
+        return Token{TokenType::Semicolon, ";", startRow, startCol};
+    }
+
     if (c == '0' && peekChar(1) == 'x') {
         std::string hex = readHex();
         return Token{TokenType::KeyHex, hex, startRow, startCol};
