@@ -29,7 +29,7 @@ inline void print(level ll, const T& msg) {
         case level::error: type = "\u001b[31merror\u001b[0m"; break;
     }
 
-    std::print(ll >= level::warn ? std::cerr : std::cout, "{}: {}\n", type, msg);
+    std::print(ll >= level::warn ? std::cerr : std::clog, "{}: {}\n", type, msg);
 }
 
 // format string version

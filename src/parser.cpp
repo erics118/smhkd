@@ -189,7 +189,7 @@ std::vector<std::string> Parser::parseKeyBraceExpansion() {
             continue;
         }
 
-        if (tk.type == TokenType::Key || tk.type == TokenType::Identifier || tk.type == TokenType::Literal) {
+        if (tk.type == TokenType::Key || tk.type == TokenType::Literal) {
             current += tk.text;
         } else {
             throw std::runtime_error("Unexpected token in brace expansion");
@@ -236,6 +236,8 @@ std::vector<std::string> Parser::expandCommandString(const std::string& command)
     return result;
 }
 
+// TODO: expand hotkey should take in a vector of tokens, and parse the hotkey
+// from the tokens, not strings
 std::vector<std::pair<Hotkey, std::string>> Parser::expandHotkey(const Hotkey& base, const std::vector<std::string>& items, const std::vector<std::string>& expandedCommands) {
     std::vector<std::pair<Hotkey, std::string>> expanded;
 
@@ -244,19 +246,10 @@ std::vector<std::pair<Hotkey, std::string>> Parser::expandHotkey(const Hotkey& b
         Hotkey hk = base;
         std::string command = expandedCommands.empty() ? "" : expandedCommands[i];
 
-        if (std::ranges::contains(literal_keycode_str, item)) {
-            hk.keyCode = getKeycode(item);
-            hk.flags |= getImplicitFlags(item);
-        } else if (item.size() == 1) {
-            hk.keyCode = getKeycode(item);
-        } else {
-            // Try to parse as hex if it's not a literal or single char
-            try {
-                hk.keyCode = std::stoi(item, nullptr, 16);
-            } catch (...) {
-                throw std::runtime_error("Invalid key in expansion: " + item);
-            }
-        }
+        hk.keyCode = getKeycode(item);
+
+        // TODO: handle implicit flags only for literals properly. see above todo
+        // hk.flags |= getImplicitFlags(item);
         expanded.push_back({hk, command});
     }
 
@@ -322,15 +315,15 @@ std::vector<std::pair<Hotkey, std::string>> Parser::parseHotkeyWithExpansion() {
                 expansionItems = parseKeyBraceExpansion();
                 continue;
             }
-            if (tk.type == TokenType::Literal || tk.type == TokenType::Key || tk.type == TokenType::KeyHex) {
-                if (tk.type == TokenType::Literal) {
-                    base.keyCode = getKeycode(tk.text);
-                    base.flags |= getImplicitFlags(tk.text);
-                } else if (tk.type == TokenType::Key) {
-                    base.keyCode = getKeycode(tk.text);
-                } else {
-                    base.keyCode = std::stoi(tk.text, nullptr, 16);
-                }
+            if (tk.type == TokenType::Literal) {
+                base.keyCode = getKeycode(tk.text);
+                // handle implicit flags only for literals
+                base.flags |= getImplicitFlags(tk.text);
+                tokenizer.next();
+                continue;
+            }
+            if (tk.type == TokenType::Key || tk.type == TokenType::KeyHex) {
+                base.keyCode = getKeycode(tk.text);
                 tokenizer.next();
                 continue;
             }

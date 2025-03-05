@@ -174,11 +174,21 @@ struct CustomModifier {
     int flags;  // Combined flags of constituent modifiers
 };
 
+// TODO: mouse, up, down, buttons 1-5
+// TODO: trackpad number fingers
+
+// TODO: simultaneous keys, ie within x milliseconds
+// TODO: use keys as modifiers, by tracking what is held down
+// 
+// TODO: create struct Keybind, which has a .keycode and .modifier_flags
+// TODO: Refactor hotkey to have a vector of keybinds, and no .flags nor .keyCode
+// TODO: rename .flags to .modifier_flags
 struct Hotkey {
     int flags{};
     uint32_t keyCode{};
     KeyEventType eventType = KeyEventType::Down;
     bool passthrough{};
+    // TODO: require ~down for ~repeat
     bool repeat{};
 
     // optional vector of hotkeys

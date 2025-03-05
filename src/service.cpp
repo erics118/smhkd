@@ -83,7 +83,8 @@ void Service::clearSequence() {
 }
 
 bool Service::checkAndExecuteSequence(const Hotkey& current) {
-    // First, check timing
+    // TODO: use mach for precise timing
+    // https://developer.apple.com/library/archive/technotes/tn2169/_index.html#//apple_ref/doc/uid/DTS40013172-CH1-TNTAG2000
     auto now = std::chrono::system_clock::now();
     double currentTime = std::chrono::duration<double>(now.time_since_epoch()).count();
 
@@ -171,7 +172,7 @@ bool Service::handleKeyEvent(CGEventRef event, CGEventType type) {
     // Clear last triggered hotkey on key up
     if (type == kCGEventKeyUp && lastTriggeredHotkey && lastTriggeredHotkey->keyCode == keyCode) {
         lastTriggeredHotkey = std::nullopt;
-        debug("cleared last triggered hotkey");
+        // debug("cleared last triggered hotkey");
     }
 
     // Only process key down events for sequences
@@ -191,7 +192,7 @@ bool Service::handleKeyEvent(CGEventRef event, CGEventType type) {
         if (hotkey.isActivatedBy(current)) {
             if ((hotkey.eventType == KeyEventType::Both || hotkey.eventType == current.eventType)
                 && (isRepeat && hotkey.repeat || !isRepeat)) {
-                debug("consumed");
+                // debug("consumed");
                 if (!command.empty()) {
                     debug("executing command: {}", command);
                     executeCommand(command);

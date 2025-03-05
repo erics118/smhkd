@@ -31,6 +31,8 @@ bool Tokenizer::hasMoreTokens(int offset) {
     return (position + offset < contents.size());
 }
 
+// TOOD: require pls sign
+// TODO: more error handling
 // NOLINTNEXTLINE(misc-no-recursion)
 Token Tokenizer::getNextToken() {
     skipWhitespaceAndComments();
@@ -231,6 +233,7 @@ void Tokenizer::skipWhitespace() {
     }
 }
 
+// TODO: link comment to hotkey
 void Tokenizer::eatComment() {
     while (hasMoreTokens()) {
         if (peekChar() == '\n') {

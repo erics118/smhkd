@@ -12,6 +12,10 @@
 
 // TODO: support background process
 // TODO: support loading from other files
+// TODO: support notifying other services when a chord is pressed, so user have
+// a visual indication of what is currently pressed
+// TODO: trackpad gestures
+// TODO: trackpad haptic feedback
 struct Service {
     CFRunLoopRef runLoop{};
     CFMachPortRef eventTap{};

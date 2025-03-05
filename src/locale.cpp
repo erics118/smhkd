@@ -96,7 +96,12 @@ uint32_t getKeycode(const std::string& key) {
         return literal_keycode_value[std::distance(literal_keycode_str.begin(), it)];
     }
 
-    error("Keycode not found for '{}'", key);
+    try {
+        return std::stoi(key, nullptr, 16);
+    } catch (...) {
+        error("Keycode not found for '{}'", key);
+    }
+
     return -1;
 }
 

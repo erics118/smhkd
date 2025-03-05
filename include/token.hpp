@@ -14,7 +14,6 @@ enum class TokenType {
     Command,         // entire line after ':'
     EventType,       // event type '~up', '~down', '~both'
     Literal,         // literal, ie enter, space tab
-    Identifier,      // identifier
     At,              // passthrough '@'
     Repeat,          // repeat '&'
     EndOfFile,       // end of file
@@ -39,7 +38,6 @@ struct std::formatter<TokenType> : std::formatter<std::string_view> {
             case TokenType::Command: name = "Command"; break;
             case TokenType::EventType: name = "EventType"; break;
             case TokenType::Literal: name = "Literal"; break;
-            case TokenType::Identifier: name = "Identifier"; break;
             case TokenType::At: name = "At"; break;
             case TokenType::Repeat: name = "Repeat"; break;
             case TokenType::EndOfFile: name = "EndOfFile"; break;
