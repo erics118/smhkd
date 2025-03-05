@@ -253,6 +253,11 @@ struct std::hash<Hotkey> {
 template <>
 struct std::equal_to<Hotkey> {
     bool operator()(const Hotkey& a, const Hotkey& b) const {
+        for (const auto& hk : a.sequence) {
+            if (!(a.isActivatedBy(hk) && b.isActivatedBy(hk))) {
+                return false;
+            }
+        }
         return a.isActivatedBy(b) && b.isActivatedBy(a);
     }
 };
