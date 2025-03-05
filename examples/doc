@@ -1,41 +1,44 @@
-modifiers:
-    cmd, lcmd, rcmd
-    shift, lshift, rshift
-    ctrl, lctrl, rctrl
-    alt, lalt, ralt
-    fn
+# keys
+key         := single letter or number
+keycode     := hex code corresponding to macOS virtual keycode (0x00-0xFF)
+literal     := predefined keyword (enter, space, escape, etc)
 
-custom modifiers:
-    mod1 = ctrl + alt
-    mod2 = cmd + rshift
-    mod3 = ctrl + lshift + mod1
+identifier  := a string of letters, numbers, and underscores, starting with a letter
 
-flags
-    passthrough
-    determines if the keybind should have its usual behavior
-    by default, disabled
-        enable with @
+# mouse
+mouse       := 'left' | 'right' | 'middle'
 
-    repeat
-    determines of keybind should be activated upon key repeat
-    by default, disabled
-        enable with &
-    
-    event type
-        determines when a keybind activates
-        ~up cannot be combined with &, as an up event cannot be repeated
-        by default, ~down is selected
-            ~up
-            ~down
-            ~both
+keysym      := <key> | <keycode> | <literal> | <mouse>
 
-definitions:
-    literal - a letter, number, or hex code corresponding to a macos virtual keycode
-    
-    hotkey - zero or more modifiers and a single literal
-    
-    flags - passthrough, repeat, or event type
-    
-    keysym - a hotkey with zero or more flags
+# modifiers
+base_mod    := 'cmd' | 'lcmd' | 'rcmd' | 
+               'alt' | 'lalt' | 'ralt' | 
+               'shift' | 'lshift' | 'rshift' | 
+               'ctrl' | 'lctrl' | 'rctrl' | 
+               'fn'
 
-    keybind - a keysym followed by the command to be executed
+custom_mod  := <identifier> '=' <modifier> # custom modifiers can recursively define other custom modifiers
+
+held_mod    := '(' <keysym> ')' # allows holding down a key to act as a modifier
+
+modifier    := <base_mod> | <custom_mod> | <held_mod> | <modifier> '+' <modifier>
+
+# flags
+passthrough := '@' # allows event to pass through to other applications
+repeat      := '&' # enables repeat based on macos settings, cannot be combined with ^
+on_release  := '^' # activates on release rather than press
+
+flags       := <passthrough> | <repeat> | <on_release> | 
+               <passthrough> <repeat> | <repeat> <passthrough>
+               # other combinations not allowed
+
+command     := any valid shell command on a single line
+
+# hotkey
+chord       := <keysym> | <modifier> '+' <keysym>
+
+chords      := <chord> (';' <chord>)* ';' <chord> |
+               <chord> (';' <chord>)* ';' <chord> <flags>
+
+# chords
+hotkey      := <chords> ':' <command>
