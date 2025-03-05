@@ -5,7 +5,6 @@ configure:
     cmake -DCMAKE_BUILD_TYPE:STRING={{build-type}} \
         -DCMAKE_EXPORT_COMPILE_COMMANDS:BOOL=TRUE \
         -DCMAKE_CXX_COMPILER:FILEPATH=/opt/homebrew/opt/llvm/bin/clang++ \
-        -DCMAKE_CXX_FLAGS_RELEASE:STRING="-O3" \
         -B ./build \
         -G Ninja
 

@@ -5,6 +5,13 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+add_compile_options(-fstack-protector-strong)
+
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    add_compile_options(-O3)
+    add_definitions(-DNDEBUG)
+endif()
+
 find_library(CARBON_FRAMEWORK Carbon REQUIRED)
 find_library(COCOA_FRAMEWORK Cocoa REQUIRED)
 find_library(CORE_FOUNDATION_FRAMEWORK CoreFoundation REQUIRED)
