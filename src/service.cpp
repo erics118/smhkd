@@ -173,7 +173,7 @@ bool Service::handleKeyEvent(CGEventRef event, CGEventType type) {
         exit(0);
     }
 
-    debug("handling chord: {}", current);
+    debug("handling event: {} {}", current, type == kCGEventKeyDown ? "" : "(Release)");
 
     // Clear last triggered chord on key up
     if (type == kCGEventKeyUp && lastTriggeredChord && lastTriggeredChord->keysym.keycode == keyCode) {
