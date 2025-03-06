@@ -205,7 +205,7 @@ std::vector<std::string> Parser::expandCommandString(const std::string& command)
         pos = comma + 1;  // Move past the comma
     }
 
-    debug("Expanded command string '{}' to {}", command, result);
+    // debug("Expanded command string '{}' to {}", command, result);
 
     return result;
 }
