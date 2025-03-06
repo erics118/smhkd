@@ -104,20 +104,3 @@ uint32_t getKeycode(const std::string& key) {
 
     return -1;
 }
-
-std::string getNameOfKeycode(uint32_t keycode) {
-    for (const auto& [key, code] : keycodeMap) {
-        if (code == keycode) {
-            return key;
-        }
-    }
-
-    for (int i = 0; i < literal_keycode_str.size(); i++) {
-        if (literal_keycode_value[i] == keycode) {
-            return literal_keycode_str[i];
-        }
-    }
-
-    // return as hex
-    return std::format("0x{:x}", keycode);
-}

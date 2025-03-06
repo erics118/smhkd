@@ -40,10 +40,6 @@ std::optional<std::string> get_config_file(const std::string& name) {
     return {};
 }
 
-bool has_flags(const Chord& c, uint32_t flag) {
-    bool result = c.modifiers.flags & flag;
-    return result;
-}
 
 void executeCommand(const std::string& command) {
     pid_t cpid = fork();

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <Carbon/Carbon.h>
+#include <CoreFoundation/CoreFoundation.h>
 #include <CoreGraphics/CGEventTypes.h>
 #include <IOKit/hidsystem/ev_keymap.h>
 
@@ -9,6 +11,7 @@
 #include <string>
 #include <vector>
 
+#include "keysym.hpp"
 #include "locale.hpp"
 #include "token.hpp"
 
@@ -170,19 +173,6 @@ struct CustomModifier {
     std::strong_ordering operator<=>(const CustomModifier& other) const = default;
 };
 
-struct Keysym {
-    uint32_t keycode;
-
-    std::strong_ordering operator<=>(const Keysym& other) const = default;
-};
-
-template <>
-struct std::formatter<Keysym> : std::formatter<std::string_view> {
-    auto format(Keysym keysym, std::format_context& ctx) const {
-        return std::format_to(ctx.out(), "{}", getNameOfKeycode(keysym.keycode));
-    }
-};
-
 struct ModifierFlags {
     int flags;
 
@@ -213,8 +203,31 @@ struct std::formatter<ModifierFlags> : std::formatter<std::string_view> {
 struct Chord {
     Keysym keysym;
     ModifierFlags modifiers;
+    std::vector<Keysym> held_modifiers;  // Keys that act as modifiers when held down
 
-    std::strong_ordering operator<=>(const Chord& other) const = default;
+    //  https://developer.apple.com/documentation/coregraphics/1541792-cgpostkeyboardevent
+    // https://developer.apple.com/documentation/coregraphics/1456564-cgeventcreatekeyboardevent?language=objc
+    std::strong_ordering operator<=>(const Chord& other) const {
+        if (keysym != other.keysym) {
+            return keysym <=> other.keysym;
+        }
+        if (modifiers.flags != other.modifiers.flags) {
+            return modifiers <=> other.modifiers;
+        }
+        if (held_modifiers.size() != other.held_modifiers.size()) {
+            return held_modifiers.size() <=> other.held_modifiers.size();
+        }
+        for (size_t i = 0; i < held_modifiers.size(); i++) {
+            if (held_modifiers[i] != other.held_modifiers[i]) {
+                return held_modifiers[i] <=> other.held_modifiers[i];
+            }
+        }
+        return std::strong_ordering::equal;
+    }
+
+    bool operator!=(const Chord& other) const {
+        return (*this <=> other) != 0;
+    }
 
     void setKeycode(const Token& t) {
         if (t.type == TokenType::Literal) {
@@ -233,10 +246,23 @@ struct Chord {
 template <>
 struct std::formatter<Chord> : std::formatter<std::string_view> {
     auto format(Chord chord, std::format_context& ctx) const {
-        if (chord.modifiers.flags == 0) {
+        if (chord.modifiers.flags == 0 && chord.held_modifiers.empty()) {
             return std::format_to(ctx.out(), "{}", chord.keysym);
         }
-        return std::format_to(ctx.out(), "{} + {}", chord.modifiers, chord.keysym);
+        std::string str;
+        if (chord.modifiers.flags != 0) {
+            str += std::format("{} + ", chord.modifiers);
+        }
+        if (!chord.held_modifiers.empty()) {
+            for (const auto& held_modifier : chord.held_modifiers) {
+                str += std::format("({}) + ", held_modifier);
+            }
+        }
+        str.pop_back();
+        str.pop_back();
+        str.pop_back();
+
+        return std::format_to(ctx.out(), "{} + {}", str, chord.keysym);
     }
 };
 
@@ -280,7 +306,7 @@ struct Hotkey {
         chords.push_back(Chord{});
     }
 
-    explicit Hotkey(Chord chord) {
+    explicit Hotkey(const Chord& chord) {
         chords.push_back(chord);
     }
 };
@@ -308,3 +334,5 @@ struct std::formatter<Hotkey> : std::formatter<std::string_view> {
 };
 
 int eventModifierFlagsToHotkeyFlags(CGEventFlags flags);
+
+void postEvent(const Chord& a);

@@ -25,6 +25,7 @@ add_executable(${PROJECT_NAME}
     src/service.cpp
     src/tokenizer.cpp
     src/utils.cpp
+    src/keysym.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE

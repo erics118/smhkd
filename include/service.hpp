@@ -3,9 +3,10 @@
 #include <Carbon/Carbon.h>
 #include <CoreFoundation/CoreFoundation.h>
 
+#include <chrono>
+#include <map>
 #include <optional>
 #include <string>
-#include <map>
 #include <vector>
 
 #include "hotkey.hpp"
@@ -32,6 +33,17 @@ struct Service {
     // track timing between chord presses
     double lastKeyPressTime{};
 
+    // track currently held keys
+    std::map<Keysym, std::chrono::steady_clock::time_point> heldKeysyms;
+
+    // track delayed key events that might be held modifiers
+    struct DelayedKeyEvent {
+        Keysym keysym;
+        std::chrono::steady_clock::time_point pressTime;
+        bool consumed{false};  // whether this key was used as a modifier
+    };
+    std::map<Keysym, DelayedKeyEvent> delayedKeysyms;
+
     explicit Service(std::map<Hotkey, std::string> hotkeys) : hotkeys{std::move(hotkeys)} {}
 
     // initialize the service
@@ -49,6 +61,8 @@ struct Service {
     // event callback
     [[nodiscard]] static CGEventRef eventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void* refcon);
 
+    bool keyEventReturn(bool returnValue);
+
     // handle a key event
     [[nodiscard]] bool handleKeyEvent(CGEventRef event, CGEventType type);
 
@@ -58,4 +72,16 @@ struct Service {
 
     // check if sequence matches and execute
     bool checkAndExecuteSequence(const Chord& current);
+
+    // check if a key is being held as a modifier
+    [[nodiscard]] bool isKeyHeldAsModifier(Keysym keysym) const;
+
+    // check if a key could be used as a held modifier
+    [[nodiscard]] bool isPotentialHeldModifier(Keysym keysym) const;
+
+    // process any delayed events that have exceeded the hold threshold
+    void processDelayedEvents();
+
+    // send a delayed event to the system
+    void sendDelayedEvent(Keysym keysym);
 };

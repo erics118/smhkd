@@ -1,8 +1,11 @@
 #include "hotkey.hpp"
 
-#include "utils.hpp"
-
 namespace {
+
+bool has_flags(const Chord& c, uint32_t flag) {
+    bool result = c.modifiers.flags & flag;
+    return result;
+}
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 int eventLRModifierFlagsToHotkeyFlags(CGEventFlags eventflags, int mod) {
@@ -75,4 +78,13 @@ bool Chord::isActivatedBy(const Chord& other) const {
         && compareFn(*this, other)
         && compareNX(*this, other)
         && this->keysym == other.keysym;
+}
+
+void postEvent(const Chord& chord) {
+    CGEventRef event[4];
+
+    // has_flags(chord, 1);
+    // for (auto offset : {alt_mod_offset, shift_mod_offset, cmd_mod_offset, ctrl_mod_offset}) {
+    //     if (has_flags(a, hotkey_flags[offset])) {
+    //     }
 }

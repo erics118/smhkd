@@ -211,7 +211,6 @@ std::vector<std::string> Parser::expandCommandString(const std::string& command)
 }
 
 std::vector<std::pair<Hotkey, std::string>> Parser::parseHotkeyWithExpansion() {
-    // std::vector<Hotkey> hotkeys;
     Hotkey hotkey;
     std::string command;
     std::vector<Token> expansionKeysyms;
@@ -262,6 +261,26 @@ std::vector<std::pair<Hotkey, std::string>> Parser::parseHotkeyWithExpansion() {
             }
             if (tk.type == TokenType::OpenBrace) {
                 expansionKeysyms = parseKeyBraceExpansion();
+                continue;
+            }
+            if (tk.type == TokenType::OpenParen) {
+                tokenizer.next();  // Consume '('
+                const Token& heldKey = tokenizer.next();
+                if (heldKey.type == TokenType::Key || heldKey.type == TokenType::Literal || heldKey.type == TokenType::KeyHex) {
+                    Keysym held;
+                    if (heldKey.type == TokenType::Literal) {
+                        held.keycode = getKeycode(heldKey.text);
+                    } else {
+                        held.keycode = getKeycode(heldKey.text);
+                    }
+                    hotkey.chords.back().held_modifiers.push_back(held);
+                } else {
+                    throw std::runtime_error("Expected key inside held modifier parentheses");
+                }
+                const Token& closeParen = tokenizer.next();
+                if (closeParen.type != TokenType::CloseParen) {
+                    throw std::runtime_error("Expected closing parenthesis after held modifier key");
+                }
                 continue;
             }
             if (tk.type == TokenType::Literal || tk.type == TokenType::Key || tk.type == TokenType::KeyHex) {
