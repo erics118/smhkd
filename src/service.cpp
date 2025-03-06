@@ -78,11 +78,11 @@ CGEventRef Service::eventCallback(CGEventTapProxy /*proxy*/, CGEventType type, C
 }
 
 void Service::clearSequence() {
-    currentSequence.clear();
+    currentChords.clear();
     lastKeyPressTime = 0;
 }
 
-bool Service::checkAndExecuteSequence(const Hotkey& current) {
+bool Service::checkAndExecuteSequence(const Chord& current) {
     // TODO: use mach for precise timing
     // https://developer.apple.com/library/archive/technotes/tn2169/_index.html#//apple_ref/doc/uid/DTS40013172-CH1-TNTAG2000
     auto now = std::chrono::system_clock::now();
@@ -96,23 +96,23 @@ bool Service::checkAndExecuteSequence(const Hotkey& current) {
 
     lastKeyPressTime = currentTime;
 
-    currentSequence.push_back(current);
+    currentChords.push_back(current);
 
     // check hotkeys with sequences
     for (const auto& [hotkey, command] : hotkeys) {
-        if (hotkey.sequence.empty()) {
+        if (hotkey.chords.size() == 1) {
             continue;
         }
 
         // Check if our current sequence matches this hotkey's sequence
-        if (currentSequence.size() > hotkey.sequence.size()) {
+        if (currentChords.size() > hotkey.chords.size()) {
             continue;  // Too long to match
         }
 
         // Check if what we have so far matches
         bool matches = true;
-        for (size_t i = 0; i < currentSequence.size(); i++) {
-            if (!(hotkey.sequence[i].isActivatedBy(currentSequence[i]))) {
+        for (size_t i = 0; i < currentChords.size(); i++) {
+            if (!(hotkey.chords[i].isActivatedBy(currentChords[i]))) {
                 matches = false;
                 break;
             }
@@ -123,7 +123,7 @@ bool Service::checkAndExecuteSequence(const Hotkey& current) {
         }
 
         // If we've matched the complete sequence
-        if (currentSequence.size() == hotkey.sequence.size()) {
+        if (currentChords.size() == hotkey.chords.size()) {
             debug("Matched complete chord sequence");
             if (!command.empty()) {
                 debug("executing command: {}", command);
@@ -149,30 +149,36 @@ bool Service::handleKeyEvent(CGEventRef event, CGEventType type) {
     CGEventFlags flags = CGEventGetFlags(event);
     bool isRepeat = CGEventGetIntegerValueField(event, kCGKeyboardEventAutorepeat) != 0;
 
-    Hotkey current;
-    int flags_from_event = eventModifierFlagsToHotkeyFlags(flags);
-
-    current.flags = flags_from_event;
-    current.keyCode = keyCode;
-    current.eventType = (type == kCGEventKeyDown) ? KeyEventType::Down : KeyEventType::Up;
+    Chord current{
+        .keysym = {
+            .keycode = keyCode,
+        },
+        .modifiers = {
+            .flags = eventModifierFlagsToHotkeyFlags(flags),
+        },
+    };
 
     // Special handling for to exit
-    Hotkey exitHotkey = Hotkey{
-        .flags = Hotkey_Flag_RAlt,
-        .keyCode = 8,
-        .eventType = KeyEventType::Down,
+    auto exitChord = Chord{
+        .keysym = {
+            .keycode = 8,
+        },
+        .modifiers = {
+            .flags = Hotkey_Flag_RAlt,
+        },
     };
-    if (exitHotkey.isActivatedBy(current)) {
+
+    if (exitChord.isActivatedBy(current)) {
         debug("exit hotkey, ralt-c, detected, ending program");
         exit(0);
     }
 
-    debug("handling hotkey: {}", current);
+    debug("handling chord: {}", current);
 
-    // Clear last triggered hotkey on key up
-    if (type == kCGEventKeyUp && lastTriggeredHotkey && lastTriggeredHotkey->keyCode == keyCode) {
-        lastTriggeredHotkey = std::nullopt;
-        // debug("cleared last triggered hotkey");
+    // Clear last triggered chord on key up
+    if (type == kCGEventKeyUp && lastTriggeredChord && lastTriggeredChord->keysym.keycode == keyCode) {
+        lastTriggeredChord = std::nullopt;
+        // debug("cleared last triggered chord");
     }
 
     // Only process key down events for sequences
@@ -185,12 +191,12 @@ bool Service::handleKeyEvent(CGEventRef event, CGEventType type) {
     // Check for single hotkeys
     for (const auto& [hotkey, command] : hotkeys) {
         // Skip sequence hotkeys
-        if (!hotkey.sequence.empty()) {
+        if (hotkey.chords.size() > 1) {
             continue;
         }
 
-        if (hotkey.isActivatedBy(current)) {
-            if ((hotkey.eventType == KeyEventType::Both || hotkey.eventType == current.eventType)
+        if (hotkey.chords[0].isActivatedBy(current)) {
+            if ((!hotkey.on_release && type == kCGEventKeyDown || hotkey.on_release && type == kCGEventKeyUp)
                 && (isRepeat && hotkey.repeat || !isRepeat)) {
                 // debug("consumed");
                 if (!command.empty()) {
@@ -199,7 +205,7 @@ bool Service::handleKeyEvent(CGEventRef event, CGEventType type) {
 
                     // Store this hotkey as the last triggered one if it's a key down event
                     if (type == kCGEventKeyDown) {
-                        lastTriggeredHotkey = current;
+                        lastTriggeredChord = current;
                     }
                 }
                 if (hotkey.passthrough) {

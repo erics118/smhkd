@@ -1,7 +1,7 @@
 #pragma once
 
+#include <map>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -16,20 +16,14 @@ class Parser {
     explicit Parser(const std::string& contents) : tokenizer(contents) {}
 
     // parse a file and return a map of hotkeys to commands
-    std::unordered_map<Hotkey, std::string> parseFile();
+    std::map<Hotkey, std::string> parseFile();
 
    private:
     // map of custom modifier names to their flags
-    std::unordered_map<std::string, std::vector<std::string>> customModifiers;
+    std::map<std::string, std::vector<std::string>> customModifiers;
 
     // parse 'define_modifier'
     void parseDefineModifier();
-
-    // get the implicit flags for a given literal
-    int getImplicitFlags(const std::string& literal);
-
-    // parse an event type
-    KeyEventType parseEventType(const std::string& text);
 
     // get the builtin modifier flag for a given modifier
     int getBuiltinModifierFlag(const std::string& mod);
@@ -44,13 +38,10 @@ class Parser {
     bool isModifier(const std::string& mod);
 
     // parse brace expansion '{1,2,3}' into a vector of strings
-    std::vector<std::string> parseKeyBraceExpansion();
+    std::vector<Token> parseKeyBraceExpansion();
 
     // expand command string with brace expansion
     std::vector<std::string> expandCommandString(const std::string& command);
-
-    // create a hotkey for each item in the expansion
-    std::vector<std::pair<Hotkey, std::string>> expandHotkey(const Hotkey& base, const std::vector<std::string>& items, const std::vector<std::string>& expandedCommands);
 
     // Parse a hotkey that may contain brace expansions
     std::vector<std::pair<Hotkey, std::string>> parseHotkeyWithExpansion();

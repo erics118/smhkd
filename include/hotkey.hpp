@@ -3,12 +3,14 @@
 #include <CoreGraphics/CGEventTypes.h>
 #include <IOKit/hidsystem/ev_keymap.h>
 
+#include <algorithm>
 #include <array>
 #include <print>
 #include <string>
 #include <vector>
 
 #include "locale.hpp"
+#include "token.hpp"
 
 inline const int key_has_implicit_fn_mod = 4;
 inline const int key_has_implicit_nx_mod = 35;
@@ -169,9 +171,94 @@ struct std::formatter<KeyEventType> : std::formatter<std::string_view> {
     }
 };
 
+inline int getImplicitFlags(const std::string& literal) {
+    const auto* it = std::ranges::find(literal_keycode_str, literal);
+    auto literal_index = std::distance(literal_keycode_str.begin(), it);
+
+    int flags{};
+    if ((literal_index > key_has_implicit_fn_mod) && (literal_index < key_has_implicit_nx_mod)) {
+        flags = Hotkey_Flag_Fn;
+    } else if (literal_index >= key_has_implicit_nx_mod) {
+        flags = Hotkey_Flag_NX;
+    }
+    return flags;
+}
+
 struct CustomModifier {
     std::string name;
     int flags;  // Combined flags of constituent modifiers
+
+    std::strong_ordering operator<=>(const CustomModifier& other) const = default;
+};
+
+struct Keysym {
+    uint32_t keycode;
+
+    std::strong_ordering operator<=>(const Keysym& other) const = default;
+};
+
+template <>
+struct std::formatter<Keysym> : std::formatter<std::string_view> {
+    auto format(Keysym keysym, std::format_context& ctx) const {
+        return std::format_to(ctx.out(), "{}", getNameOfKeycode(keysym.keycode));
+    }
+};
+
+struct ModifierFlags {
+    int flags;
+
+    std::strong_ordering operator<=>(const ModifierFlags& other) const = default;
+};
+
+template <>
+struct std::formatter<ModifierFlags> : std::formatter<std::string_view> {
+    auto format(ModifierFlags flags, std::format_context& ctx) const {
+        std::string str;
+        if (flags.flags == 0) {
+            return std::format_to(ctx.out(), "{}", str);
+        }
+        for (int i = 0; i < hotkey_flags.size(); i++) {
+            if (flags.flags & hotkey_flags[i]) {
+                str += hotkey_flag_names[i];
+                str += " + ";
+            }
+        }
+        str.pop_back();
+        str.pop_back();
+        str.pop_back();
+
+        return std::format_to(ctx.out(), "{}", str);
+    }
+};
+
+struct Chord {
+    Keysym keysym;
+    ModifierFlags modifiers;
+
+    std::strong_ordering operator<=>(const Chord& other) const = default;
+
+    void setKeycode(const Token& t) {
+        if (t.type == TokenType::Literal) {
+            keysym.keycode = getKeycode(t.text);
+            // handle implicit flags only for literals
+            modifiers.flags |= getImplicitFlags(t.text);
+        }
+        if (t.type == TokenType::Key || t.type == TokenType::KeyHex) {
+            keysym.keycode = getKeycode(t.text);
+        }
+    }
+
+    bool isActivatedBy(const Chord& other) const;
+};
+
+template <>
+struct std::formatter<Chord> : std::formatter<std::string_view> {
+    auto format(Chord chord, std::format_context& ctx) const {
+        if (chord.modifiers.flags == 0) {
+            return std::format_to(ctx.out(), "{}", chord.keysym);
+        }
+        return std::format_to(ctx.out(), "{} + {}", chord.modifiers, chord.keysym);
+    }
 };
 
 // TODO: mouse, up, down, buttons 1-5
@@ -179,26 +266,44 @@ struct CustomModifier {
 
 // TODO: simultaneous keys, ie within x milliseconds
 // TODO: use keys as modifiers, by tracking what is held down
-// 
-// TODO: create struct Keybind, which has a .keycode and .modifier_flags
-// TODO: Refactor hotkey to have a vector of keybinds, and no .flags nor .keyCode
-// TODO: rename .flags to .modifier_flags
 struct Hotkey {
-    int flags{};
-    uint32_t keyCode{};
-    KeyEventType eventType = KeyEventType::Down;
     bool passthrough{};
-    // TODO: require ~down for ~repeat
     bool repeat{};
+    bool on_release{};
 
-    // optional vector of hotkeys
-    std::vector<Hotkey> sequence;
+    std::vector<Chord> chords;
 
-    // call on the hotkey, ie hotkey.isActivatedBy(current)
-    [[nodiscard]] bool isActivatedBy(const Hotkey& other) const;
+    std::strong_ordering operator<=>(const Hotkey& other) const {
+        if (passthrough != other.passthrough) {
+            return passthrough <=> other.passthrough;
+        }
+        if (repeat != other.repeat) {
+            return repeat <=> other.repeat;
+        }
+        if (on_release != other.on_release) {
+            return on_release <=> other.on_release;
+        }
 
-    // only used internally for hashing for unordered_map
-    bool operator==(const Hotkey& other) = delete;
+        if (chords.size() != other.chords.size()) {
+            return chords.size() <=> other.chords.size();
+        }
+
+        for (size_t i = 0; i < chords.size(); i++) {
+            if (chords[i] != other.chords[i]) {
+                return chords[i] <=> other.chords[i];
+            }
+        }
+
+        return std::strong_ordering::equal;
+    }
+
+    Hotkey() {
+        chords.push_back(Chord{});
+    }
+
+    explicit Hotkey(Chord chord) {
+        chords.push_back(chord);
+    }
 };
 
 template <>
@@ -207,67 +312,20 @@ struct std::formatter<Hotkey> : std::formatter<std::string_view> {
         // print out each part
         std::string str;
 
-        // If this is part of a chord, format all hotkeys
-        if (!hk.sequence.empty()) {
-            for (size_t i = 0; i < hk.sequence.size(); i++) {
-                if (i > 0) str += " ; ";
-                str += std::format("{}", hk.sequence[i]);
-            }
-            return std::format_to(ctx.out(), "{}", str);
+        for (size_t i = 0; i < hk.chords.size(); i++) {
+            if (i > 0) str += " ; ";
+            str += std::format("{}", hk.chords[i]);
         }
-
-        // Format single hotkey
-        for (int i = 0; i < hotkey_flags.size(); i++) {
-            if (hk.flags & hotkey_flags[i]) {
-                str += hotkey_flag_names[i] + " + ";
-            }
-        }
-
-        str += getNameOfKeycode(hk.keyCode) + " (" + std::to_string(hk.keyCode) + ")";
 
         std::format_to(
             ctx.out(), "{} ({}{}{})",
             str,
-            hk.eventType,
             hk.passthrough ? " Passthrough" : "",
-            hk.repeat ? " Repeat" : ""
-            // hk.command.size() > 0 ? (": `" + hk.command + "`") : ""
-        );
+            hk.repeat ? " Repeat" : "",
+            hk.on_release ? " On Release" : "");
 
         return ctx.out();
     }
 };
 
 int eventModifierFlagsToHotkeyFlags(CGEventFlags flags);
-
-template <>
-struct std::hash<KeyEventType> {
-    std::size_t operator()(const KeyEventType& et) const {
-        return std::hash<int>{}(static_cast<int>(et));
-    }
-};
-
-template <>
-struct std::hash<Hotkey> {
-    std::size_t operator()(const Hotkey& hk) const {
-        std::size_t h1 = std::hash<int>{}(hk.flags);
-        std::size_t h2 = std::hash<uint32_t>{}(hk.keyCode);
-        std::size_t h3 = std::hash<bool>{}(hk.passthrough);
-        std::size_t h4 = std::hash<bool>{}(hk.repeat);
-        std::size_t h5 = std::hash<KeyEventType>{}(hk.eventType);
-
-        return h1 ^ (h2 << 1) ^ (h3 << 2) ^ (h4 << 3) ^ (h5 << 4);
-    }
-};
-
-template <>
-struct std::equal_to<Hotkey> {
-    bool operator()(const Hotkey& a, const Hotkey& b) const {
-        for (const auto& hk : a.sequence) {
-            if (!(a.isActivatedBy(hk) && b.isActivatedBy(hk))) {
-                return false;
-            }
-        }
-        return a.isActivatedBy(b) && b.isActivatedBy(a);
-    }
-};

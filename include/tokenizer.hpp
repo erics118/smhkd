@@ -52,8 +52,6 @@ class Tokenizer {
     // read the rest of the line as a single token
     [[nodiscard]] Token readCommandToken();
 
-    [[nodiscard]] std::string readEventType();
-
     [[nodiscard]] bool isIdentifierChar(char c);
 
     // read until whitespace, newline, plus, colon, '#'

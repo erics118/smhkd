@@ -25,7 +25,7 @@ int eventLRModifierFlagsToHotkeyFlags(CGEventFlags eventflags, int mod) {
 }
 
 // first hotkey should be the config, second hotkey should be the event
-bool compareLRModifier(const Hotkey& a, const Hotkey& b, int mod) {
+bool compareLRModifier(const Chord& a, const Chord& b, int mod) {
     // Check if generic modifier is set in hotkey a
     if (has_flags(a, hotkey_flags[mod])) {
         // If generic modifier is set in a, then b must have either:
@@ -43,11 +43,11 @@ bool compareLRModifier(const Hotkey& a, const Hotkey& b, int mod) {
         && has_flags(a, hotkey_flags[mod]) == has_flags(b, hotkey_flags[mod]);
 }
 
-bool compareFn(const Hotkey& a, const Hotkey& b) {
+bool compareFn(const Chord& a, const Chord& b) {
     return has_flags(a, hotkey_flags[fn_mod_offset]) == has_flags(b, hotkey_flags[fn_mod_offset]);
 }
 
-bool compareNX(const Hotkey& a, const Hotkey& b) {
+bool compareNX(const Chord& a, const Chord& b) {
     return has_flags(a, hotkey_flags[nx_mod_offset]) == has_flags(b, hotkey_flags[nx_mod_offset]);
 }
 
@@ -67,12 +67,12 @@ int eventModifierFlagsToHotkeyFlags(CGEventFlags flags) {
     return res;
 }
 
-bool Hotkey::isActivatedBy(const Hotkey& other) const {
+bool Chord::isActivatedBy(const Chord& other) const {
     return compareLRModifier(*this, other, alt_mod_offset)
         && compareLRModifier(*this, other, shift_mod_offset)
         && compareLRModifier(*this, other, cmd_mod_offset)
         && compareLRModifier(*this, other, ctrl_mod_offset)
         && compareFn(*this, other)
         && compareNX(*this, other)
-        && this->keyCode == other.keyCode;
+        && this->keysym == other.keysym;
 }

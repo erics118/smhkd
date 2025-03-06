@@ -70,9 +70,9 @@ Token Tokenizer::getNextToken() {
         return Token{TokenType::Colon, ":", startRow, startCol};
     }
 
-    if (c == '~') {
-        std::string et = readEventType();
-        return Token{TokenType::EventType, et, startRow, startCol};
+    if (c == '^') {
+        advance();
+        return Token{TokenType::Caret, "^", startRow, startCol};
     }
 
     if (c == '@') {
@@ -82,7 +82,7 @@ Token Tokenizer::getNextToken() {
 
     if (c == '&') {
         advance();
-        return Token{TokenType::Repeat, "&", startRow, startCol};
+        return Token{TokenType::Ampersand, "&", startRow, startCol};
     }
 
     if (c == '{') {
@@ -173,21 +173,6 @@ Token Tokenizer::readCommandToken() {
     }
 
     return Token{TokenType::Command, line, startRow, startCol};
-}
-
-std::string Tokenizer::readEventType() {
-    // consume the ~
-    advance();
-    std::string result;
-    while (hasMoreTokens()) {
-        char c = peekChar();
-        if (!isIdentifierChar(c)) {
-            break;
-        }
-        result.push_back(c);
-        advance();
-    }
-    return result;  // e.g. '~up'
 }
 
 bool Tokenizer::isIdentifierChar(char c) {

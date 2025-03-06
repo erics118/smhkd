@@ -12,10 +12,10 @@ enum class TokenType {
     Equals,          // '='
     Colon,           // ':'
     Command,         // entire line after ':'
-    EventType,       // event type '~up', '~down', '~both'
     Literal,         // literal, ie enter, space tab
+    Caret,           // on release '^'
     At,              // passthrough '@'
-    Repeat,          // repeat '&'
+    Ampersand,       // repeat '&'
     EndOfFile,       // end of file
     OpenBrace,       // '{'
     CloseBrace,      // '}'
@@ -36,10 +36,9 @@ struct std::formatter<TokenType> : std::formatter<std::string_view> {
             case TokenType::Equals: name = "Equals"; break;
             case TokenType::Colon: name = "Colon"; break;
             case TokenType::Command: name = "Command"; break;
-            case TokenType::EventType: name = "EventType"; break;
             case TokenType::Literal: name = "Literal"; break;
             case TokenType::At: name = "At"; break;
-            case TokenType::Repeat: name = "Repeat"; break;
+            case TokenType::Ampersand: name = "Repeat"; break;
             case TokenType::EndOfFile: name = "EndOfFile"; break;
             case TokenType::OpenBrace: name = "OpenBrace"; break;
             case TokenType::CloseBrace: name = "CloseBrace"; break;

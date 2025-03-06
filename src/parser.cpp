@@ -1,9 +1,9 @@
 #include "parser.hpp"
 
 #include <algorithm>
+#include <map>
 #include <stdexcept>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -12,8 +12,8 @@
 #include "log.hpp"
 #include "tokenizer.hpp"
 
-std::unordered_map<Hotkey, std::string> Parser::parseFile() {
-    std::unordered_map<Hotkey, std::string> hotkeys;
+std::map<Hotkey, std::string> Parser::parseFile() {
+    std::map<Hotkey, std::string> hotkeys;
 
     while (tokenizer.hasMoreTokens()) {
         Token tk = tokenizer.peek();
@@ -98,26 +98,6 @@ void Parser::parseDefineModifier() {
     customModifiers[customName] = expansions;
 }
 
-int Parser::getImplicitFlags(const std::string& literal) {
-    const auto* it = std::ranges::find(literal_keycode_str, literal);
-    auto literal_index = std::distance(literal_keycode_str.begin(), it);
-
-    int flags{};
-    if ((literal_index > key_has_implicit_fn_mod) && (literal_index < key_has_implicit_nx_mod)) {
-        flags = Hotkey_Flag_Fn;
-    } else if (literal_index >= key_has_implicit_nx_mod) {
-        flags = Hotkey_Flag_NX;
-    }
-    return flags;
-}
-
-KeyEventType Parser::parseEventType(const std::string& text) {
-    if (text == "up") return KeyEventType::Up;
-    if (text == "down") return KeyEventType::Down;
-    if (text == "both") return KeyEventType::Both;
-    return KeyEventType::Down;
-}
-
 int Parser::getBuiltinModifierFlag(const std::string& mod) {
     const auto* it1 = std::ranges::find(hotkey_flag_names, mod);
     if (it1 != hotkey_flag_names.end()) {
@@ -161,9 +141,9 @@ bool Parser::isModifier(const std::string& mod) {
     return getBuiltinModifierFlag(mod) != 0 || getCustomModifierFlag(mod, 0, 0) != 0;
 }
 
-std::vector<std::string> Parser::parseKeyBraceExpansion() {
-    std::vector<std::string> items;
-    std::string current;
+std::vector<Token> Parser::parseKeyBraceExpansion() {
+    std::vector<Token> items;
+    Token current;
 
     // Consume opening brace
     Token tk = tokenizer.next();
@@ -174,24 +154,18 @@ std::vector<std::string> Parser::parseKeyBraceExpansion() {
     while (true) {
         tk = tokenizer.next();
 
-        if (tk.type == TokenType::CloseBrace) {
-            if (!current.empty()) {
-                items.push_back(current);
-            }
-            break;
-        }
-
-        if (tk.type == TokenType::Comma) {
-            if (!current.empty()) {
-                items.push_back(current);
-                current.clear();
-            }
-            continue;
-        }
-
         if (tk.type == TokenType::Key || tk.type == TokenType::Literal) {
-            current += tk.text;
-        } else {
+            current = tk;
+
+            tk = tokenizer.next();
+            if (tk.type == TokenType::Comma) {
+                items.push_back(current);
+                continue;
+            }
+            if (tk.type == TokenType::CloseBrace) {
+                items.push_back(current);
+                break;
+            }
             throw std::runtime_error("Unexpected token in brace expansion");
         }
     }
@@ -236,45 +210,21 @@ std::vector<std::string> Parser::expandCommandString(const std::string& command)
     return result;
 }
 
-// TODO: expand hotkey should take in a vector of tokens, and parse the hotkey
-// from the tokens, not strings
-std::vector<std::pair<Hotkey, std::string>> Parser::expandHotkey(const Hotkey& base, const std::vector<std::string>& items, const std::vector<std::string>& expandedCommands) {
-    std::vector<std::pair<Hotkey, std::string>> expanded;
-
-    for (int i = 0; i < items.size(); i++) {
-        const auto& item = items[i];
-        Hotkey hk = base;
-        std::string command = expandedCommands.empty() ? "" : expandedCommands[i];
-
-        hk.keyCode = getKeycode(item);
-
-        // TODO: handle implicit flags only for literals properly. see above todo
-        // hk.flags |= getImplicitFlags(item);
-        expanded.push_back({hk, command});
-    }
-
-    return expanded;
-}
-
 std::vector<std::pair<Hotkey, std::string>> Parser::parseHotkeyWithExpansion() {
-    std::vector<Hotkey> sequence;
-    Hotkey base;
+    // std::vector<Hotkey> hotkeys;
+    Hotkey hotkey;
     std::string command;
-    std::vector<std::string> expansionItems;
+    std::vector<Token> expansionKeysyms;
     std::vector<std::string> expandedCommands;
     bool foundColon = false;
 
     while (true) {
-        // Parse a single hotkey in the sequence
+        // Parse a single hotkey in the chords
         while (true) {
             const Token& tk = tokenizer.peek();
             if (tk.type == TokenType::EndOfFile) {
                 error("Unexpected end of file");
-                if (sequence.empty()) {
-                    return {{base, command}};
-                }
-                base.sequence = sequence;
-                return {{base, command}};
+                return {{hotkey, command}};
             }
             if (tk.type == TokenType::Colon) {
                 tokenizer.next();
@@ -283,8 +233,7 @@ std::vector<std::pair<Hotkey, std::string>> Parser::parseHotkeyWithExpansion() {
             }
             if (tk.type == TokenType::Semicolon) {
                 tokenizer.next();
-                sequence.push_back(base);
-                base = Hotkey{};  // Reset for next in sequence
+                hotkey.chords.push_back(Chord{});  // Reset for next in sequence
                 break;
             }
             if (tk.type == TokenType::Plus) {
@@ -292,38 +241,31 @@ std::vector<std::pair<Hotkey, std::string>> Parser::parseHotkeyWithExpansion() {
                 continue;
             }
             if (tk.type == TokenType::At) {
-                base.passthrough = true;
+                hotkey.passthrough = true;
                 tokenizer.next();
                 continue;
             }
-            if (tk.type == TokenType::Repeat) {
-                base.repeat = true;
+            if (tk.type == TokenType::Ampersand) {
+                hotkey.repeat = true;
                 tokenizer.next();
                 continue;
             }
-            if (tk.type == TokenType::EventType) {
-                base.eventType = parseEventType(tk.text);
+            if (tk.type == TokenType::Caret) {
+                hotkey.on_release = true;
                 tokenizer.next();
                 continue;
             }
             if (tk.type == TokenType::Modifier) {
-                base.flags |= getModifierFlag(tk.text, tk.row, tk.col);
+                hotkey.chords.back().modifiers.flags |= getModifierFlag(tk.text, tk.row, tk.col);
                 tokenizer.next();
                 continue;
             }
             if (tk.type == TokenType::OpenBrace) {
-                expansionItems = parseKeyBraceExpansion();
+                expansionKeysyms = parseKeyBraceExpansion();
                 continue;
             }
-            if (tk.type == TokenType::Literal) {
-                base.keyCode = getKeycode(tk.text);
-                // handle implicit flags only for literals
-                base.flags |= getImplicitFlags(tk.text);
-                tokenizer.next();
-                continue;
-            }
-            if (tk.type == TokenType::Key || tk.type == TokenType::KeyHex) {
-                base.keyCode = getKeycode(tk.text);
+            if (tk.type == TokenType::Literal || tk.type == TokenType::Key || tk.type == TokenType::KeyHex) {
+                hotkey.chords.back().setKeycode(tk);
                 tokenizer.next();
                 continue;
             }
@@ -339,7 +281,7 @@ std::vector<std::pair<Hotkey, std::string>> Parser::parseHotkeyWithExpansion() {
     if (foundColon) {
         const Token& nextTk = tokenizer.next();
         if (nextTk.type == TokenType::Command) {
-            if (expansionItems.size() > 1) {
+            if (expansionKeysyms.size() > 1) {
                 // expand the command
                 expandedCommands = expandCommandString(nextTk.text);
             } else {
@@ -350,23 +292,21 @@ std::vector<std::pair<Hotkey, std::string>> Parser::parseHotkeyWithExpansion() {
         }
     }
 
-    // If we found expansion items, expand the base hotkey
-    if (!expansionItems.empty()) {
-        auto expanded = expandHotkey(base, expansionItems, expandedCommands);
-        // Apply sequence to all expanded hotkeys
-        if (!sequence.empty()) {
-            for (auto& [hk, command] : expanded) {
-                hk.sequence = sequence;
-            }
+    // expand the keysyms
+    if (!expansionKeysyms.empty()) {
+        std::vector<std::pair<Hotkey, std::string>> expanded;
+        if (expansionKeysyms.size() != expandedCommands.size()) {
+            throw std::runtime_error("Expansion keysyms and commands must be the same size");
+        }
+        for (int i = 0; i < expansionKeysyms.size(); i++) {
+            const auto& keysym = expansionKeysyms[i];
+            const auto& command = expandedCommands.empty() ? "" : expandedCommands[i];
+            Hotkey hk = hotkey;
+            hk.chords.back().setKeycode(keysym);
+            expanded.emplace_back(hk, command);
         }
         return expanded;
     }
 
-    // If we have a sequence, add it to base
-    if (!sequence.empty()) {
-        sequence.push_back(base);
-        base.sequence = sequence;
-    }
-
-    return {{base, command}};
+    return {{hotkey, command}};
 }

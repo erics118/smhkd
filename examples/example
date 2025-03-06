@@ -37,6 +37,5 @@ alt + {1,2,3} :
 alt +  t ; alt + a :
     echo chorded ctrl t, then ctrl a 
 
-# TODO: this is broken currently yet
 alt + i ; alt + {1,2,3} :
     echo chorded ctrl t, then ctr, {1,2,3}
