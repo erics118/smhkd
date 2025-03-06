@@ -150,27 +150,6 @@ inline const int ctrl_mod_offset = 9;
 inline const int fn_mod_offset = 12;
 inline const int nx_mod_offset = 13;
 
-enum class KeyEventType {
-    Down,  // default
-    Up,
-    Both,
-};
-
-// Specialize std::formatter for KeyEventType
-template <>
-struct std::formatter<KeyEventType> : std::formatter<std::string_view> {
-    auto format(KeyEventType et, std::format_context& ctx) const {
-        std::string_view name;
-        switch (et) {
-            case KeyEventType::Down: name = "Down"; break;
-            case KeyEventType::Up: name = "Up"; break;
-            case KeyEventType::Both: name = "Both"; break;
-            default: name = "Unknown";
-        }
-        return std::format_to(ctx.out(), "{}", name);
-    }
-};
-
 inline int getImplicitFlags(const std::string& literal) {
     const auto* it = std::ranges::find(literal_keycode_str, literal);
     auto literal_index = std::distance(literal_keycode_str.begin(), it);
@@ -317,14 +296,14 @@ struct std::formatter<Hotkey> : std::formatter<std::string_view> {
             str += std::format("{}", hk.chords[i]);
         }
 
-        std::format_to(
-            ctx.out(), "{} ({}{}{})",
-            str,
-            hk.passthrough ? " Passthrough" : "",
-            hk.repeat ? " Repeat" : "",
-            hk.on_release ? " On Release" : "");
+        std::string flags;
 
-        return ctx.out();
+        if (hk.passthrough) flags += "Passthrough";
+        if (hk.repeat) flags += (flags.empty() ? "" : " ") + std::string{"Repeat"};
+        if (hk.on_release) flags += (flags.empty() ? "" : " ") + std::string{"OnRelease"};
+        if (!flags.empty()) str += " (" + flags + ")";
+
+        return std::format_to(ctx.out(), "{}", str);
     }
 };
 
