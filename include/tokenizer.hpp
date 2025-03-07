@@ -30,9 +30,7 @@ class Tokenizer {
     bool nextTokenIsCommand{};
 
    public:
-    explicit Tokenizer(std::string contents) : contents(std::move(contents)) {
-        initializeKeycodeMap();
-    }
+    explicit Tokenizer(std::string contents) : contents(std::move(contents)) {}
 
     // peek the next token without consuming
     [[nodiscard]] const Token& peek();
