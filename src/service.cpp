@@ -153,9 +153,7 @@ bool Service::handleKeyEvent(CGEventRef event, CGEventType type) {
         .keysym = {
             .keycode = keyCode,
         },
-        .modifiers = {
-            .flags = eventModifierFlagsToHotkeyFlags(flags),
-        },
+        .modifiers = eventModifierFlagsToHotkeyFlags(flags),
     };
 
     // Special handling for to exit

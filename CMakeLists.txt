@@ -17,10 +17,13 @@ find_library(COCOA_FRAMEWORK Cocoa REQUIRED)
 find_library(CORE_FOUNDATION_FRAMEWORK CoreFoundation REQUIRED)
 
 add_executable(${PROJECT_NAME}
+    src/chord.cpp
     src/cli.cpp
     src/hotkey.cpp
+    src/keysym.cpp
     src/locale.cpp
     src/main.cpp
+    src/modifier.cpp
     src/parser.cpp
     src/service.cpp
     src/tokenizer.cpp
