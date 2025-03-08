@@ -30,6 +30,9 @@ inline void print(level ll, const T& msg) {
     }
 
     std::print(ll >= level::warn ? std::cerr : std::clog, "{}: {}\n", type, msg);
+    if (ll == level::error) {
+        exit(1);
+    }
 }
 
 // format string version

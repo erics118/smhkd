@@ -89,76 +89,67 @@ static void create_pid_file(void) {
 }
 
 static bool check_privileges(void) {
-    // bool result;
-    // const void* keys[] = {kAXTrustedCheckOptionPrompt};
-    // const void* values[] = {kCFBooleanTrue};
+    bool result;
+    const void* keys[] = {kAXTrustedCheckOptionPrompt};
+    const void* values[] = {kCFBooleanTrue};
 
-    // CFDictionaryRef options;
-    // options = CFDictionaryCreate(kCFAllocatorDefault,
-    //     keys, values, sizeof(keys) / sizeof(*keys),
-    //     &kCFCopyStringDictionaryKeyCallBacks,
-    //     &kCFTypeDictionaryValueCallBacks);
+    CFDictionaryRef options;
+    options = CFDictionaryCreate(kCFAllocatorDefault,
+        keys, values, sizeof(keys) / sizeof(*keys),
+        &kCFCopyStringDictionaryKeyCallBacks,
+        &kCFTypeDictionaryValueCallBacks);
 
-    // result = AXIsProcessTrustedWithOptions(options);
-    // CFRelease(options);
-
-    bool result = AXIsProcessTrusted();
+    result = AXIsProcessTrustedWithOptions(options);
+    CFRelease(options);
 
     return result;
 }
 
-bool parse_arguments(int argc, char* argv[]) {
+void parse_arguments(int argc, char* argv[]) {
     ArgsConfig config{
         .short_args = {"c:", "r"},
-        .long_args = {"config:", "reload", "install-service", "uninstall-service", "start-service", "stop-service", "restart-service"},
+        .long_args = {
+            "config:",
+            "reload",
+            "install-service",
+            "uninstall-service",
+            "start-service",
+            "stop-service",
+            "restart-service",
+        },
     };
     Args args = parse_args(std::vector<std::string>(argv, argv + argc), config);
 
     if (args.get("install-service")) {
-        if (auto result = service_install(); !result) {
-            error("failed to install service: {}", result.error());
-            return false;
-        }
-        return true;
+        service_install();
+        exit(0);
     }
 
     if (args.get("uninstall-service")) {
-        if (auto result = service_uninstall(); !result) {
-            error("failed to uninstall service: {}", result.error());
-            return false;
-        }
-        return true;
+        service_uninstall();
+        exit(0);
     }
 
     if (args.get("start-service")) {
-        if (auto result = service_start(); !result) {
-            error("failed to start service: {}", result.error());
-            return false;
-        }
-        return true;
+        service_start();
+        exit(0);
     }
 
     if (args.get("stop-service")) {
-        if (auto result = service_stop(); !result) {
-            error("failed to stop service: {}", result.error());
-            return false;
-        }
-        return true;
+        service_stop();
+        exit(0);
     }
 
     if (args.get("restart-service")) {
-        if (auto result = service_restart(); !result) {
-            error("failed to restart service: {}", result.error());
-            return false;
-        }
-        return true;
+        service_restart();
+        exit(0);
     }
 
     if (args.get('r', "reload")) {
         info("reloading config");
         pid_t pid = read_pid_file();
         if (pid) kill(pid, SIGUSR1);
-        return true;
+        exit(0);
     }
 
     if (auto val = args.get('c', "config")) {
@@ -166,29 +157,27 @@ bool parse_arguments(int argc, char* argv[]) {
     } else {
         config_file = get_config_file("smhkd").value_or("");
     }
-
-    return false;
 }
 
 int main(int argc, char* argv[]) {
     if (getuid() == 0 || geteuid() == 0) {
-        error("skhd: running as root is not allowed! abort");
-        return 1;
+        error("running as root is not allowed");
     }
-    if (parse_arguments(argc, argv)) {
-        return 0;
+
+    try {
+        parse_arguments(argc, argv);
+    } catch (const std::exception& ex) {
+        error(ex.what());
     }
 
     create_pid_file();
 
     if (!check_privileges()) {
         error("must run with accessibility access");
-        return 1;
     }
 
     if (!initializeKeycodeMap()) {
         error("failed to initialize keycode map");
-        return 1;
     }
 
     signal(SIGCHLD, SIG_IGN);

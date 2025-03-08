@@ -8,6 +8,7 @@
 #include <format>
 #include <optional>
 #include <string>
+#include <vector>
 
 std::string cfStringToString(CFStringRef cfString) {
     if (!cfString) return {};
@@ -65,12 +66,23 @@ void executeCommand(const std::string& command) {
     if (cpid == 0) {
         setsid();
 
-        // NOLINTNEXTLINE
-        char* args[] = {const_cast<char*>("/bin/bash"), const_cast<char*>("-c"), const_cast<char*>(command.c_str()), nullptr};
+        // Create mutable copies of the strings
+        std::vector<std::string> stringStorage = {"/bin/bash", "-c", command};
+        std::vector<char*> args;
 
-        // NOLINTNEXTLINE
-        int status = execvp(args[0], args);
+        args.reserve(stringStorage.size());
 
-        exit(status);
+        for (auto& str : stringStorage) {
+            args.push_back(str.data());
+        }
+
+        args.push_back(nullptr);
+
+        // Execute the command
+        execvp(args[0], args.data());
+
+        int status = execvp(args[0], args.data());
+
+        _exit(status);
     }
 }

@@ -132,7 +132,7 @@ int Parser::getModifierFlag(const std::string& mod, int row, int col) {
     flags = getCustomModifierFlag(mod, row, col);
     if (flags != 0) return flags;
 
-    error("Unknown modifier '{}' at row {}, col {}", mod, row, col);
+    warn("Unknown modifier '{}' at row {}, col {}", mod, row, col);
     return 0;
 }
 
@@ -222,8 +222,7 @@ std::vector<std::pair<Hotkey, std::string>> Parser::parseHotkeyWithExpansion() {
         while (true) {
             const Token& tk = tokenizer.peek();
             if (tk.type == TokenType::EndOfFile) {
-                error("Unexpected end of file");
-                return {{hotkey, command}};
+                throw std::runtime_error("Unexpected end of file");
             }
             if (tk.type == TokenType::Colon) {
                 tokenizer.next();

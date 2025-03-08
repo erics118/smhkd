@@ -26,6 +26,7 @@ add_executable(${PROJECT_NAME}
     src/main.cpp
     src/modifier.cpp
     src/parser.cpp
+    src/service.cpp
     src/tokenizer.cpp
     src/utils.cpp
 )

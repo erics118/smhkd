@@ -85,7 +85,7 @@ uint32_t getKeycode(const std::string& key) {
     try {
         return std::stoi(key, nullptr, 16);
     } catch (...) {
-        error("Keycode not found for '{}'", key);
+        warn("Keycode not found for '{}'", key);
     }
 
     return -1;

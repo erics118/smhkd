@@ -1,5 +1,7 @@
 build-type := "Debug"
 
+default: debug
+
 # Configure the build with specified build type
 configure: 
     cmake -DCMAKE_BUILD_TYPE:STRING={{build-type}} \
@@ -15,13 +17,15 @@ build: configure
 # Build specifically in debug mode
 debug:
     just build-type="Debug" build
+    just sign
 
 # Build specifically in release mode
 release:
     just build-type="Release" build
+    just sign
 
 clean:
     rm -rf ./build;
 
-# Default to debug build
-default: debug
+sign:
+	codesign -fs "skhd-cert" ./build/smhkd

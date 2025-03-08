@@ -42,7 +42,6 @@ bool KeyHandler::setupEventTap() {
 
     if (!tap) {
         error("failed to create event tap");
-        return false;
     }
 
     // Create a run loop source and add it to the run loop

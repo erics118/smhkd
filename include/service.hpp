@@ -61,215 +61,22 @@ constexpr std::string_view PLIST_TEMPLATE = R"(<?xml version="1.0" encoding="UTF
 // Forward declaration of CFURLRef function
 extern "C" CFURLRef CFCopyHomeDirectoryURLForUser(void* user);
 
-std::expected<std::string, std::string> get_home_directory() {
-    CFURLRef homeurl_ref = CFCopyHomeDirectoryURLForUser(nullptr);
-    if (!homeurl_ref) {
-        CFRelease(homeurl_ref);
-        return std::unexpected("failed to get home directory URL");
-    }
+std::string get_home_directory();
 
-    std::string home_ref = cfStringToString(CFURLCopyFileSystemPath(homeurl_ref, kCFURLPOSIXPathStyle));
+std::string get_plist_path();
 
-    if (home_ref.empty()) return std::unexpected("failed to get home directory path");
+std::string get_plist_contents();
 
-    return home_ref;
-}
+void ensure_directory_exists(const std::filesystem::path& path);
 
-std::expected<std::string, std::string> get_plist_path() {
-    auto home = get_home_directory();
-    if (!home) return std::unexpected(home.error());
+int launchctl_exec(const std::vector<std::string>& args, bool suppress_output = false);
 
-    return std::format("{}/Library/LaunchAgents/{}.plist", *home, PLIST_NAME);
-}
+void service_install();
 
-std::expected<std::string, std::string> get_plist_contents() {
-    const char* user = getenv("USER");
-    if (!user) return std::unexpected("USER environment variable not set");
+void service_uninstall();
 
-    const char* path_env = getenv("PATH");
-    if (!path_env) return std::unexpected("PATH environment variable not set");
+void service_start();
 
-    std::array<char, 4096> exe_path{};
-    if (proc_pidpath(getpid(), exe_path.data(), exe_path.size()) <= 0) {
-        return std::unexpected("failed to get executable path");
-    }
+void service_restart();
 
-    return std::format(PLIST_TEMPLATE,
-        PLIST_NAME, exe_path.data(), path_env, user, user);
-}
-
-std::expected<void, std::string> ensure_directory_exists(const std::filesystem::path& path) {
-    try {
-        std::filesystem::create_directories(path.parent_path());
-        return {};
-    } catch (const std::filesystem::filesystem_error& e) {
-        return std::unexpected(e.what());
-    }
-}
-
-std::expected<int, std::string> launchctl_exec(const std::vector<std::string>& args, bool suppress_output = false) {
-    std::vector<std::string> stringStorage;
-    stringStorage.reserve(args.size() + 1);
-
-    std::vector<char*> c_args;
-    c_args.reserve(args.size() + 2);
-
-    stringStorage.emplace_back(LAUNCHCTL_PATH);
-    c_args.push_back(stringStorage.back().data());
-    for (const auto& arg : args) {
-        stringStorage.push_back(arg);
-        c_args.push_back(stringStorage.back().data());
-    }
-    c_args.push_back(nullptr);
-
-    posix_spawn_file_actions_t actions{};
-    if (posix_spawn_file_actions_init(&actions) != 0) {
-        return std::unexpected("failed to initialize spawn file actions");
-    }
-
-    if (suppress_output) {
-        posix_spawn_file_actions_addopen(&actions, STDOUT_FILENO, "/dev/null", O_WRONLY | O_APPEND, 0);
-        posix_spawn_file_actions_addopen(&actions, STDERR_FILENO, "/dev/null", O_WRONLY | O_APPEND, 0);
-    }
-
-    pid_t pid{};
-    int status = posix_spawn(&pid, c_args[0], &actions, nullptr, c_args.data(), nullptr);
-    posix_spawn_file_actions_destroy(&actions);
-
-    if (status != 0) {
-        return std::unexpected("failed to spawn process");
-    }
-
-    while ((waitpid(pid, &status, 0) == -1) && (errno == EINTR)) {
-        usleep(1000);
-    }
-
-    if (WIFSIGNALED(status) || WIFSTOPPED(status)) {
-        return std::unexpected("process terminated abnormally");
-    }
-
-    return WEXITSTATUS(status);
-}
-
-std::expected<void, std::string> service_install() {
-    auto plist_path = get_plist_path();
-    if (!plist_path) return std::unexpected(plist_path.error());
-
-    if (std::filesystem::exists(*plist_path)) {
-        return std::unexpected(std::format("service file '{}' already exists", *plist_path));
-    }
-
-    auto plist_contents = get_plist_contents();
-    if (!plist_contents) return std::unexpected(plist_contents.error());
-
-    auto dir_result = ensure_directory_exists(*plist_path);
-    if (!dir_result) return std::unexpected(dir_result.error());
-
-    std::ofstream file(*plist_path);
-    if (!file) {
-        return std::unexpected(std::format("failed to open '{}' for writing", *plist_path));
-    }
-
-    file << *plist_contents;
-    if (!file) {
-        return std::unexpected(std::format("failed to write to '{}'", *plist_path));
-    }
-
-    return {};
-}
-
-std::expected<void, std::string> service_uninstall() {
-    auto plist_path = get_plist_path();
-    if (!plist_path) return std::unexpected(plist_path.error());
-
-    if (!std::filesystem::exists(*plist_path)) {
-        return std::unexpected(std::format("service file '{}' does not exist", *plist_path));
-    }
-
-    try {
-        std::filesystem::remove(*plist_path);
-        return {};
-    } catch (const std::filesystem::filesystem_error& e) {
-        return std::unexpected(e.what());
-    }
-}
-
-std::expected<void, std::string> service_start() {
-    auto plist_path = get_plist_path();
-    if (!plist_path) return std::unexpected(plist_path.error());
-
-    if (!std::filesystem::exists(*plist_path)) {
-        auto install_result = service_install();
-        if (!install_result) return std::unexpected(install_result.error());
-    }
-
-    auto service_target = std::format("gui/{}/{}", getuid(), PLIST_NAME);
-    auto domain_target = std::format("gui/{}", getuid());
-
-    // Check if service is bootstrapped
-    auto result = launchctl_exec({"print", service_target}, true);
-    if (!result) return std::unexpected(result.error());
-
-    if (*result != 0) {
-        // Service is not bootstrapped, try to enable it
-        auto enable_result = launchctl_exec({"enable", service_target});
-        if (!enable_result) return std::unexpected(enable_result.error());
-
-        // Bootstrap the service
-        auto bootstrap_result = launchctl_exec({"bootstrap", domain_target, *plist_path});
-        if (!bootstrap_result) return std::unexpected(bootstrap_result.error());
-        return {};
-    }
-
-    // Service is bootstrapped, kickstart it
-    auto kickstart_result = launchctl_exec({"kickstart", service_target});
-    if (!kickstart_result) return std::unexpected(kickstart_result.error());
-    return {};
-}
-
-std::expected<void, std::string> service_restart() {
-    auto plist_path = get_plist_path();
-    if (!plist_path) return std::unexpected(plist_path.error());
-
-    if (!std::filesystem::exists(*plist_path)) {
-        return std::unexpected(std::format("service file '{}' does not exist", *plist_path));
-    }
-
-    auto service_target = std::format("gui/{}/{}", getuid(), PLIST_NAME);
-    auto result = launchctl_exec({"kickstart", "-k", service_target});
-    if (!result) return std::unexpected(result.error());
-
-    return {};
-}
-
-std::expected<void, std::string> service_stop() {
-    auto plist_path = get_plist_path();
-    if (!plist_path) return std::unexpected(plist_path.error());
-
-    if (!std::filesystem::exists(*plist_path)) {
-        return std::unexpected(std::format("service file '{}' does not exist", *plist_path));
-    }
-
-    auto service_target = std::format("gui/{}/{}", getuid(), PLIST_NAME);
-    auto domain_target = std::format("gui/{}", getuid());
-
-    // Check if service is bootstrapped
-    auto result = launchctl_exec({"print", service_target}, true);
-
-    if (!result) return std::unexpected(result.error());
-
-    if (*result != 0) {
-        // Service is not bootstrapped, just try to stop it
-        auto stop_result = launchctl_exec({"kill", "SIGTERM", service_target});
-        if (!stop_result) return std::unexpected(stop_result.error());
-    } else {
-        // Service is bootstrapped, bootout and disable it
-        auto bootout_result = launchctl_exec({"bootout", domain_target, *plist_path});
-        if (!bootout_result) return std::unexpected(bootout_result.error());
-
-        auto disable_result = launchctl_exec({"disable", service_target});
-        if (!disable_result) return std::unexpected(disable_result.error());
-    }
-
-    return {};
-}
+void service_stop();
