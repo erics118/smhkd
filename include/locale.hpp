@@ -8,7 +8,7 @@
 
 using Keycode = uint32_t;
 
-// Keycode mapping
+// keycode mapping
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 inline std::unordered_map<std::string, Keycode> keycodeMap;
 

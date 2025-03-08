@@ -3,13 +3,12 @@
 #include <CoreGraphics/CGEventTypes.h>
 #include <IOKit/hidsystem/ev_keymap.h>
 
-#include <algorithm>
 #include <array>
 #include <print>
 #include <string>
 
 #include "locale.hpp"
-#include "modifier.hpp"
+
 
 struct Keysym {
     uint32_t keycode;

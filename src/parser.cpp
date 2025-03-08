@@ -8,7 +8,6 @@
 #include <vector>
 
 #include "hotkey.hpp"
-#include "locale.hpp"
 #include "log.hpp"
 #include "tokenizer.hpp"
 

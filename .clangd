@@ -31,6 +31,7 @@ Diagnostics:
       - modernize-use-designated-initializers
       - readability-convert-member-functions-to-static
       - google-readability-todo
+      - readability-function-cognitive-complexity
     CheckOptions:
       misc-unused-parameters.StrictMode: false
   UnusedIncludes: Strict

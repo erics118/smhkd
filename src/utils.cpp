@@ -1,13 +1,12 @@
 #include "utils.hpp"
 
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include <cstdlib>
 #include <format>
 #include <optional>
 #include <string>
-
-#include "hotkey.hpp"
 
 bool file_exists(const std::string& filename) {
     struct stat buffer{};

@@ -5,8 +5,6 @@
 #include <optional>
 #include <string>
 
-#include "modifier.hpp"
-
 // check if a file exists
 [[nodiscard]] bool file_exists(const std::string& filename);
 

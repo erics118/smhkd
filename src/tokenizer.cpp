@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <string>
 
-#include "hotkey.hpp"
+#include "keysym.hpp"
 #include "token.hpp"
 
 // peek the next token without consuming

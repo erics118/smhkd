@@ -20,12 +20,12 @@ add_executable(${PROJECT_NAME}
     src/chord.cpp
     src/cli.cpp
     src/hotkey.cpp
+    src/key_handler.cpp
     src/keysym.cpp
     src/locale.cpp
     src/main.cpp
     src/modifier.cpp
     src/parser.cpp
-    src/service.cpp
     src/tokenizer.cpp
     src/utils.cpp
 )

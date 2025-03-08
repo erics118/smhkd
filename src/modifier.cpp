@@ -6,8 +6,6 @@
 #include <array>
 #include <print>
 
-#include "utils.hpp"
-
 namespace {
 
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
@@ -33,57 +31,57 @@ int eventLRModifierFlagsToHotkeyFlags(CGEventFlags eventflags, int mod) {
 // first hotkey should be the config, second hotkey should be the event
 bool compareLRModifier(const ModifierFlags& a, const ModifierFlags& b, int mod) {
     // Check if generic modifier is set in hotkey a
-    if (has_flags(a, hotkey_flags[mod])) {
+    if (a.has(hotkey_flags[mod])) {
         // If generic modifier is set in a, then b must have either:
         // - left modifier, or
         // - right modifier, or
         // - generic modifier
-        return has_flags(b, hotkey_flags[mod + l_offset])
-            || has_flags(b, hotkey_flags[mod + r_offset])
-            || has_flags(b, hotkey_flags[mod]);
+        return a.has(hotkey_flags[mod + l_offset])
+            || b.has(hotkey_flags[mod + r_offset])
+            || b.has(hotkey_flags[mod]);
     }
 
     // If generic modifier is not set in a, then specific modifiers must match exactly
-    return has_flags(a, hotkey_flags[mod + l_offset]) == has_flags(b, hotkey_flags[mod + l_offset])
-        && has_flags(a, hotkey_flags[mod + r_offset]) == has_flags(b, hotkey_flags[mod + r_offset])
-        && has_flags(a, hotkey_flags[mod]) == has_flags(b, hotkey_flags[mod]);
+    return a.has(hotkey_flags[mod + l_offset]) == b.has(hotkey_flags[mod + l_offset])
+        && a.has(hotkey_flags[mod + r_offset]) == b.has(hotkey_flags[mod + r_offset])
+        && a.has(hotkey_flags[mod]) == b.has(hotkey_flags[mod]);
 }
 
 bool compareFn(const ModifierFlags& a, const ModifierFlags& b) {
-    return has_flags(a, hotkey_flags[fn_mod_offset]) == has_flags(b, hotkey_flags[fn_mod_offset]);
+    return a.has(hotkey_flags[FN_MOD_OFFSET]) == b.has(hotkey_flags[FN_MOD_OFFSET]);
 }
 
 bool compareNX(const ModifierFlags& a, const ModifierFlags& b) {
-    return has_flags(a, hotkey_flags[nx_mod_offset]) == has_flags(b, hotkey_flags[nx_mod_offset]);
+    return a.has(hotkey_flags[NX_MOD_OFFSET]) == b.has(hotkey_flags[NX_MOD_OFFSET]);
 }
 
 }  // namespace
 
-bool has_flags(const ModifierFlags& c, uint32_t flag) {
-    bool result = c.flags & flag;
+bool ModifierFlags::has(uint32_t flag) const {
+    bool result = flags & flag;
     return result;
 }
 
 ModifierFlags eventModifierFlagsToHotkeyFlags(CGEventFlags flags) {
     int res{};
 
-    res |= eventLRModifierFlagsToHotkeyFlags(flags, alt_mod_offset);
-    res |= eventLRModifierFlagsToHotkeyFlags(flags, shift_mod_offset);
-    res |= eventLRModifierFlagsToHotkeyFlags(flags, cmd_mod_offset);
-    res |= eventLRModifierFlagsToHotkeyFlags(flags, ctrl_mod_offset);
+    res |= eventLRModifierFlagsToHotkeyFlags(flags, ALT_MOD_OFFSET);
+    res |= eventLRModifierFlagsToHotkeyFlags(flags, SHIFT_MOD_OFFSET);
+    res |= eventLRModifierFlagsToHotkeyFlags(flags, CMD_MOD_OFFSET);
+    res |= eventLRModifierFlagsToHotkeyFlags(flags, CTRL_MOD_OFFSET);
 
-    if ((flags & cgevent_flags[fn_mod_offset]) == cgevent_flags[fn_mod_offset]) {
-        res |= hotkey_flags[fn_mod_offset];
+    if ((flags & cgevent_flags[FN_MOD_OFFSET]) == cgevent_flags[FN_MOD_OFFSET]) {
+        res |= hotkey_flags[FN_MOD_OFFSET];
     }
 
     return ModifierFlags{res};
 }
 
 bool ModifierFlags::isActivatedBy(const ModifierFlags& other) const {
-    return compareLRModifier(*this, other, alt_mod_offset)
-        && compareLRModifier(*this, other, shift_mod_offset)
-        && compareLRModifier(*this, other, cmd_mod_offset)
-        && compareLRModifier(*this, other, ctrl_mod_offset)
+    return compareLRModifier(*this, other, ALT_MOD_OFFSET)
+        && compareLRModifier(*this, other, SHIFT_MOD_OFFSET)
+        && compareLRModifier(*this, other, CMD_MOD_OFFSET)
+        && compareLRModifier(*this, other, CTRL_MOD_OFFSET)
         && compareFn(*this, other)
         && compareNX(*this, other);
 }

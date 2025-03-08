@@ -1,4 +1,4 @@
-#include "service.hpp"
+#include "key_handler.hpp"
 
 #include <Carbon/Carbon.h>
 #include <CoreFoundation/CoreFoundation.h>
@@ -13,7 +13,7 @@
 // TODO: make this configurable
 constexpr double MAX_CHORD_INTERVAL = 3.0;
 
-bool Service::init() {
+bool KeyHandler::init() {
     // Get the main run loop
     runLoop = CFRunLoopGetCurrent();
     if (!runLoop) {
@@ -32,7 +32,7 @@ bool Service::init() {
     return true;
 }
 
-bool Service::setupEventTap() {
+bool KeyHandler::setupEventTap() {
     // Request accessibility permissions
     if (!AXIsProcessTrusted()) {
         error("need to grant accessibility permissions to this application");
@@ -66,23 +66,23 @@ bool Service::setupEventTap() {
     return true;
 }
 
-CGEventRef Service::eventCallback(CGEventTapProxy /*proxy*/, CGEventType type, CGEventRef event, void* refcon) {
-    auto* service = static_cast<Service*>(refcon);
+CGEventRef KeyHandler::eventCallback(CGEventTapProxy /*proxy*/, CGEventType type, CGEventRef event, void* refcon) {
+    auto* keyHandler = static_cast<KeyHandler*>(refcon);
 
     // Handle keyboard events
-    if (service->handleKeyEvent(event, type)) {
+    if (keyHandler->handleKeyEvent(event, type)) {
         return nullptr;  // Consume the event
     }
 
     return event;  // Let it pass through
 }
 
-void Service::clearSequence() {
+void KeyHandler::clearSequence() {
     currentChords.clear();
     lastKeyPressTime = 0;
 }
 
-bool Service::checkAndExecuteSequence(const Chord& current) {
+bool KeyHandler::checkAndExecuteSequence(const Chord& current) {
     // TODO: use mach for precise timing
     // https://developer.apple.com/library/archive/technotes/tn2169/_index.html#//apple_ref/doc/uid/DTS40013172-CH1-TNTAG2000
     auto now = std::chrono::system_clock::now();
@@ -144,7 +144,7 @@ bool Service::checkAndExecuteSequence(const Chord& current) {
     return false;
 }
 
-bool Service::handleKeyEvent(CGEventRef event, CGEventType type) {
+bool KeyHandler::handleKeyEvent(CGEventRef event, CGEventType type) {
     auto keyCode = static_cast<CGKeyCode>(CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode));
     CGEventFlags flags = CGEventGetFlags(event);
     bool isRepeat = CGEventGetIntegerValueField(event, kCGKeyboardEventAutorepeat) != 0;
@@ -217,7 +217,7 @@ bool Service::handleKeyEvent(CGEventRef event, CGEventType type) {
     return false;  // Let all other events pass through
 }
 
-void Service::run() const {
+void KeyHandler::run() const {
     if (!runLoop) {
         return;
     }
@@ -225,7 +225,7 @@ void Service::run() const {
     debug("watching for shortcuts");
 
     // Run the main loop
-    info("running service");
+    info("running key handler");
 
     CFRunLoopRun();
 }

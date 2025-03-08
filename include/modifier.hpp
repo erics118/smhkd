@@ -92,12 +92,14 @@ inline const std::array<std::string, 13> hotkey_flag_names = {
     "fn",
 };
 
-inline const int alt_mod_offset = 0;
-inline const int shift_mod_offset = 3;
-inline const int cmd_mod_offset = 6;
-inline const int ctrl_mod_offset = 9;
-inline const int fn_mod_offset = 12;
-inline const int nx_mod_offset = 13;
+inline constexpr int ALT_MOD_OFFSET = 0;
+inline constexpr int SHIFT_MOD_OFFSET = 3;
+inline constexpr int CMD_MOD_OFFSET = 6;
+inline constexpr int CTRL_MOD_OFFSET = 9;
+
+inline constexpr int FN_MOD_OFFSET = 12;
+
+inline constexpr int NX_MOD_OFFSET = 13;
 
 struct CustomModifier {
     std::string name;
@@ -111,7 +113,12 @@ struct ModifierFlags {
 
     std::strong_ordering operator<=>(const ModifierFlags& other) const = default;
 
+    // check if this modifier flags is activated by another modifier flags
+    // usage: modifier_flags.isActivatedBy(event_input_modifier_flags)
     [[nodiscard]] bool isActivatedBy(const ModifierFlags& other) const;
+
+    // check if a modifier flag is set
+    [[nodiscard]] bool has(uint32_t flag) const;
 };
 
 template <>
@@ -134,9 +141,5 @@ struct std::formatter<ModifierFlags> : std::formatter<std::string_view> {
         return std::format_to(ctx.out(), "{}", str);
     }
 };
-
-// check if a chord has a given modifier flag
-[[nodiscard]] bool has_flags(const ModifierFlags& c, uint32_t flag);
-
 // convert event CGEventFlags to ModifierFlags
 [[nodiscard]] ModifierFlags eventModifierFlagsToHotkeyFlags(CGEventFlags flags);

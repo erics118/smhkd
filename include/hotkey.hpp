@@ -45,19 +45,16 @@ struct Hotkey {
         return std::strong_ordering::equal;
     }
 
-    Hotkey() {
-        chords.push_back(Chord{});
-    }
+    Hotkey() : chords{Chord{}} {}
 
-    explicit Hotkey(Chord chord) {
-        chords.push_back(chord);
-    }
+    explicit Hotkey(Chord chord) : chords{chord} {}
+
+    
 };
 
 template <>
 struct std::formatter<Hotkey> : std::formatter<std::string_view> {
     auto format(Hotkey hk, std::format_context& ctx) const {
-        // print out each part
         std::string str;
 
         for (size_t i = 0; i < hk.chords.size(); i++) {
@@ -67,9 +64,9 @@ struct std::formatter<Hotkey> : std::formatter<std::string_view> {
 
         std::string flags;
 
-        if (hk.passthrough) flags += "Passthrough";
-        if (hk.repeat) flags += (flags.empty() ? "" : " ") + std::string{"Repeat"};
-        if (hk.on_release) flags += (flags.empty() ? "" : " ") + std::string{"OnRelease"};
+        if (hk.passthrough) flags += "^";
+        if (hk.repeat) flags += "&";
+        if (hk.on_release) flags += "~";
         if (!flags.empty()) str += " (" + flags + ")";
 
         return std::format_to(ctx.out(), "{}", str);

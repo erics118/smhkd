@@ -3,7 +3,6 @@
 #include <string>
 #include <utility>
 
-#include "locale.hpp"
 #include "token.hpp"
 
 class Tokenizer {

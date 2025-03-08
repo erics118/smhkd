@@ -3,12 +3,12 @@
 #include "cli.hpp"
 #include "log.hpp"
 #include "parser.hpp"
-#include "service.hpp"
+#include "key_handler.hpp"
 #include "utils.hpp"
 
 #define PIDFILE_FMT "/tmp/smhkd_%s.pid"
 
-Service* service = nullptr;
+KeyHandler* service = nullptr;
 std::string config_file;
 
 static void sigusr1_handler(int signal) {
@@ -104,51 +104,51 @@ static bool check_privileges(void) {
     return result;
 }
 
-
+#include <libproc.h>
 #include <spawn.h>
 #include <sys/stat.h>
-#include <libproc.h>
 
 #define MAXLEN 512
 
-#define PATH_LAUNCHCTL   "/bin/launchctl"
+#define PATH_LAUNCHCTL "/bin/launchctl"
 #define NAME_SKHD_PLIST "com.erics118.smhkd"
 #define PATH_SKHD_PLIST "%s/Library/LaunchAgents/" NAME_SKHD_PLIST ".plist"
 
-#define SKHD_PLIST \
-    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" \
+#define SKHD_PLIST                                                                                                 \
+    "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"                                                                 \
     "<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n" \
-    "<plist version=\"1.0\">\n" \
-    "<dict>\n" \
-    "    <key>Label</key>\n" \
-    "    <string>" NAME_SKHD_PLIST "</string>\n" \
-    "    <key>ProgramArguments</key>\n" \
-    "    <array>\n" \
-    "        <string>%s</string>\n" \
-    "    </array>\n" \
-    "    <key>EnvironmentVariables</key>\n" \
-    "    <dict>\n" \
-    "        <key>PATH</key>\n" \
-    "        <string>%s</string>\n" \
-    "    </dict>\n" \
-    "    <key>RunAtLoad</key>\n" \
-    "    <true/>\n" \
-    "    <key>KeepAlive</key>\n" \
-    "    <dict>\n" \
-    "        <key>SuccessfulExit</key>\n" \
-    " 	     <false/>\n" \
-    " 	     <key>Crashed</key>\n" \
-    " 	     <true/>\n" \
-    "    </dict>\n" \
-    "    <key>StandardOutPath</key>\n" \
-    "    <string>/tmp/smhkd_%s.out.log</string>\n" \
-    "    <key>StandardErrorPath</key>\n" \
-    "    <string>/tmp/smhkd_%s.err.log</string>\n" \
-    "    <key>ProcessType</key>\n" \
-    "    <string>Interactive</string>\n" \
-    "    <key>Nice</key>\n" \
-    "    <integer>-20</integer>\n" \
-    "</dict>\n" \
+    "<plist version=\"1.0\">\n"                                                                                    \
+    "<dict>\n"                                                                                                     \
+    "    <key>Label</key>\n"                                                                                       \
+    "    <string>" NAME_SKHD_PLIST                                                                                 \
+    "</string>\n"                                                                                                  \
+    "    <key>ProgramArguments</key>\n"                                                                            \
+    "    <array>\n"                                                                                                \
+    "        <string>%s</string>\n"                                                                                \
+    "    </array>\n"                                                                                               \
+    "    <key>EnvironmentVariables</key>\n"                                                                        \
+    "    <dict>\n"                                                                                                 \
+    "        <key>PATH</key>\n"                                                                                    \
+    "        <string>%s</string>\n"                                                                                \
+    "    </dict>\n"                                                                                                \
+    "    <key>RunAtLoad</key>\n"                                                                                   \
+    "    <true/>\n"                                                                                                \
+    "    <key>KeepAlive</key>\n"                                                                                   \
+    "    <dict>\n"                                                                                                 \
+    "        <key>SuccessfulExit</key>\n"                                                                          \
+    " 	     <false/>\n"                                                                                            \
+    " 	     <key>Crashed</key>\n"                                                                                  \
+    " 	     <true/>\n"                                                                                             \
+    "    </dict>\n"                                                                                                \
+    "    <key>StandardOutPath</key>\n"                                                                             \
+    "    <string>/tmp/smhkd_%s.out.log</string>\n"                                                                 \
+    "    <key>StandardErrorPath</key>\n"                                                                           \
+    "    <string>/tmp/smhkd_%s.err.log</string>\n"                                                                 \
+    "    <key>ProcessType</key>\n"                                                                                 \
+    "    <string>Interactive</string>\n"                                                                           \
+    "    <key>Nice</key>\n"                                                                                        \
+    "    <integer>-20</integer>\n"                                                                                 \
+    "</dict>\n"                                                                                                    \
     "</plist>"
 
 //
@@ -160,15 +160,14 @@ static bool check_privileges(void) {
 //          4. Running (Start / Stop)
 //
 
-static int safe_exec(char *const argv[], bool suppress_output)
-{
+static int safe_exec(char* const argv[], bool suppress_output) {
     pid_t pid;
     posix_spawn_file_actions_t actions;
     posix_spawn_file_actions_init(&actions);
 
     if (suppress_output) {
-        posix_spawn_file_actions_addopen(&actions, STDOUT_FILENO, "/dev/null", O_WRONLY|O_APPEND, 0);
-        posix_spawn_file_actions_addopen(&actions, STDERR_FILENO, "/dev/null", O_WRONLY|O_APPEND, 0);
+        posix_spawn_file_actions_addopen(&actions, STDOUT_FILENO, "/dev/null", O_WRONLY | O_APPEND, 0);
+        posix_spawn_file_actions_addopen(&actions, STDERR_FILENO, "/dev/null", O_WRONLY | O_APPEND, 0);
     }
 
     int status = posix_spawn(&pid, argv[0], &actions, NULL, argv, NULL);
@@ -187,10 +186,9 @@ static int safe_exec(char *const argv[], bool suppress_output)
     }
 }
 
-static inline char *cfstring_copy(CFStringRef string)
-{
+static inline char* cfstring_copy(CFStringRef string) {
     CFIndex num_bytes = CFStringGetMaximumSizeForEncoding(CFStringGetLength(string), kCFStringEncodingUTF8);
-    char *result = (char *)malloc(num_bytes + 1);
+    char* result = (char*)malloc(num_bytes + 1);
     if (!result) return NULL;
 
     if (!CFStringGetCString(string, result, num_bytes + 1, kCFStringEncodingUTF8)) {
@@ -201,19 +199,18 @@ static inline char *cfstring_copy(CFStringRef string)
     return result;
 }
 
-extern "C" CFURLRef CFCopyHomeDirectoryURLForUser(void *user);
-static char *populate_plist_path(void)
-{
+extern "C" CFURLRef CFCopyHomeDirectoryURLForUser(void* user);
+static char* populate_plist_path(void) {
     CFURLRef homeurl_ref = CFCopyHomeDirectoryURLForUser(NULL);
     CFStringRef home_ref = homeurl_ref ? CFURLCopyFileSystemPath(homeurl_ref, kCFURLPOSIXPathStyle) : NULL;
-    char *home = home_ref ? cfstring_copy(home_ref) : NULL;
+    char* home = home_ref ? cfstring_copy(home_ref) : NULL;
 
     if (!home) {
         error("skhd: unable to retrieve home directory! abort..\n");
     }
 
-    int size = strlen(PATH_SKHD_PLIST)-2 + strlen(home) + 1;
-    char *result = (char *)malloc(size);
+    int size = strlen(PATH_SKHD_PLIST) - 2 + strlen(home) + 1;
+    char* result = (char*)malloc(size);
     if (!result) {
         error("skhd: could not allocate memory for plist path! abort..\n");
     }
@@ -224,14 +221,13 @@ static char *populate_plist_path(void)
     return result;
 }
 
-static char *populate_plist(int *length)
-{
-    char *user = getenv("USER");
+static char* populate_plist(int* length) {
+    char* user = getenv("USER");
     if (!user) {
         error("skhd: 'env USER' not set! abort..\n");
     }
 
-    char *path_env = getenv("PATH");
+    char* path_env = getenv("PATH");
     if (!path_env) {
         error("skhd: 'env PATH' not set! abort..\n");
     }
@@ -243,22 +239,20 @@ static char *populate_plist(int *length)
         error("skhd: unable to retrieve path of executable! abort..\n");
     }
 
-    int size = strlen(SKHD_PLIST)-8 + strlen(exe_path) + strlen(path_env) + (2*strlen(user)) + 1;
-    char *result = (char *)malloc(size);
+    int size = strlen(SKHD_PLIST) - 8 + strlen(exe_path) + strlen(path_env) + (2 * strlen(user)) + 1;
+    char* result = (char*)malloc(size);
     if (!result) {
         error("skhd: could not allocate memory for plist contents! abort..\n");
     }
 
     memset(result, 0, size);
     snprintf(result, size, SKHD_PLIST, exe_path, path_env, user, user);
-    *length = size-1;
+    *length = size - 1;
 
     return result;
 }
 
-
-static inline bool directory_exists(char *filename)
-{
+static inline bool directory_exists(char* filename) {
     struct stat buffer;
 
     if (stat(filename, &buffer) != 0) {
@@ -268,8 +262,7 @@ static inline bool directory_exists(char *filename)
     return S_ISDIR(buffer.st_mode);
 }
 
-static inline void ensure_directory_exists(char *skhd_plist_path)
-{
+static inline void ensure_directory_exists(char* skhd_plist_path) {
     //
     // NOTE(koekeishiya): Temporarily remove filename.
     // We know the filepath will contain a slash, as
@@ -277,7 +270,7 @@ static inline void ensure_directory_exists(char *skhd_plist_path)
     // the result..
     //
 
-    char *last_slash = strrchr(skhd_plist_path, '/');
+    char* last_slash = strrchr(skhd_plist_path, '/');
     *last_slash = '\0';
 
     if (!directory_exists(skhd_plist_path)) {
@@ -291,13 +284,12 @@ static inline void ensure_directory_exists(char *skhd_plist_path)
     *last_slash = '/';
 }
 
-static int service_install_internal(char *skhd_plist_path)
-{
+static int service_install_internal(char* skhd_plist_path) {
     int skhd_plist_length;
-    char *skhd_plist = populate_plist(&skhd_plist_length);
+    char* skhd_plist = populate_plist(&skhd_plist_length);
     ensure_directory_exists(skhd_plist_path);
 
-    FILE *handle = fopen(skhd_plist_path, "w");
+    FILE* handle = fopen(skhd_plist_path, "w");
     if (!handle) return 1;
 
     size_t bytes = fwrite(skhd_plist, skhd_plist_length, 1, handle);
@@ -307,9 +299,8 @@ static int service_install_internal(char *skhd_plist_path)
     return result;
 }
 
-static int service_install(void)
-{
-    char *skhd_plist_path = populate_plist_path();
+static int service_install(void) {
+    char* skhd_plist_path = populate_plist_path();
 
     if (file_exists(skhd_plist_path)) {
         error("skhd: service file '%s' is already installed! abort..\n", skhd_plist_path);
@@ -318,9 +309,8 @@ static int service_install(void)
     return service_install_internal(skhd_plist_path);
 }
 
-static int service_uninstall(void)
-{
-    char *skhd_plist_path = populate_plist_path();
+static int service_uninstall(void) {
+    char* skhd_plist_path = populate_plist_path();
 
     if (!file_exists(skhd_plist_path)) {
         error("skhd: service file '%s' is not installed! abort..\n", skhd_plist_path);
@@ -329,9 +319,8 @@ static int service_uninstall(void)
     return unlink(skhd_plist_path) == 0 ? 0 : 1;
 }
 
-static int service_start(void)
-{
-    char *skhd_plist_path = populate_plist_path();
+static int service_start(void) {
+    char* skhd_plist_path = populate_plist_path();
     if (!file_exists(skhd_plist_path)) {
         warn("skhd: service file '%s' is not installed! attempting installation..\n", skhd_plist_path);
 
@@ -351,11 +340,10 @@ static int service_start(void)
     // NOTE(koekeishiya): Check if service is bootstrapped
     //
 
-    const char *const args[] = { PATH_LAUNCHCTL, "print", service_target, NULL };
-    int is_bootstrapped = safe_exec((char *const*)args, true);
+    const char* const args[] = {PATH_LAUNCHCTL, "print", service_target, NULL};
+    int is_bootstrapped = safe_exec((char* const*)args, true);
 
     if (is_bootstrapped != 0) {
-
         //
         // NOTE(koekeishiya): Service is not bootstrapped and could be disabled.
         // There is no way to query if the service is disabled, and we cannot
@@ -363,32 +351,30 @@ static int service_start(void)
         // a no-op if the service is already enabled.
         //
 
-        const char *const args[] = { PATH_LAUNCHCTL, "enable", service_target, NULL };
-        safe_exec((char *const*)args, false);
+        const char* const args[] = {PATH_LAUNCHCTL, "enable", service_target, NULL};
+        safe_exec((char* const*)args, false);
 
         //
         // NOTE(koekeishiya): Bootstrap service into the target domain.
         // This will also start the program **iff* RunAtLoad is set to true.
         //
 
-        const char *const args2[] = { PATH_LAUNCHCTL, "bootstrap", domain_target, skhd_plist_path, NULL };
-        return safe_exec((char *const*)args2, false);
+        const char* const args2[] = {PATH_LAUNCHCTL, "bootstrap", domain_target, skhd_plist_path, NULL};
+        return safe_exec((char* const*)args2, false);
     } else {
-
         //
         // NOTE(koekeishiya): The service has already been bootstrapped.
         // Tell the bootstrapped service to launch immediately; it is an
         // error to bootstrap a service that has already been bootstrapped.
         //
 
-        const char *const args[] = { PATH_LAUNCHCTL, "kickstart", service_target, NULL };
-        return safe_exec((char *const*)args, false);
+        const char* const args[] = {PATH_LAUNCHCTL, "kickstart", service_target, NULL};
+        return safe_exec((char* const*)args, false);
     }
 }
 
-static int service_restart(void)
-{
-    char *skhd_plist_path = populate_plist_path();
+static int service_restart(void) {
+    char* skhd_plist_path = populate_plist_path();
     if (!file_exists(skhd_plist_path)) {
         error("skhd: service file '%s' is not installed! abort..\n", skhd_plist_path);
     }
@@ -396,13 +382,12 @@ static int service_restart(void)
     char service_target[MAXLEN];
     snprintf(service_target, sizeof(service_target), "gui/%d/%s", getuid(), NAME_SKHD_PLIST);
 
-    const char *const args[] = { PATH_LAUNCHCTL, "kickstart", "-k", service_target, NULL };
-    return safe_exec((char *const*)args, false);
+    const char* const args[] = {PATH_LAUNCHCTL, "kickstart", "-k", service_target, NULL};
+    return safe_exec((char* const*)args, false);
 }
 
-static int service_stop(void)
-{
-    char *skhd_plist_path = populate_plist_path();
+static int service_stop(void) {
+    char* skhd_plist_path = populate_plist_path();
     if (!file_exists(skhd_plist_path)) {
         error("skhd: service file '%s' is not installed! abort..\n", skhd_plist_path);
     }
@@ -417,21 +402,19 @@ static int service_stop(void)
     // NOTE(koekeishiya): Check if service is bootstrapped
     //
 
-    const char *const args[] = { PATH_LAUNCHCTL, "print", service_target, NULL };
-    int is_bootstrapped = safe_exec((char *const*)args, true);
+    const char* const args[] = {PATH_LAUNCHCTL, "print", service_target, NULL};
+    int is_bootstrapped = safe_exec((char* const*)args, true);
 
     if (is_bootstrapped != 0) {
-
         //
         // NOTE(koekeishiya): Service is not bootstrapped, but the program
         // could still be running an instance that was started **while the service
         // was bootstrapped**, so we tell it to stop said service.
         //
 
-        const char *const args[] = { PATH_LAUNCHCTL, "kill", "SIGTERM", service_target, NULL };
-        return safe_exec((char *const*)args, false);
+        const char* const args[] = {PATH_LAUNCHCTL, "kill", "SIGTERM", service_target, NULL};
+        return safe_exec((char* const*)args, false);
     } else {
-
         //
         // NOTE(koekeishiya): Service is bootstrapped; we stop a potentially
         // running instance of the program and unload the service, making it
@@ -442,12 +425,10 @@ static int service_stop(void)
         // it first).
         //
 
-        const char *const args[] = { PATH_LAUNCHCTL, "bootout", domain_target, skhd_plist_path, NULL };
-        return safe_exec((char *const*)args, false);
+        const char* const args[] = {PATH_LAUNCHCTL, "bootout", domain_target, skhd_plist_path, NULL};
+        return safe_exec((char* const*)args, false);
     }
 }
-
-
 
 int main(int argc, char* argv[]) {
     ArgsConfig config{
@@ -522,7 +503,7 @@ int main(int argc, char* argv[]) {
 
         auto hotkeys = parser.parseFile();
 
-        service = new Service(hotkeys);
+        service = new KeyHandler(hotkeys);
 
         service->init();
 

@@ -17,7 +17,9 @@ struct Chord {
 
     void setKeycode(const Token& t);
 
-    bool isActivatedBy(const Chord& other) const;
+    // check if this chord is activated by another chord
+    // usage: chord.isActivatedBy(event_input_chord)
+    [[nodiscard]] bool isActivatedBy(const Chord& other) const;
 };
 
 template <>

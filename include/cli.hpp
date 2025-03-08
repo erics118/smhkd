@@ -12,6 +12,7 @@ struct ArgsConfig {
 };
 
 struct Args {
+    // results
     std::unordered_map<std::string, std::string> args;
 
     // contains a long arg

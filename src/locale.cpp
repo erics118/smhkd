@@ -5,7 +5,7 @@
 
 #include <algorithm>
 
-#include "hotkey.hpp"
+#include "keysym.hpp"
 #include "log.hpp"
 
 std::string cfStringToString(CFStringRef cfString) {

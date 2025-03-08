@@ -3,9 +3,9 @@
 #include <Carbon/Carbon.h>
 #include <CoreFoundation/CoreFoundation.h>
 
+#include <map>
 #include <optional>
 #include <string>
-#include <map>
 #include <vector>
 
 #include "hotkey.hpp"
@@ -16,7 +16,7 @@
 // a visual indication of what is currently pressed
 // TODO: trackpad gestures
 // TODO: trackpad haptic feedback
-struct Service {
+struct KeyHandler {
     CFRunLoopRef runLoop{};
     CFMachPortRef eventTap{};
 
@@ -32,12 +32,12 @@ struct Service {
     // track timing between chord presses
     double lastKeyPressTime{};
 
-    explicit Service(std::map<Hotkey, std::string> hotkeys) : hotkeys{std::move(hotkeys)} {}
+    explicit KeyHandler(std::map<Hotkey, std::string> hotkeys) : hotkeys{std::move(hotkeys)} {}
 
-    // initialize the service
+    // initialize the key handler
     bool init();
 
-    // run the service
+    // run the key handler
     void run() const;
 
     // load the config file
