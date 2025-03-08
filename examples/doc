@@ -3,68 +3,88 @@
 # ( AAA )+ means 1 or more of AAA
 # AAA | BBB means AAA or BBB but not both
 
-# keys
-key         := single letter or number
-keycode     := hex code corresponding to macOS virtual keycode (0x00-0xFF)
-literal     := predefined keyword (enter, space, escape, etc)
+# config properties ============================================================================
+
+max_chord_interval := max time between chords
+hold_modifier_threshold := min time for a keysym to be held to be considered as a <held_mod>
+simultaneous_threshold := max time between keysyms to be considered as a <simultaneous_keysym>
+
+config_property_name := 'max_chord_interval' | 
+                       'hold_modifier_threshold' | 
+                       'simultaneous_threshold'
+
+config_property := <config_property_name> '=' <number>
+
+# keysym =======================================================================================
+key         := single letter or number # a-z, 0-9
+keycode     := hex code corresponding to macOS virtual keycode # 0x00-0xFF
+literal     := predefined keyword # enter, space, escape, etc
 
 identifier  := a string of letters, numbers, and underscores, starting with a letter
 number      := a sequence of digits
 
-# config properties
-config_property_name := 'max_chord_interval' | # max time between chords
-                       'hold_modifier_threshold' | # min time for a keysym to be held to be considered as a held_mod
-                       'simultaneous_threshold' # max time between keysyms to be considered as simultaneous
-
-config_property := <config_property_name> '=' <number>
-
-# mouse
 mouse       := 'left' | 'right' | 'middle'
 
-# simultaneous
-simultaneous := '[' <keysym> (',' <keysym>)+ ']'
+# a simple keysym
+simple_keysym := <key> | <keycode> | <literal> | <mouse>
 
-normal_keysym := <key> | <keycode> | <literal> | <mouse> | <simultaneous> 
+# two or more simple keysyms pressed at the same time
+simultaneous_keysym := '[' <simple_keysym> (',' <simple_keysym>)+ ']'
 
-brace_expansion := '{' <normal_keysym> (',' <normal_keysym>)+ '}'
+# a keysym with brace expansion, allowing for easily binding multiple keysyms
+brace_expansion_keysym := '{' <simple_keysym> (',' <simple_keysym>)+ '}'
 
 # keysym
-keysym      := <normal_keysym> | <brace_expansion>
+keysym      := <simple_keysym> | <brace_expansion_keysym> | <simultaneous_keysym>
 
-
-# modifiers
+# modifiers ====================================================================================
 base_mod    := 'cmd' | 'lcmd' | 'rcmd' | 
                'alt' | 'lalt' | 'ralt' | 
                'shift' | 'lshift' | 'rshift' | 
                'ctrl' | 'lctrl' | 'rctrl' | 
                'fn'
 
-custom_mod  := 'define_modifier' <identifier> '=' <modifiers> # custom modifiers can recursively define other custom modifiers
+# custom modifier for easily binding multiple modifiers
+# can recursively define other custom modifiers
+custom_mod  := 'define_modifier' <identifier> '=' <modifiers>
 
-held_mod    := '(' <keysym> ')' # allows holding down a key to act as a modifier
+# having a simple keysym to act as a modifier
+held_mod    := '(' <simple_keysym> ')'
 
 modifier    := <base_mod> | <custom_mod> | <held_mod> | <modifier> '+' <modifier>
 
-# flags
-passthrough := '@' # allows event to pass through to other applications
-repeat      := '&' # enables repeat based on macos settings, cannot be combined with ^
-on_release  := '^' # activates on release rather than press
+# flags ========================================================================================
+# allows event to pass through to other applications
+passthrough := '@'
 
+# enables repeat based on macos settings, cannot be combined with ^
+repeat      := '&'
+
+# activates on release rather than press
+on_release  := '^'
+
+# flags can be combined with other flags, but only in certain ways
+# other combinations not allowed
 flags       := <passthrough> | <repeat> | <on_release> | 
                <passthrough> <repeat> | <repeat> <passthrough>
-               # other combinations not allowed
 
-command     := any valid shell command on a single line. it can have brace expansions too
+# command ======================================================================================
+command     := any valid shell command on a single line. supports brace expansions
 
-# hotkey
+# chords =======================================================================================
+# a chord is a keysym, or modifier plus a keysym
 chord       := <keysym> | <modifier> '+' <keysym>
 
-chords      := <chord> (';' <chord>)* ';' <chord> |
-               <chord> (';' <chord>)* ';' <chord> <flags>
+# a list of chords, separated by semicolons
+# can have flags at the end
+chords      := <chord> (';' <chord>)* |
+               <chord> (';' <chord>)* <flags>
 
-# chords
+# hotkey is a list of chords followed by a command
+# there can be a newline after the ':' for readability
 hotkey      := <chords> ':' <command>
 
-config_file := <config_property> |
-               <define_modifier> |
-               <hotkey>
+# a config file contains only:
+#     <config_property>
+#     <custom_modifier>
+#     <hotkey>
