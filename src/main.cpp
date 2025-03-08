@@ -24,7 +24,9 @@ static void sigusr1_handler(int signal) {
 
     auto hotkeys = parser.parseFile();
 
-    service->hotkeys = hotkeys;
+    ConfigProperties config = parser.getConfigProperties();
+
+    service->reload(hotkeys, config);
 }
 
 static pid_t read_pid_file(void) {
@@ -205,7 +207,9 @@ int main(int argc, char* argv[]) {
 
         auto hotkeys = parser.parseFile();
 
-        service = new KeyHandler(hotkeys);
+        ConfigProperties config = parser.getConfigProperties();
+
+        service = new KeyHandler(hotkeys, config);
 
         service->init();
 

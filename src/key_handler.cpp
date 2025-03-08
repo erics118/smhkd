@@ -9,10 +9,6 @@
 #include "log.hpp"
 #include "utils.hpp"
 
-// Maximum time between chord presses (in seconds)
-// TODO: make this configurable
-constexpr double MAX_CHORD_INTERVAL = 3.0;
-
 bool KeyHandler::init() {
     // Get the main run loop
     runLoop = CFRunLoopGetCurrent();
@@ -72,22 +68,24 @@ CGEventRef KeyHandler::eventCallback(CGEventTapProxy /*proxy*/, CGEventType type
 
 void KeyHandler::clearSequence() {
     currentChords.clear();
-    lastKeyPressTime = 0;
+    lastKeyPressTime = std::chrono::time_point<std::chrono::system_clock>::min();
 }
 
 bool KeyHandler::checkAndExecuteSequence(const Chord& current) {
     // TODO: use mach for precise timing
     // https://developer.apple.com/library/archive/technotes/tn2169/_index.html#//apple_ref/doc/uid/DTS40013172-CH1-TNTAG2000
     auto now = std::chrono::system_clock::now();
-    double currentTime = std::chrono::duration<double>(now.time_since_epoch()).count();
 
-    if (lastKeyPressTime > 0 && (currentTime - lastKeyPressTime) > MAX_CHORD_INTERVAL) {
+    // if difference in milliseconds between now and lastKeyPressTime is greater
+    // than maxChordInterval, clear the sequence
+    if (now != std::chrono::time_point<std::chrono::system_clock>::min()
+        && now - lastKeyPressTime > config.maxChordInterval) {
         // debug("Chord sequence timed out, clearing");
         clearSequence();
         return false;
     }
 
-    lastKeyPressTime = currentTime;
+    lastKeyPressTime = now;
 
     currentChords.push_back(current);
 

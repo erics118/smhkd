@@ -3,11 +3,13 @@
 #include <Carbon/Carbon.h>
 #include <CoreFoundation/CoreFoundation.h>
 
+#include <chrono>
 #include <map>
 #include <optional>
 #include <string>
 #include <vector>
 
+#include "config_properties.hpp"
 #include "hotkey.hpp"
 
 // TODO: support loading from other files
@@ -22,16 +24,24 @@ struct KeyHandler {
     // map of hotkey to command
     std::map<Hotkey, std::string> hotkeys;
 
+    // Maximum time between chord presses (in milliseconds)
+    ConfigProperties config;
+
     // track last triggered chord for repeat detection
     std::optional<Chord> lastTriggeredChord;
 
     // track current chord sequence
     std::vector<Chord> currentChords;
-
     // track timing between chord presses
-    double lastKeyPressTime{};
+    std::chrono::time_point<std::chrono::system_clock> lastKeyPressTime;
 
-    explicit KeyHandler(std::map<Hotkey, std::string> hotkeys) : hotkeys{std::move(hotkeys)} {}
+    explicit KeyHandler(std::map<Hotkey, std::string> hotkeys, ConfigProperties config)
+        : hotkeys{std::move(hotkeys)}, config{config} {}
+
+    void reload(std::map<Hotkey, std::string> hotkeys, ConfigProperties config) {
+        this->hotkeys = std::move(hotkeys);
+        this->config = config;
+    }
 
     // initialize the key handler
     bool init();

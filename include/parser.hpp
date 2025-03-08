@@ -5,6 +5,7 @@
 #include <utility>
 #include <vector>
 
+#include "config_properties.hpp"
 #include "hotkey.hpp"
 #include "tokenizer.hpp"
 
@@ -12,11 +13,16 @@ class Parser {
    private:
     Tokenizer tokenizer;
 
+    ConfigProperties config;
+
    public:
     explicit Parser(const std::string& contents) : tokenizer(contents) {}
 
     // parse a file and return a map of hotkeys to commands
     std::map<Hotkey, std::string> parseFile();
+
+    // get the max chord interval
+    [[nodiscard]] ConfigProperties getConfigProperties() const { return config; }
 
    private:
     // map of custom modifier names to their flags
@@ -24,6 +30,9 @@ class Parser {
 
     // parse 'define_modifier'
     void parseDefineModifier();
+
+    // parse a config property
+    void parseConfigProperty();
 
     // get the builtin modifier flag for a given modifier
     int getBuiltinModifierFlag(const std::string& mod);

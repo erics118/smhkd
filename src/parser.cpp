@@ -21,6 +21,8 @@ std::map<Hotkey, std::string> Parser::parseFile() {
         }
         if (tk.type == TokenType::DefineModifier) {
             parseDefineModifier();
+        } else if (tk.type == TokenType::ConfigProperty) {
+            parseConfigProperty();
         } else {
             auto hks = parseHotkeyWithExpansion();
             for (const auto& [hk, command] : hks) {
@@ -43,6 +45,7 @@ void Parser::parseDefineModifier() {
     }
 
     // next token should be the name of custom modifier
+    // TODO: create a string token type
     Token nameToken = tokenizer.next();
     if (nameToken.type != TokenType::Modifier && nameToken.type != TokenType::Key) {
         throw std::runtime_error("Expected custom modifier name after define_modifier");
@@ -95,6 +98,44 @@ void Parser::parseDefineModifier() {
     // Store in the map
     debug("Storing custom modifier '{}' with expansions: {}", customName, expansions);
     customModifiers[customName] = expansions;
+}
+
+void Parser::parseConfigProperty() {
+    debug("Parsing a config property");
+
+    Token cpToken = tokenizer.next();
+    if (cpToken.type != TokenType::ConfigProperty) {
+        throw std::runtime_error("Expected a config property token");
+    }
+    std::string property = cpToken.text;
+
+    debug("got the {} config property", cpToken);
+
+    // then equal sign
+    Token eqToken = tokenizer.next();
+    if (eqToken.type != TokenType::Equals) {
+        throw std::runtime_error("Expected '=' after config property");
+    }
+
+    // then a single integer
+    // TODO: create a Integer token type
+    Token intToken = tokenizer.next();
+    if (intToken.type != TokenType::Modifier && intToken.type != TokenType::Key) {
+        throw std::runtime_error("Expected integer after '='");
+    }
+
+    int value = std::stoi(intToken.text);
+
+    // set the config property
+    if (property == "max_chord_interval") {
+        config.maxChordInterval = std::chrono::milliseconds(value);
+    } else if (property == "hold_modifier_threshold") {
+        config.holdModifierThreshold = std::chrono::milliseconds(value);
+    } else if (property == "simultaneous_threshold") {
+        config.simultaneousThreshold = std::chrono::milliseconds(value);
+    } else {
+        throw std::runtime_error("Unknown config property: " + property);
+    }
 }
 
 int Parser::getBuiltinModifierFlag(const std::string& mod) {

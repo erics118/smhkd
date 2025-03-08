@@ -127,6 +127,11 @@ Token Tokenizer::getNextToken() {
         return Token{TokenType::DefineModifier, text, startRow, startCol};
     }
 
+    // check if config property
+    if (text == "max_chord_interval" || text == "hold_modifier_threshold" || text == "simultaneous_threshold") {
+        return Token{TokenType::ConfigProperty, text, startRow, startCol};
+    }
+
     // if single char, key
     if (text.size() == 1) {
         return Token{TokenType::Key, text, startRow, startCol};
