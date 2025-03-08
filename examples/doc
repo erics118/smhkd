@@ -1,14 +1,36 @@
+# note
+# ( AAA )* means 0 or more of AAA
+# ( AAA )+ means 1 or more of AAA
+# AAA | BBB means AAA or BBB but not both
+
 # keys
 key         := single letter or number
 keycode     := hex code corresponding to macOS virtual keycode (0x00-0xFF)
 literal     := predefined keyword (enter, space, escape, etc)
 
 identifier  := a string of letters, numbers, and underscores, starting with a letter
+number      := a sequence of digits
+
+# config properties
+config_property_name := 'max_chord_interval' | # max time between chords
+                       'hold_modifier_threshold' | # min time for a keysym to be held to be considered as a held_mod
+                       'simultaneous_threshold' # max time between keysyms to be considered as simultaneous
+
+config_property := <config_property_name> '=' <number>
 
 # mouse
 mouse       := 'left' | 'right' | 'middle'
 
-keysym      := <key> | <keycode> | <literal> | <mouse>
+# simultaneous
+simultaneous := '[' <keysym> (',' <keysym>)+ ']'
+
+normal_keysym := <key> | <keycode> | <literal> | <mouse> | <simultaneous> 
+
+brace_expansion := '{' <normal_keysym> (',' <normal_keysym>)+ '}'
+
+# keysym
+keysym      := <normal_keysym> | <brace_expansion>
+
 
 # modifiers
 base_mod    := 'cmd' | 'lcmd' | 'rcmd' | 
@@ -17,7 +39,7 @@ base_mod    := 'cmd' | 'lcmd' | 'rcmd' |
                'ctrl' | 'lctrl' | 'rctrl' | 
                'fn'
 
-custom_mod  := <identifier> '=' <modifier> # custom modifiers can recursively define other custom modifiers
+custom_mod  := 'define_modifier' <identifier> '=' <modifiers> # custom modifiers can recursively define other custom modifiers
 
 held_mod    := '(' <keysym> ')' # allows holding down a key to act as a modifier
 
@@ -32,7 +54,7 @@ flags       := <passthrough> | <repeat> | <on_release> |
                <passthrough> <repeat> | <repeat> <passthrough>
                # other combinations not allowed
 
-command     := any valid shell command on a single line
+command     := any valid shell command on a single line. it can have brace expansions too
 
 # hotkey
 chord       := <keysym> | <modifier> '+' <keysym>
@@ -42,3 +64,7 @@ chords      := <chord> (';' <chord>)* ';' <chord> |
 
 # chords
 hotkey      := <chords> ':' <command>
+
+config_file := <config_property> |
+               <define_modifier> |
+               <hotkey>

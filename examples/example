@@ -1,4 +1,5 @@
-
+# define the max possible time between chords to be 5000 milliseconds
+max_chord_interval = 5000
 
 cmd + u :
     echo cmd u
@@ -35,3 +36,9 @@ alt +  t ; alt + a :
 
 alt + i ; alt + {1,2,3} :
     echo chorded alt t, then alt, {1,2,3}
+
+[a, b] :
+    echo both a and b are pressed
+
+cmd + alt + [c, d] :
+    echo cmd alt with c and d pressed together
