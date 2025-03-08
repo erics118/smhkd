@@ -32,11 +32,7 @@ int eventLRModifierFlagsToHotkeyFlags(CGEventFlags eventflags, int mod) {
 bool compareLRModifier(const ModifierFlags& a, const ModifierFlags& b, int mod) {
     // Check if generic modifier is set in hotkey a
     if (a.has(hotkey_flags[mod])) {
-        // If generic modifier is set in a, then b must have either:
-        // - left modifier, or
-        // - right modifier, or
-        // - generic modifier
-        return a.has(hotkey_flags[mod + l_offset])
+        return b.has(hotkey_flags[mod + l_offset])
             || b.has(hotkey_flags[mod + r_offset])
             || b.has(hotkey_flags[mod]);
     }
