@@ -9,6 +9,7 @@
 
 #include "log.hpp"
 #include "parser.hpp"
+#include "service.hpp"
 #include "utils.hpp"
 
 bool KeyHandler::init() {
@@ -161,7 +162,8 @@ bool KeyHandler::handleKeyEvent(CGEventRef event, CGEventType type) {
 
     if (exitChord.isActivatedBy(current)) {
         debug("exit hotkey, ralt-c, detected, ending program");
-        exit(0);
+        service_stop();
+        exit(1);
     }
 
     debug("handling event: {} {}", current, type == kCGEventKeyDown ? "" : "(Release)");
