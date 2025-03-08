@@ -28,4 +28,4 @@ clean:
     rm -rf ./build;
 
 sign:
-	codesign -fs "skhd-cert" ./build/smhkd
+	codesign -fs "smhkd-cert" ./build/smhkd
