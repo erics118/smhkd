@@ -15,6 +15,8 @@ Args parse_args(const std::vector<std::string>& argv, const ArgsConfig& config) 
                 res[a] = "true";
             } else if (i + 1 != argv.size() && config.long_args.contains(a + ':')) {
                 res[a] = argv[++i];
+            } else {
+                throw std::runtime_error("unknown long argument: " + a);
             }
         } else if (a.starts_with("-")) {  // short arg (one dash)
             a = a.substr(1);
@@ -22,6 +24,8 @@ Args parse_args(const std::vector<std::string>& argv, const ArgsConfig& config) 
             for (char ch : a) {
                 if (config.short_args.contains(std::string{ch})) {
                     res[std::string{ch}] = "true";
+                } else {
+                    throw std::runtime_error("unknown short argument: " + std::string{ch});
                 }
             }
             // check if the last short arg requires a value

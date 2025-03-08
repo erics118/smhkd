@@ -174,7 +174,7 @@ int main(int argc, char* argv[]) {
     try {
         parse_arguments(argc, argv);
     } catch (const std::exception& ex) {
-        error("arguments error: {}", ex.what());
+        error(ex.what());
     }
 
     create_pid_file();
