@@ -33,12 +33,6 @@ bool KeyHandler::init() {
 }
 
 bool KeyHandler::setupEventTap() {
-    // Request accessibility permissions
-    if (!AXIsProcessTrusted()) {
-        error("need to grant accessibility permissions to this application");
-        return false;
-    }
-
     // Create an event tap to monitor keyboard events
     CGEventMask eventMask = CGEventMaskBit(kCGEventKeyDown) | CGEventMaskBit(kCGEventKeyUp);
 
