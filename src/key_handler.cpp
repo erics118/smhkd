@@ -5,8 +5,10 @@
 
 #include <chrono>
 #include <cstdlib>
+#include <fstream>
 
 #include "log.hpp"
+#include "parser.hpp"
 #include "utils.hpp"
 
 bool KeyHandler::init() {
@@ -217,4 +219,30 @@ void KeyHandler::run() const {
     info("running key handler");
 
     CFRunLoopRun();
+}
+
+void KeyHandler::loadConfig(const std::string& config_file) {
+    if (config_file.empty() || !file_exists(config_file)) {
+        error("config file not found");
+    }
+
+    info("config file set to: {}", config_file);
+
+    std::ifstream file(config_file);
+
+    // read entire file into string
+    std::string configFileContents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+    try {
+        Parser parser(configFileContents);
+
+        auto hotkeys = parser.parseFile();
+
+        ConfigProperties config = parser.getConfigProperties();
+
+        this->hotkeys = hotkeys;
+        this->config = config;
+    } catch (const std::exception& ex) {
+        error("Error while parsing hotkeys: {}", ex.what());
+    }
 }

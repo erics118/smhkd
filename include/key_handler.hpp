@@ -18,6 +18,8 @@
 // TODO: trackpad gestures
 // TODO: trackpad haptic feedback
 struct KeyHandler {
+    std::string configFileName;
+
     CFRunLoopRef runLoop{};
     CFMachPortRef eventTap{};
 
@@ -35,12 +37,20 @@ struct KeyHandler {
     // track timing between chord presses
     std::chrono::time_point<std::chrono::system_clock> lastKeyPressTime;
 
-    explicit KeyHandler(std::map<Hotkey, std::string> hotkeys, ConfigProperties config)
-        : hotkeys{std::move(hotkeys)}, config{config} {}
+    explicit KeyHandler(const std::string& configFileName) : configFileName{configFileName} {
+        loadConfig(configFileName);
+    }
 
-    void reload(std::map<Hotkey, std::string> hotkeys, ConfigProperties config) {
-        this->hotkeys = std::move(hotkeys);
-        this->config = config;
+    // explicit KeyHandler(std::map<Hotkey, std::string> hotkeys, ConfigProperties config)
+    //     : hotkeys{std::move(hotkeys)}, config{config} {}
+
+    // void reload(std::map<Hotkey, std::string> hotkeys, ConfigProperties config) {
+    //     this->hotkeys = std::move(hotkeys);
+    //     this->config = config;
+    // }
+
+    void reload() {
+        loadConfig(configFileName);
     }
 
     // initialize the key handler
@@ -50,7 +60,7 @@ struct KeyHandler {
     void run() const;
 
     // load the config file
-    bool loadConfig(const std::string& configFile);
+    void loadConfig(const std::string& config_file);
 
     // setup the event tap
     bool setupEventTap();

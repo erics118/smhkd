@@ -240,12 +240,11 @@ std::vector<std::string> Parser::expandCommandString(const std::string& command)
         }
 
         std::string token = content.substr(pos, comma - pos);
+
         result.push_back(prefix + token + suffix);
 
         pos = comma + 1;  // Move past the comma
     }
-
-    // debug("Expanded command string '{}' to {}", command, result);
 
     return result;
 }
