@@ -77,10 +77,7 @@ int launchctl_exec(const std::vector<std::string>& args, bool suppress_output) {
     c_args.push_back(nullptr);
 
     posix_spawn_file_actions_t actions{};
-
-    if (posix_spawn_file_actions_init(&actions) != 0) {
-        throw std::runtime_error("failed to initialize spawn file actions");
-    }
+    posix_spawn_file_actions_init(&actions);
 
     if (suppress_output) {
         posix_spawn_file_actions_addopen(&actions, STDOUT_FILENO, "/dev/null", O_WRONLY | O_APPEND, 0);
@@ -100,9 +97,26 @@ int launchctl_exec(const std::vector<std::string>& args, bool suppress_output) {
     }
 
     if (WIFSIGNALED(status) || WIFSTOPPED(status)) {
-        throw std::runtime_error(std::format("Process terminated abnormally with status {}", status));
+        return 1;
     }
-    return 0;
+
+    return WEXITSTATUS(status);
+}
+
+[[nodiscard]] std::string get_domain_target() {
+    static std::string target = std::format("gui/{}", getuid());
+    return target;
+}
+
+[[nodiscard]] std::string get_service_target() {
+    static std::string target = std::format("gui/{}/{}", getuid(), PLIST_NAME);
+    return target;
+}
+
+[[nodiscard]] bool is_service_bootstrapped() {
+    auto service_target = std::format("gui/{}/{}", getuid(), PLIST_NAME);
+    auto result = launchctl_exec({"blame", service_target}, true);
+    return result == 0;
 }
 
 void service_install() {
@@ -118,6 +132,7 @@ void service_install() {
     std::filesystem::create_directories(std::filesystem::path{plist_path}.parent_path());
 
     std::ofstream file(plist_path);
+
     if (!file) {
         throw std::runtime_error(std::format("failed to open '{}' for writing", plist_path));
     }
@@ -147,22 +162,18 @@ void service_start() {
         service_install();
     }
 
-    auto service_target = std::format("gui/{}/{}", getuid(), PLIST_NAME);
-    auto domain_target = std::format("gui/{}", getuid());
+    auto service_target = get_service_target();
+    auto domain_target = get_domain_target();
 
-    // check if service is bootstrapped
-    auto result = launchctl_exec({"print", service_target}, true);
-    debug("result: {}", result);
-    if (result != 0) {
+    if (!is_service_bootstrapped()) {
         // not bootstrapped, try to enable it
-        launchctl_exec({"enable", service_target});
+        launchctl_exec({"enable", service_target}, true);
 
         // bootstrap the service
-        launchctl_exec({"bootstrap", domain_target, plist_path});
+        launchctl_exec({"bootstrap", domain_target, plist_path}, true);
     } else {
-        debug("{} is already bootstrapped", service_target);
         // bootstrapped, kickstart it
-        launchctl_exec({"kickstart",  service_target});
+        launchctl_exec({"kickstart", service_target}, true);
     }
 }
 
@@ -184,20 +195,17 @@ void service_stop() {
         throw std::runtime_error(std::format("service file '{}' is not installed", plist_path));
     }
 
-    auto service_target = std::format("gui/{}/{}", getuid(), PLIST_NAME);
-    auto domain_target = std::format("gui/{}", getuid());
+    auto service_target = get_service_target();
+    auto domain_target = get_domain_target();
 
-    // check if service is bootstrapped
-    auto result = launchctl_exec({"print", service_target}, true);
-
-    if (result != 0) {
+    if (!is_service_bootstrapped()) {
         // not bootstrapped, just try to stop it
-        launchctl_exec({"kill", "SIGTERM", service_target});
+        launchctl_exec({"kill", "SIGTERM", service_target}, true);
     } else {
         // bootstrapped, bootout it
-        launchctl_exec({"bootout", domain_target, plist_path});
+        launchctl_exec({"bootout", domain_target, plist_path}, true);
 
         // disable it
-        // launchctl_exec({"disable", service_target});
+        launchctl_exec({"disable", service_target}, true);
     }
 }

@@ -8,16 +8,11 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include <array>
 #include <expected>
 #include <filesystem>
-#include <format>
-#include <fstream>
 #include <string>
 #include <string_view>
 #include <vector>
-
-#include "utils.hpp"
 
 constexpr std::string LAUNCHCTL_PATH = "/bin/launchctl";
 
@@ -70,6 +65,12 @@ std::string get_plist_contents();
 void ensure_directory_exists(const std::filesystem::path& path);
 
 int launchctl_exec(const std::vector<std::string>& args, bool suppress_output = false);
+
+[[nodiscard]] std::string get_service_target();
+
+[[nodiscard]] std::string get_domain_target();
+
+[[nodiscard]] bool is_service_bootstrapped();
 
 void service_install();
 

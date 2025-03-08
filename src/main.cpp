@@ -122,33 +122,38 @@ void parse_arguments(int argc, char* argv[]) {
 
     if (args.get("install-service")) {
         service_install();
+        info("service installed");
         exit(0);
     }
 
     if (args.get("uninstall-service")) {
         service_uninstall();
+        info("service uninstalled");
         exit(0);
     }
 
     if (args.get("start-service")) {
         service_start();
+        info("service started");
         exit(0);
     }
 
     if (args.get("stop-service")) {
         service_stop();
+        info("service stopped");
         exit(0);
     }
 
     if (args.get("restart-service")) {
         service_restart();
+        info("service restarted");
         exit(0);
     }
 
     if (args.get('r', "reload")) {
-        info("reloading config");
         pid_t pid = read_pid_file();
         if (pid) kill(pid, SIGUSR1);
+        info("config reloaded");
         exit(0);
     }
 
@@ -167,7 +172,7 @@ int main(int argc, char* argv[]) {
     try {
         parse_arguments(argc, argv);
     } catch (const std::exception& ex) {
-        error(ex.what());
+        error("arguments error: {}", ex.what());
     }
 
     create_pid_file();
