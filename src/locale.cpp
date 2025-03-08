@@ -7,21 +7,7 @@
 
 #include "keysym.hpp"
 #include "log.hpp"
-
-std::string cfStringToString(CFStringRef cfString) {
-    if (!cfString) return {};
-
-    CFIndex length = CFStringGetLength(cfString);
-    CFIndex maxSize = CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;
-    std::string result(maxSize, '\0');
-
-    if (!CFStringGetCString(cfString, result.data(), maxSize, kCFStringEncodingUTF8)) {
-        return {};
-    }
-
-    result.resize(strlen(result.c_str()));
-    return result;
-}
+#include "utils.hpp"
 
 bool initializeKeycodeMap() {
     static const std::array<uint32_t, 36> layoutDependentKeycodes = {

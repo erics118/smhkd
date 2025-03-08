@@ -1,9 +1,13 @@
 #pragma once
 
+#include <CoreFoundation/CFBase.h>
 #include <sys/stat.h>
 
 #include <optional>
 #include <string>
+
+// convert a CFStringRef to a std::string
+[[nodiscard]] std::string cfStringToString(CFStringRef cfString);
 
 // check if a file exists
 [[nodiscard]] bool file_exists(const std::string& filename);

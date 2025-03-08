@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Carbon/Carbon.h>
 #include <CoreGraphics/CGEventTypes.h>
 #include <IOKit/hidsystem/ev_keymap.h>
 
@@ -8,7 +9,6 @@
 #include <string>
 
 #include "locale.hpp"
-
 
 struct Keysym {
     uint32_t keycode;

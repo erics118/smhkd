@@ -1,5 +1,6 @@
 #include "utils.hpp"
 
+#include <CoreFoundation/CFString.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -7,6 +8,21 @@
 #include <format>
 #include <optional>
 #include <string>
+
+std::string cfStringToString(CFStringRef cfString) {
+    if (!cfString) return {};
+
+    CFIndex length = CFStringGetLength(cfString);
+    CFIndex maxSize = CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;
+    std::string result(maxSize, '\0');
+
+    if (!CFStringGetCString(cfString, result.data(), maxSize, kCFStringEncodingUTF8)) {
+        return {};
+    }
+
+    result.resize(strlen(result.c_str()));
+    return result;
+}
 
 bool file_exists(const std::string& filename) {
     struct stat buffer{};

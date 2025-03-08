@@ -115,23 +115,43 @@ bool parse_arguments(int argc, char* argv[]) {
     Args args = parse_args(std::vector<std::string>(argv, argv + argc), config);
 
     if (args.get("install-service")) {
-        exit(service_install());
+        if (auto result = service_install(); !result) {
+            error("failed to install service: {}", result.error());
+            return false;
+        }
+        return true;
     }
 
     if (args.get("uninstall-service")) {
-        exit(service_uninstall());
+        if (auto result = service_uninstall(); !result) {
+            error("failed to uninstall service: {}", result.error());
+            return false;
+        }
+        return true;
     }
 
     if (args.get("start-service")) {
-        exit(service_start());
+        if (auto result = service_start(); !result) {
+            error("failed to start service: {}", result.error());
+            return false;
+        }
+        return true;
     }
 
     if (args.get("stop-service")) {
-        exit(service_stop());
+        if (auto result = service_stop(); !result) {
+            error("failed to stop service: {}", result.error());
+            return false;
+        }
+        return true;
     }
 
     if (args.get("restart-service")) {
-        exit(service_restart());
+        if (auto result = service_restart(); !result) {
+            error("failed to restart service: {}", result.error());
+            return false;
+        }
+        return true;
     }
 
     if (args.get('r', "reload")) {
