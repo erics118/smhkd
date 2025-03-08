@@ -216,8 +216,6 @@ void KeyHandler::run() const {
         return;
     }
 
-    debug("watching for shortcuts");
-
     // Run the main loop
     info("running key handler");
 

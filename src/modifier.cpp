@@ -54,8 +54,7 @@ bool compareNX(const ModifierFlags& a, const ModifierFlags& b) {
 }  // namespace
 
 bool ModifierFlags::has(uint32_t flag) const {
-    bool result = flags & flag;
-    return result;
+    return flags & flag;
 }
 
 ModifierFlags eventModifierFlagsToHotkeyFlags(CGEventFlags flags) {
