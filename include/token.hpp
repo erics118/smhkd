@@ -19,6 +19,10 @@ enum class TokenType {
     EndOfFile,       // end of file
     OpenBrace,       // '{'
     CloseBrace,      // '}'
+    OpenBracket,     // '['
+    CloseBracket,    // ']'
+    OpenParen,       // '('
+    CloseParen,      // ')'
     Comma,           // ','
     Semicolon,       // ';'
     ConfigProperty,  // a config property
@@ -43,6 +47,10 @@ struct std::formatter<TokenType> : std::formatter<std::string_view> {
             case TokenType::EndOfFile: name = "EndOfFile"; break;
             case TokenType::OpenBrace: name = "OpenBrace"; break;
             case TokenType::CloseBrace: name = "CloseBrace"; break;
+            case TokenType::OpenBracket: name = "OpenBracket"; break;
+            case TokenType::CloseBracket: name = "CloseBracket"; break;
+            case TokenType::OpenParen: name = "OpenParen"; break;
+            case TokenType::CloseParen: name = "CloseParen"; break;
             case TokenType::Comma: name = "Comma"; break;
             case TokenType::Semicolon: name = "Semicolon"; break;
             case TokenType::ConfigProperty: name = "ConfigProperty"; break;

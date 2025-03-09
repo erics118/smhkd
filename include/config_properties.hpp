@@ -11,5 +11,5 @@ struct ConfigProperties {
     std::chrono::milliseconds holdModifierThreshold{500};
 
     // max time between keysyms to be considered as simultaneous
-    std::chrono::milliseconds simultaneousThreshold{50};
+    std::chrono::milliseconds simultaneousThreshold{100};
 };

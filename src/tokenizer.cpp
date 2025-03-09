@@ -95,6 +95,16 @@ Token Tokenizer::getNextToken() {
         return Token{TokenType::CloseBrace, "}", startRow, startCol};
     }
 
+    if (c == '[') {
+        advance();
+        return Token{TokenType::OpenBracket, "[", startRow, startCol};
+    }
+
+    if (c == ']') {
+        advance();
+        return Token{TokenType::CloseBracket, "]", startRow, startCol};
+    }
+
     if (c == ',') {
         advance();
         return Token{TokenType::Comma, ",", startRow, startCol};

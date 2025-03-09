@@ -32,6 +32,10 @@ struct KeyHandler {
     // track last triggered chord for repeat detection
     std::optional<Chord> lastTriggeredChord;
 
+    // track simultaneous keys
+    std::vector<Keysym> simultaneousKeys;
+    std::chrono::time_point<std::chrono::system_clock> firstSimultaneousKeyTime;
+
     // track current chord sequence
     std::vector<Chord> currentChords;
     // track timing between chord presses
@@ -74,6 +78,9 @@ struct KeyHandler {
    private:
     // clear the current sequence
     void clearSequence();
+
+    // clear the simultaneous keys
+    void clearSimultaneousKeys();
 
     // check if sequence matches and execute
     bool checkAndExecuteSequence(const Chord& current);

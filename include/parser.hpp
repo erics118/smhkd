@@ -49,6 +49,9 @@ class Parser {
     // parse brace expansion '{1,2,3}' into a vector of strings
     std::vector<Token> parseKeyBraceExpansion();
 
+    // parse simultaneous keys '[a,b]' into a vector of strings
+    std::vector<Token> parseSimultaneousKeys();
+
     // expand command string with brace expansion
     std::vector<std::string> expandCommandString(const std::string& command);
 

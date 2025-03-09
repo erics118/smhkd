@@ -19,7 +19,6 @@ find_library(CORE_FOUNDATION_FRAMEWORK CoreFoundation REQUIRED)
 add_executable(${PROJECT_NAME}
     src/chord.cpp
     src/cli.cpp
-    src/hotkey.cpp
     src/key_handler.cpp
     src/keysym.cpp
     src/locale.cpp

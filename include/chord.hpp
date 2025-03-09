@@ -20,6 +20,8 @@ struct Chord {
     // check if this chord is activated by another chord
     // usage: chord.isActivatedBy(event_input_chord)
     [[nodiscard]] bool isActivatedBy(const Chord& other) const;
+
+    [[nodiscard]] bool isSimultaneous() const;
 };
 
 template <>

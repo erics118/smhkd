@@ -70,8 +70,15 @@ CGEventRef KeyHandler::eventCallback(CGEventTapProxy /*proxy*/, CGEventType type
 }
 
 void KeyHandler::clearSequence() {
+    debug("clearing sequence");
     currentChords.clear();
     lastKeyPressTime = std::chrono::time_point<std::chrono::system_clock>::min();
+}
+
+void KeyHandler::clearSimultaneousKeys() {
+    debug("clearing simultaneous keys");
+    simultaneousKeys.clear();
+    firstSimultaneousKeyTime = std::chrono::time_point<std::chrono::system_clock>::min();
 }
 
 bool KeyHandler::checkAndExecuteSequence(const Chord& current) {
@@ -83,7 +90,7 @@ bool KeyHandler::checkAndExecuteSequence(const Chord& current) {
     // than maxChordInterval, clear the sequence
     if (now != std::chrono::time_point<std::chrono::system_clock>::min()
         && now - lastKeyPressTime > config.maxChordInterval) {
-        // debug("Chord sequence timed out, clearing");
+        debug("Chord sequence timed out, clearing");
         clearSequence();
         return false;
     }
@@ -139,21 +146,19 @@ bool KeyHandler::checkAndExecuteSequence(const Chord& current) {
 }
 
 bool KeyHandler::handleKeyEvent(CGEventRef event, CGEventType type) {
-    auto keyCode = static_cast<CGKeyCode>(CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode));
-    CGEventFlags flags = CGEventGetFlags(event);
-    bool isRepeat = CGEventGetIntegerValueField(event, kCGKeyboardEventAutorepeat) != 0;
-
     Chord current{
         .keysym = {
-            .keycode = keyCode,
+            .keycodes = {static_cast<CGKeyCode>(CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode))},
         },
-        .modifiers = eventModifierFlagsToHotkeyFlags(flags),
+        .modifiers = eventModifierFlagsToHotkeyFlags(CGEventGetFlags(event)),
     };
+
+    bool isRepeat = CGEventGetIntegerValueField(event, kCGKeyboardEventAutorepeat) != 0;
 
     // Special handling for to exit
     auto exitChord = Chord{
         .keysym = {
-            .keycode = 8,
+            .keycodes = {8},
         },
         .modifiers = {
             .flags = Hotkey_Flag_RAlt,
@@ -169,9 +174,79 @@ bool KeyHandler::handleKeyEvent(CGEventRef event, CGEventType type) {
     debug("handling event: {} {}", current, type == kCGEventKeyDown ? "" : "(Release)");
 
     // Clear last triggered chord on key up
-    if (type == kCGEventKeyUp && lastTriggeredChord && lastTriggeredChord->keysym.keycode == keyCode) {
+    if (type == kCGEventKeyUp && lastTriggeredChord && lastTriggeredChord->keysym == current.keysym) {
         lastTriggeredChord = std::nullopt;
         // debug("cleared last triggered chord");
+    }
+
+    // Handle simultaneous keys
+    if (type == kCGEventKeyDown && !isRepeat) {
+        auto now = std::chrono::system_clock::now();
+
+        // If this is the first key in a potential simultaneous sequence
+        if (simultaneousKeys.empty()) {
+            debug("first simultaneous key detected: {}", current.keysym);
+            simultaneousKeys.push_back(current.keysym);
+            firstSimultaneousKeyTime = now;
+
+            for (const auto& key : simultaneousKeys) {
+                debug("simultaneous key: {}", key);
+            }
+            return true;
+        } else {
+            // Check if this key was pressed within the simultaneous threshold
+            debug("simultaneous key detected: {}", current.keysym);
+            debug("first simultaneous key time: {}", firstSimultaneousKeyTime);
+            debug("now: {}", now);
+            debug("simultaneous threshold: {}", config.simultaneousThreshold);
+            debug("difference (ms): {}", std::chrono::duration_cast<std::chrono::milliseconds>(now - firstSimultaneousKeyTime).count());
+            if (now - firstSimultaneousKeyTime <= config.simultaneousThreshold) {
+                debug("simultaneous key detected: {}", current.keysym);
+                simultaneousKeys.push_back(current.keysym);
+
+                // Check for simultaneous hotkeys
+                for (const auto& [hotkey, command] : hotkeys) {
+                    if (!hotkey.chords.back().isSimultaneous()) {
+                        continue;
+                    }
+
+                    // Check if all required keys are pressed
+                    bool allKeysPressed = true;
+                    for (const auto& keycode : hotkey.chords[0].keysym.keycodes) {
+                        bool keyFound = false;
+                        for (const auto& simKey : simultaneousKeys) {
+                            if (simKey.keycodes.contains(keycode)) {
+                                keyFound = true;
+                                break;
+                            }
+                        }
+                        if (!keyFound) {
+                            allKeysPressed = false;
+                            break;
+                        }
+                    }
+
+                    if (allKeysPressed) {
+                        if (!command.empty()) {
+                            debug("executing simultaneous command: {}", command);
+                            executeCommand(command);
+                        }
+                        clearSimultaneousKeys();
+                        return true;  // Consume the event
+                    } else {
+                        debug("not all keys pressed for simultaneous hotkey");
+                        debug("waiting for keys to be pressed");
+                        return true;
+                    }
+                }
+            } else {
+                // Outside threshold, treat as new sequence
+                debug("simultaneous key outside threshold, treating as new sequence");
+                clearSimultaneousKeys();
+                simultaneousKeys.push_back(current.keysym);
+                firstSimultaneousKeyTime = now;
+            }
+        }
     }
 
     // Only process key down events for sequences
@@ -183,15 +258,14 @@ bool KeyHandler::handleKeyEvent(CGEventRef event, CGEventType type) {
 
     // Check for single hotkeys
     for (const auto& [hotkey, command] : hotkeys) {
-        // Skip sequence hotkeys
-        if (hotkey.chords.size() > 1) {
+        // Skip sequence hotkeys and simultaneous hotkeys
+        if (hotkey.chords.back().isSimultaneous()) {
             continue;
         }
 
         if (hotkey.chords[0].isActivatedBy(current)) {
             if ((!hotkey.on_release && type == kCGEventKeyDown || hotkey.on_release && type == kCGEventKeyUp)
                 && (isRepeat && hotkey.repeat || !isRepeat)) {
-                // debug("consumed");
                 if (!command.empty()) {
                     debug("executing command: {}", command);
                     executeCommand(command);

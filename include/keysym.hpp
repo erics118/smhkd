@@ -6,12 +6,13 @@
 
 #include <array>
 #include <print>
+#include <set>
 #include <string>
 
 #include "locale.hpp"
 
 struct Keysym {
-    uint32_t keycode;
+    std::set<uint32_t> keycodes;
 
     std::strong_ordering operator<=>(const Keysym& other) const = default;
 };
@@ -64,6 +65,18 @@ int getImplicitFlags(const std::string& literal);
 template <>
 struct std::formatter<Keysym> : std::formatter<std::string_view> {
     auto format(Keysym keysym, std::format_context& ctx) const {
-        return std::format_to(ctx.out(), "{}", getNameOfKeycode(keysym.keycode));
+        if (keysym.keycodes.size() == 1) {
+            return std::format_to(ctx.out(), "{}", getNameOfKeycode(*keysym.keycodes.begin()));
+        }
+
+        std::string str = "[ ";
+        for (const auto& keycode : keysym.keycodes) {
+            str += getNameOfKeycode(keycode);
+            str += ", ";
+        }
+        str.pop_back();
+        str.pop_back();
+        str += " ]";
+        return std::format_to(ctx.out(), "{}", str);
     }
 };

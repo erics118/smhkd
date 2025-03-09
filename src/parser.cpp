@@ -213,6 +213,38 @@ std::vector<Token> Parser::parseKeyBraceExpansion() {
     return items;
 }
 
+std::vector<Token> Parser::parseSimultaneousKeys() {
+    std::vector<Token> items;
+    Token current;
+
+    // Consume opening bracket
+    Token tk = tokenizer.next();
+    if (tk.type != TokenType::OpenBracket) {
+        throw std::runtime_error("Expected opening bracket");
+    }
+
+    while (true) {
+        tk = tokenizer.next();
+
+        if (tk.type == TokenType::Key || tk.type == TokenType::Literal || tk.type == TokenType::KeyHex) {
+            current = tk;
+
+            tk = tokenizer.next();
+            if (tk.type == TokenType::Comma) {
+                items.push_back(current);
+                continue;
+            }
+            if (tk.type == TokenType::CloseBracket) {
+                items.push_back(current);
+                break;
+            }
+            throw std::runtime_error("Unexpected token in simultaneous keys");
+        }
+    }
+
+    return items;
+}
+
 std::vector<std::string> Parser::expandCommandString(const std::string& command) {
     std::vector<std::string> result;
 
@@ -300,6 +332,13 @@ std::vector<std::pair<Hotkey, std::string>> Parser::parseHotkeyWithExpansion() {
             }
             if (tk.type == TokenType::OpenBrace) {
                 expansionKeysyms = parseKeyBraceExpansion();
+                continue;
+            }
+            if (tk.type == TokenType::OpenBracket) {
+                std::vector<Token> simKeys = parseSimultaneousKeys();
+                for (const auto& simKey : simKeys) {
+                    hotkey.chords.back().setKeycode(simKey);
+                }
                 continue;
             }
             if (tk.type == TokenType::Literal || tk.type == TokenType::Key || tk.type == TokenType::KeyHex) {
