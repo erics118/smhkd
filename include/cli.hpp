@@ -1,5 +1,6 @@
 #pragma once
 
+#include <format>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -44,6 +45,17 @@ struct Args {
             return short_result;
         }
         return get(long_arg);
+    }
+};
+
+template <>
+struct std::formatter<Args> : std::formatter<std::string_view> {
+    auto format(const Args& args, std::format_context& ctx) const {
+        std::string result;
+        for (const auto& [key, value] : args.args) {
+            result += std::format("{}: {}\n", key, value);
+        }
+        return std::format_to(ctx.out(), "{}", result);
     }
 };
 
