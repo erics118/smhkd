@@ -26,7 +26,7 @@ enum class TokenType {
 
 template <>
 struct std::formatter<TokenType> : std::formatter<std::string_view> {
-    auto format(TokenType tt, std::format_context& ctx) const {
+    auto format(const TokenType& tt, std::format_context& ctx) const {
         std::string_view name;
         switch (tt) {
             case TokenType::DefineModifier: name = "DefineModifier"; break;

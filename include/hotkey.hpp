@@ -52,7 +52,7 @@ struct Hotkey {
 
 template <>
 struct std::formatter<Hotkey> : std::formatter<std::string_view> {
-    auto format(Hotkey hk, std::format_context& ctx) const {
+    auto format(const Hotkey& hk, std::format_context& ctx) const {
         std::string str;
 
         for (size_t i = 0; i < hk.chords.size(); i++) {

@@ -123,7 +123,7 @@ struct ModifierFlags {
 
 template <>
 struct std::formatter<ModifierFlags> : std::formatter<std::string_view> {
-    auto format(ModifierFlags flags, std::format_context& ctx) const {
+    auto format(const ModifierFlags& flags, std::format_context& ctx) const {
         std::string str;
         if (flags.flags == 0) {
             return std::format_to(ctx.out(), "{}", str);

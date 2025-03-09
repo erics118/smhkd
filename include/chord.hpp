@@ -24,7 +24,7 @@ struct Chord {
 
 template <>
 struct std::formatter<Chord> : std::formatter<std::string_view> {
-    auto format(Chord chord, std::format_context& ctx) const {
+    auto format(const Chord& chord, std::format_context& ctx) const {
         if (chord.modifiers.flags == 0) {
             return std::format_to(ctx.out(), "{}", chord.keysym);
         }

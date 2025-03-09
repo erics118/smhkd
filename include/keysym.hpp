@@ -63,7 +63,7 @@ int getImplicitFlags(const std::string& literal);
 
 template <>
 struct std::formatter<Keysym> : std::formatter<std::string_view> {
-    auto format(Keysym keysym, std::format_context& ctx) const {
+    auto format(const Keysym& keysym, std::format_context& ctx) const {
         return std::format_to(ctx.out(), "{}", getNameOfKeycode(keysym.keycode));
     }
 };
