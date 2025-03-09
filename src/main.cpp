@@ -1,5 +1,6 @@
 #include "cli.hpp"
 #include "key_handler.hpp"
+#include "key_observer_handler.hpp"
 #include "log.hpp"
 #include "process.hpp"
 #include "service.hpp"
@@ -15,10 +16,11 @@ static void sigusr1_handler(int /*signal*/) {
 
 void parse_arguments(int argc, char* argv[]) {
     ArgsConfig config{
-        .short_args = {"c:", "r"},
+        .short_args = {"c:", "r", "o"},
         .long_args = {
             "config:",
             "reload",
+            "observe",
             "install-service",
             "uninstall-service",
             "start-service",
@@ -58,6 +60,12 @@ void parse_arguments(int argc, char* argv[]) {
         exit(0);
     }
 
+    if (args.get('o', "observe")) {
+        KeyObserverHandler observer;
+        observer.init();
+        observer.run();
+    }
+
     if (args.get('r', "reload")) {
         pid_t pid = read_pid_file();
         if (pid) kill(pid, SIGUSR1);
@@ -77,6 +85,10 @@ int main(int argc, char* argv[]) {
         error("running as root is not allowed");
     }
 
+    if (!initializeKeycodeMap()) {
+        error("failed to initialize keycode map");
+    }
+
     try {
         parse_arguments(argc, argv);
     } catch (const std::exception& ex) {
@@ -89,19 +101,8 @@ int main(int argc, char* argv[]) {
         error("must run with accessibility access");
     }
 
-    if (!initializeKeycodeMap()) {
-        error("failed to initialize keycode map");
-    }
-
     signal(SIGCHLD, SIG_IGN);
     signal(SIGUSR1, sigusr1_handler);
-
-    if (config_file.empty() || !file_exists(config_file)) {
-        error("config file not found");
-        return 1;
-    }
-
-    info("config file set to: {}", config_file);
 
     try {
         service = new KeyHandler(config_file);

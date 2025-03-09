@@ -21,6 +21,7 @@ add_executable(${PROJECT_NAME}
     src/cli.cpp
     src/hotkey.cpp
     src/key_handler.cpp
+    src/key_observer_handler.cpp
     src/keysym.cpp
     src/locale.cpp
     src/main.cpp
