@@ -166,8 +166,6 @@ bool KeyHandler::handleKeyEvent(CGEventRef event, CGEventType type) {
         exit(1);
     }
 
-    debug("handling event: {} {}", current, type == kCGEventKeyDown ? "" : "(Release)");
-
     // Clear last triggered chord on key up
     if (type == kCGEventKeyUp && lastTriggeredChord && lastTriggeredChord->keysym.keycode == keyCode) {
         lastTriggeredChord = std::nullopt;

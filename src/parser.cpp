@@ -239,9 +239,9 @@ std::vector<std::string> Parser::expandCommandString(const std::string& command)
             comma = content.size();  // Last token
         }
 
-        std::string token = content.substr(pos, comma - pos);
+        std::string rest = content.substr(pos, comma - pos) + suffix;
 
-        result.push_back(prefix + token + suffix);
+        result.push_back(prefix + rest);
 
         pos = comma + 1;  // Move past the comma
     }
@@ -250,7 +250,6 @@ std::vector<std::string> Parser::expandCommandString(const std::string& command)
 }
 
 std::vector<std::pair<Hotkey, std::string>> Parser::parseHotkeyWithExpansion() {
-    // std::vector<Hotkey> hotkeys;
     Hotkey hotkey;
     std::string command;
     std::vector<Token> expansionKeysyms;
