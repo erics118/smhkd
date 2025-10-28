@@ -5,6 +5,7 @@
 
 #include <cstdlib>
 
+#include "chord.hpp"
 #include "log.hpp"
 
 bool KeyObserverHandler::init() {

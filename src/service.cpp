@@ -9,7 +9,6 @@
 #include <unistd.h>
 
 #include <array>
-#include <expected>
 #include <filesystem>
 #include <format>
 #include <fstream>
