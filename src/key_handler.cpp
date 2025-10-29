@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <fstream>
 
+#include "interpreter.hpp"
 #include "log.hpp"
 #include "parser.hpp"
 #include "service.hpp"
@@ -235,13 +236,11 @@ void KeyHandler::loadConfig(const std::string& config_file) {
 
     try {
         Parser parser(configFileContents);
-
-        auto hotkeys = parser.parseFile();
-
-        ConfigProperties config = parser.getConfigProperties();
-
-        this->hotkeys = hotkeys;
-        this->config = config;
+        Program program = parser.parseProgram();
+        Interpreter interpreter;
+        InterpreterResult result = interpreter.interpret(program);
+        this->hotkeys = std::move(result.hotkeys);
+        this->config = result.config;
     } catch (const std::exception& ex) {
         error("Error while parsing hotkeys: {}", ex.what());
     }

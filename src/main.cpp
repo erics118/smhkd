@@ -1,7 +1,14 @@
+#include <CoreFoundation/CoreFoundation.h>
+
+#include <fstream>
+#include <print>
+
+#include "ast_printer.hpp"
 #include "cli.hpp"
 #include "key_handler.hpp"
 #include "key_observer_handler.hpp"
 #include "log.hpp"
+#include "parser.hpp"
 #include "process.hpp"
 #include "service.hpp"
 #include "utils.hpp"
@@ -26,6 +33,7 @@ void parse_arguments(int argc, char* argv[]) {
             "start-service",
             "stop-service",
             "restart-service",
+            "dump-ast",
         },
     };
     Args args = parse_args(std::vector<std::string>(argv, argv + argc), config);
@@ -77,6 +85,20 @@ void parse_arguments(int argc, char* argv[]) {
         config_file = *val;
     } else {
         config_file = get_config_file("smhkd").value_or("");
+    }
+
+    if (args.get("dump-ast")) {
+        if (config_file.empty() || !file_exists(config_file)) {
+            error("config file not found");
+        }
+
+        std::ifstream file(config_file);
+        std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+        Parser p(contents);
+        Program prog = p.parseProgram();
+        auto dumped = dump_ast(prog);
+        std::print("{}", dumped);
+        exit(0);
     }
 }
 

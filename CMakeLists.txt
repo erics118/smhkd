@@ -6,6 +6,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_compile_options(-fstack-protector-strong)
+add_compile_options(-Wno-elaborated-enum-base)
+add_compile_options(-Wno-deprecated-declarations)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
     add_compile_options(-O3)
@@ -27,6 +29,8 @@ add_executable(${PROJECT_NAME}
     src/main.cpp
     src/modifier.cpp
     src/parser.cpp
+    src/interpreter.cpp
+    src/ast_printer.cpp
     src/process.cpp
     src/service.cpp
     src/tokenizer.cpp

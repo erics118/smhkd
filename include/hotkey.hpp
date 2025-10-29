@@ -3,7 +3,7 @@
 #include <CoreGraphics/CGEventTypes.h>
 #include <IOKit/hidsystem/ev_keymap.h>
 
-#include <print>
+#include <compare>
 #include <string>
 #include <vector>
 

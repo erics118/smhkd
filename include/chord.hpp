@@ -3,8 +3,6 @@
 #include <CoreGraphics/CGEventTypes.h>
 #include <IOKit/hidsystem/ev_keymap.h>
 
-#include <print>
-
 #include "keysym.hpp"
 #include "modifier.hpp"
 #include "token.hpp"

@@ -8,7 +8,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include <expected>
 #include <filesystem>
 #include <string>
 #include <string_view>

@@ -4,7 +4,8 @@
 #include <IOKit/hidsystem/ev_keymap.h>
 
 #include <array>
-#include <print>
+#include <format>
+#include <optional>
 #include <string>
 
 enum HotkeyFlag {
@@ -91,6 +92,42 @@ inline const std::array<std::string, 13> hotkey_flag_names = {
 
     "fn",
 };
+
+// Builtin modifier names as an enum for type-safety in AST
+enum class BuiltinModifier {
+    Alt = 0,
+    LAlt,
+    RAlt,
+
+    Shift,
+    LShift,
+    RShift,
+
+    Cmd,
+    LCmd,
+    RCmd,
+
+    Ctrl,
+    LCtrl,
+    RCtrl,
+
+    Fn,
+};
+
+inline int builtinModifierToFlags(BuiltinModifier m) {
+    return hotkey_flags[static_cast<size_t>(m)];
+}
+
+inline std::string builtinModifierToString(BuiltinModifier m) {
+    return hotkey_flag_names[static_cast<size_t>(m)];
+}
+
+inline std::optional<BuiltinModifier> parseBuiltinModifier(const std::string& name) {
+    for (size_t i = 0; i < hotkey_flag_names.size(); i++) {
+        if (hotkey_flag_names[i] == name) return static_cast<BuiltinModifier>(i);
+    }
+    return std::nullopt;
+}
 
 inline constexpr int ALT_MOD_OFFSET = 0;
 inline constexpr int SHIFT_MOD_OFFSET = 3;
