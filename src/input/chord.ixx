@@ -15,11 +15,11 @@ export struct Chord {
     Keysym keysym;
     ModifierFlags modifiers;
     std::strong_ordering operator<=>(const Chord& other) const = default;
-    inline void setKeycode(const Token& t);
-    [[nodiscard]] inline bool isActivatedBy(const Chord& other) const;
+    void setKeycode(const Token& t);
+    [[nodiscard]] bool isActivatedBy(const Chord& other) const;
 };
 
-inline void Chord::setKeycode(const Token& t) {
+void Chord::setKeycode(const Token& t) {
     if (t.type == TokenType::Literal) {
         keysym.keycode = getKeycode(t.text);
         modifiers.flags |= getImplicitFlags(t.text);
@@ -29,6 +29,6 @@ inline void Chord::setKeycode(const Token& t) {
     }
 }
 
-inline bool Chord::isActivatedBy(const Chord& other) const {
+bool Chord::isActivatedBy(const Chord& other) const {
     return modifiers.isActivatedBy(other.modifiers) && this->keysym == other.keysym;
 }

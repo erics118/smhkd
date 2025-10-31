@@ -19,7 +19,7 @@ export struct Keysym {
 };
 
 // clang-format off
-export inline const std::array<std::string, 47> literal_keycode_str =
+export const std::array<std::string, 47> literal_keycode_str =
 {
     "return",          "tab",             "space",
     "backspace",       "escape",          "delete",
@@ -40,7 +40,7 @@ export inline const std::array<std::string, 47> literal_keycode_str =
     "brightness_down", "illumination_up", "illumination_down"
 };
 
-export inline constexpr std::array<uint32_t, 47> literal_keycode_value = {
+export constexpr std::array<uint32_t, 47> literal_keycode_value = {
     kVK_Return,     kVK_Tab,           kVK_Space,
     kVK_Delete,     kVK_Escape,        kVK_ForwardDelete,
     kVK_Home,       kVK_End,           kVK_PageUp,
@@ -114,15 +114,15 @@ export enum class LiteralKey : uint32_t {
     IlluminationDown
 };
 
-export inline std::string literalKeyToString(LiteralKey k) {
+export std::string literalKeyToString(LiteralKey k) {
     return literal_keycode_str[static_cast<size_t>(k)];
 }
 
-export inline uint32_t literalKeyToKeycode(LiteralKey k) {
+export uint32_t literalKeyToKeycode(LiteralKey k) {
     return literal_keycode_value[static_cast<size_t>(k)];
 }
 
-export inline std::optional<LiteralKey> tryParseLiteralKey(const std::string& name) {
+export std::optional<LiteralKey> tryParseLiteralKey(const std::string& name) {
     for (size_t i = 0; i < literal_keycode_str.size(); i++) {
         if (literal_keycode_str[i] == name) return static_cast<LiteralKey>(i);
     }
@@ -131,7 +131,7 @@ export inline std::optional<LiteralKey> tryParseLiteralKey(const std::string& na
 
 // Offsets and flags are provided by smhkd.modifier
 
-export inline int getImplicitFlags(const std::string& literal) {
+export int getImplicitFlags(const std::string& literal) {
     constexpr int KEY_HAS_IMPLICIT_FN_MOD = 4;
     constexpr int KEY_HAS_IMPLICIT_NX_MOD = 35;
     const auto* it = std::ranges::find(literal_keycode_str, literal);

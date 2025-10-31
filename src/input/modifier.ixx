@@ -32,10 +32,10 @@ export enum HotkeyFlag {
     Hotkey_Flag_NX = (1 << 13),
 };
 
-export inline constexpr int l_offset = 1;
-export inline constexpr int r_offset = 2;
+export constexpr int l_offset = 1;
+export constexpr int r_offset = 2;
 
-export inline constexpr std::array<int, 13> cgevent_flags = {
+export constexpr std::array<int, 13> cgevent_flags = {
     kCGEventFlagMaskAlternate,
     NX_DEVICELALTKEYMASK,
     NX_DEVICERALTKEYMASK,
@@ -55,7 +55,7 @@ export inline constexpr std::array<int, 13> cgevent_flags = {
     kCGEventFlagMaskSecondaryFn,
 };
 
-export inline constexpr std::array<HotkeyFlag, 13> hotkey_flags = {
+export constexpr std::array<HotkeyFlag, 13> hotkey_flags = {
     Hotkey_Flag_Alt,
     Hotkey_Flag_LAlt,
     Hotkey_Flag_RAlt,
@@ -75,7 +75,7 @@ export inline constexpr std::array<HotkeyFlag, 13> hotkey_flags = {
     Hotkey_Flag_Fn,
 };
 
-export inline const std::array<std::string, 13> hotkey_flag_names = {
+export const std::array<std::string, 13> hotkey_flag_names = {
     "alt",
     "lalt",
     "ralt",
@@ -107,27 +107,27 @@ export enum class BuiltinModifier {
     Fn,
 };
 
-export inline int builtinModifierToFlags(BuiltinModifier m) {
+export int builtinModifierToFlags(BuiltinModifier m) {
     return hotkey_flags[static_cast<size_t>(m)];
 }
 
-export inline std::string builtinModifierToString(BuiltinModifier m) {
+export std::string builtinModifierToString(BuiltinModifier m) {
     return hotkey_flag_names[static_cast<size_t>(m)];
 }
 
-export inline std::optional<BuiltinModifier> parseBuiltinModifier(const std::string& name) {
+export std::optional<BuiltinModifier> parseBuiltinModifier(const std::string& name) {
     for (size_t i = 0; i < hotkey_flag_names.size(); i++) {
         if (hotkey_flag_names[i] == name) return static_cast<BuiltinModifier>(i);
     }
     return std::nullopt;
 }
 
-export inline constexpr int ALT_MOD_OFFSET = 0;
-export inline constexpr int SHIFT_MOD_OFFSET = 3;
-export inline constexpr int CMD_MOD_OFFSET = 6;
-export inline constexpr int CTRL_MOD_OFFSET = 9;
-export inline constexpr int FN_MOD_OFFSET = 12;
-export inline constexpr int NX_MOD_OFFSET = 13;
+export constexpr int ALT_MOD_OFFSET = 0;
+export constexpr int SHIFT_MOD_OFFSET = 3;
+export constexpr int CMD_MOD_OFFSET = 6;
+export constexpr int CTRL_MOD_OFFSET = 9;
+export constexpr int FN_MOD_OFFSET = 12;
+export constexpr int NX_MOD_OFFSET = 13;
 
 export struct ModifierFlags {
     int flags;
@@ -137,7 +137,7 @@ export struct ModifierFlags {
 };
 
 namespace {
-inline int eventLRModifierFlagsToHotkeyFlags(CGEventFlags eventflags, int mod) {
+int eventLRModifierFlagsToHotkeyFlags(CGEventFlags eventflags, int mod) {
     int flags{};
     int mask = cgevent_flags[mod];
     int lmask = cgevent_flags[mod + l_offset];
@@ -152,7 +152,7 @@ inline int eventLRModifierFlagsToHotkeyFlags(CGEventFlags eventflags, int mod) {
     return flags;
 }
 
-inline bool compareLRModifier(const ModifierFlags& a, const ModifierFlags& b, int mod) {
+bool compareLRModifier(const ModifierFlags& a, const ModifierFlags& b, int mod) {
     if (a.has(hotkey_flags[mod])) {
         return b.has(hotkey_flags[mod + l_offset]) || b.has(hotkey_flags[mod + r_offset]) || b.has(hotkey_flags[mod]);
     }
@@ -162,9 +162,9 @@ inline bool compareLRModifier(const ModifierFlags& a, const ModifierFlags& b, in
 }
 }  // namespace
 
-inline bool ModifierFlags::has(const uint32_t flag) const { return flags & flag; }
+bool ModifierFlags::has(const uint32_t flag) const { return flags & flag; }
 
-export inline ModifierFlags eventModifierFlagsToHotkeyFlags(CGEventFlags flags) {
+export ModifierFlags eventModifierFlagsToHotkeyFlags(CGEventFlags flags) {
     int res{};
     res |= eventLRModifierFlagsToHotkeyFlags(flags, ALT_MOD_OFFSET);
     res |= eventLRModifierFlagsToHotkeyFlags(flags, SHIFT_MOD_OFFSET);
@@ -176,7 +176,7 @@ export inline ModifierFlags eventModifierFlagsToHotkeyFlags(CGEventFlags flags) 
     return ModifierFlags{res};
 }
 
-inline bool ModifierFlags::isActivatedBy(const ModifierFlags& other) const {
+bool ModifierFlags::isActivatedBy(const ModifierFlags& other) const {
     return compareLRModifier(*this, other, ALT_MOD_OFFSET)
         && compareLRModifier(*this, other, SHIFT_MOD_OFFSET)
         && compareLRModifier(*this, other, CMD_MOD_OFFSET)

@@ -68,20 +68,3 @@ export template <typename... Args>
 void error(const std::format_string<Args...> fmt, Args&&... args) {
     print(level::error, fmt, std::forward<Args>(args)...);
 }
-
-// #define MAKE_LOG_FUNC(name, lvl)                                              \
-//     export template <typename T>                                              \
-//     inline void name(const T& msg) {                                          \
-//         print(lvl, msg);                                                      \
-//     }                                                                         \
-//     export template <typename... Args>                                        \
-//     inline void name(const std::format_string<Args...> fmt, Args&&... args) { \
-//         print(lvl, fmt, std::forward<Args>(args)...);                         \
-//     }
-//
-// MAKE_LOG_FUNC(debug, level::debug)
-// MAKE_LOG_FUNC(info, level::info)
-// MAKE_LOG_FUNC(warn, level::warn)
-// MAKE_LOG_FUNC(error, level::error)
-//
-// #undef MAKE_LOG_FUNC

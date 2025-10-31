@@ -151,11 +151,12 @@ inline InterpreterResult Interpreter::interpret(const ast::Program& program) {
     }
     for (const auto& h : acc.hotkeyStmts) {
         const auto& syn = h.syntax;
-        Hotkey base;
-        base.passthrough = syn.passthrough;
-        base.repeat = syn.repeat;
-        base.on_release = syn.onRelease;
-        base.chords.clear();
+        Hotkey base{
+            .passthrough = syn.passthrough,
+            .repeat = syn.repeat,
+            .on_release = syn.onRelease,
+            .chords = {},
+        };
         for (const auto& chordSyn : syn.chords) {
             Chord c{};
             c.modifiers.flags = 0;

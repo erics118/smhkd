@@ -58,7 +58,7 @@ struct KeyHandler {
     bool checkAndExecuteSequence(const Chord& current);
 };
 
-inline bool KeyHandler::init() {
+bool KeyHandler::init() {
     runLoop = CFRunLoopGetCurrent();
     if (!runLoop) return false;
     info("run loop initialized");
@@ -67,7 +67,7 @@ inline bool KeyHandler::init() {
     return true;
 }
 
-inline bool KeyHandler::setupEventTap() {
+bool KeyHandler::setupEventTap() {
     CGEventMask eventMask = CGEventMaskBit(kCGEventKeyDown) | CGEventMaskBit(kCGEventKeyUp);
     CFMachPortRef tap = CGEventTapCreate(kCGSessionEventTap, kCGHeadInsertEventTap, kCGEventTapOptionDefault, eventMask, eventCallback, this);
     if (!tap) error("failed to create event tap");
@@ -79,18 +79,18 @@ inline bool KeyHandler::setupEventTap() {
     return true;
 }
 
-inline CGEventRef KeyHandler::eventCallback(CGEventTapProxy /*proxy*/, CGEventType type, CGEventRef event, void* refcon) {
+CGEventRef KeyHandler::eventCallback(CGEventTapProxy /*proxy*/, CGEventType type, CGEventRef event, void* refcon) {
     auto* keyHandler = static_cast<KeyHandler*>(refcon);
     if (keyHandler->handleKeyEvent(event, type)) return nullptr;
     return event;
 }
 
-inline void KeyHandler::clearSequence() {
+void KeyHandler::clearSequence() {
     currentChords.clear();
     lastKeyPressTime = std::chrono::time_point<std::chrono::system_clock>::min();
 }
 
-inline bool KeyHandler::checkAndExecuteSequence(const Chord& current) {
+bool KeyHandler::checkAndExecuteSequence(const Chord& current) {
     auto now = std::chrono::system_clock::now();
     if (now != std::chrono::time_point<std::chrono::system_clock>::min() && now - lastKeyPressTime > config.maxChordInterval) {
         clearSequence();
@@ -128,7 +128,7 @@ inline bool KeyHandler::checkAndExecuteSequence(const Chord& current) {
     return false;
 }
 
-inline bool KeyHandler::handleKeyEvent(CGEventRef event, CGEventType type) {
+bool KeyHandler::handleKeyEvent(CGEventRef event, CGEventType type) {
     auto keyCode = static_cast<CGKeyCode>(CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode));
     CGEventFlags flags = CGEventGetFlags(event);
     bool isRepeat = CGEventGetIntegerValueField(event, kCGKeyboardEventAutorepeat) != 0;
@@ -175,13 +175,13 @@ inline bool KeyHandler::handleKeyEvent(CGEventRef event, CGEventType type) {
     return false;
 }
 
-inline void KeyHandler::run() const {
+void KeyHandler::run() const {
     if (!runLoop) return;
     info("running key handler");
     CFRunLoopRun();
 }
 
-inline void KeyHandler::loadConfig(const std::string& config_file) {
+void KeyHandler::loadConfig(const std::string& config_file) {
     if (!file_exists(config_file)) error("config file not found");
     if (config_file.empty()) error("config file empty");
 

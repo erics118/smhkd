@@ -14,6 +14,7 @@ export struct Hotkey {
     bool repeat{};
     bool on_release{};
     std::vector<Chord> chords;
+
     std::strong_ordering operator<=>(const Hotkey& other) const {
         if (passthrough != other.passthrough) return passthrough <=> other.passthrough;
         if (repeat != other.repeat) return repeat <=> other.repeat;
@@ -24,6 +25,4 @@ export struct Hotkey {
         }
         return std::strong_ordering::equal;
     }
-    Hotkey() : chords{Chord{}} {}
-    explicit Hotkey(Chord chord) : chords{chord} {}
 };

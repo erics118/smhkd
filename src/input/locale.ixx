@@ -17,7 +17,7 @@ import smhkd.keysym;
 export using Keycode = uint32_t;
 
 // global keycode map
-export inline std::unordered_map<std::string, Keycode> keycodeMap;
+export std::unordered_map<std::string, Keycode> keycodeMap;
 
 // From keysym module/header
 // literal arrays come from smhkd.keysym
