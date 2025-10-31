@@ -27,30 +27,30 @@ find_library(COCOA_FRAMEWORK Cocoa REQUIRED)
 find_library(CORE_FOUNDATION_FRAMEWORK CoreFoundation REQUIRED)
 
 add_executable(${PROJECT_NAME}
-    src/main.cpp
+        src/cli/main.cpp
 )
 
 target_sources(${PROJECT_NAME}
     PRIVATE
         FILE_SET cxx_modules TYPE CXX_MODULES FILES
             src/utils.ixx
-            src/keysym.ixx
-            src/modifier.ixx
-            src/locale.ixx
-            src/chord.ixx
-            src/token.ixx
-            src/log.ixx
-            src/ast.ixx
-            src/tokenizer.ixx
-            src/parser.ixx
-            src/interpreter.ixx
-            src/ast_printer.ixx
-            src/hotkey.ixx
-            src/cli.ixx
-            src/process.ixx
-            src/service.ixx
-            src/key_handler.ixx
-            src/key_observer_handler.ixx
+        src/input/keysym.ixx
+        src/input/modifier.ixx
+        src/input/locale.ixx
+        src/input/chord.ixx
+        src/lang/token.ixx
+        src/input/log.ixx
+        src/lang/ast.ixx
+        src/lang/tokenizer.ixx
+        src/lang/parser.ixx
+        src/lang/interpreter.ixx
+        src/lang/ast_printer.ixx
+        src/input/hotkey.ixx
+        src/cli/cli.ixx
+        src/runtime/process.ixx
+        src/runtime/service.ixx
+        src/runtime/key_handler.ixx
+        src/runtime/key_observer_handler.ixx
             
 )
 

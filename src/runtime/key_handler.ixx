@@ -190,7 +190,7 @@ inline void KeyHandler::loadConfig(const std::string& config_file) {
     std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
     try {
         Parser parser(contents);
-        Program program = parser.parseProgram();
+        ast::Program program = parser.parseProgram();
         Interpreter interpreter;
         auto result = interpreter.interpret(program);
         this->hotkeys = std::move(result.hotkeys);

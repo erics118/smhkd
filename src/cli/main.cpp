@@ -9,7 +9,6 @@ import smhkd.process;
 import smhkd.service;
 import smhkd.parser;
 import smhkd.ast_printer;
-// handlers are included via headers and built from .cpp under modules build
 import smhkd.key_handler;
 import smhkd.key_observer_handler;
 import smhkd.log;
