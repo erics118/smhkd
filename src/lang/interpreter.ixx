@@ -103,7 +103,7 @@ inline void setChordKeyFromAtom(Chord& chord, const ast::KeyAtom& atom) {
             using T = std::decay_t<decltype(v)>;
             if constexpr (std::is_same_v<T, LiteralKey>) {
                 chord.keysym.keycode = literalKeyToKeycode(v);
-                chord.modifiers.flags |= getImplicitFlags(literalKeyToString(v));
+                chord.modifiers.flags |= getImplicitFlags(v);
             } else if constexpr (std::is_same_v<T, ast::KeyChar>) {
                 if (v.isHex) {
                     chord.keysym.keycode = static_cast<uint32_t>(static_cast<unsigned char>(v.value));

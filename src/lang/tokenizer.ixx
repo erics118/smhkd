@@ -9,7 +9,7 @@ import smhkd.keysym;
 
 export class Tokenizer {
    private:
-    std::string contents;
+    std::string_view contents;
     size_t position{};
     int row{};
     int col{};
@@ -18,7 +18,7 @@ export class Tokenizer {
     bool nextTokenIsCommand{};
 
    public:
-    explicit Tokenizer(const std::string& contents) : contents(contents) {}
+    explicit Tokenizer(std::string_view contents) : contents(contents) {}
 
     [[nodiscard]] const Token& peek();
     Token next();
@@ -234,6 +234,6 @@ void Tokenizer::advanceNewline() {
 }
 
 char Tokenizer::peekChar(int offset) {
-    if (!hasMoreTokens()) return '\0';
+    if (!hasMoreTokens(offset)) return '\0';
     return contents[position + offset];
 }

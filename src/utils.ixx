@@ -2,7 +2,6 @@ module;
 
 #include <CoreFoundation/CFBase.h>
 #include <CoreFoundation/CFString.h>
-#include <sys/stat.h>
 #include <unistd.h>
 
 #include <cstdlib>
@@ -16,25 +15,26 @@ import smhkd.log;
 
 export module smhkd.utils;
 
-export [[nodiscard]] std::string cfStringToString(CFStringRef cfString) {
-    if (!cfString) return {};
+export template <>
+struct std::formatter<CFStringRef> : std::formatter<std::string_view> {
+    auto format(const CFStringRef& cfString, std::format_context& ctx) const {
+        if (!cfString) return std::format_to(ctx.out(), "");
 
-    CFIndex length = CFStringGetLength(cfString);
-    CFIndex maxSize = CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;
-    std::string result(maxSize, '\0');
+        CFIndex length = CFStringGetLength(cfString);
+        CFIndex maxSize = CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;
+        std::string result(maxSize, '\0');
 
-    if (!CFStringGetCString(cfString, result.data(), maxSize, kCFStringEncodingUTF8)) {
-        return {};
+        if (!CFStringGetCString(cfString, result.data(), maxSize, kCFStringEncodingUTF8)) {
+            if (!cfString) return std::format_to(ctx.out(), "");
+        }
+
+        result.resize(strlen(result.c_str()));
+
+        return std::format_to(ctx.out(), "{}", result);
     }
-
-    result.resize(strlen(result.c_str()));
-    return result;
-}
+};
 
 export [[nodiscard]] bool file_exists(const std::string& filename) {
-    // struct stat buffer{};
-    // return (stat(filename.c_str(), &buffer) == 0) && S_ISREG(buffer.st_mode);
-    debug(filename);
     return std::filesystem::exists(filename) && std::filesystem::is_regular_file(filename);
 }
 
@@ -77,7 +77,6 @@ export void executeCommand(const std::string& command) {
         }
         args.push_back(nullptr);
 
-        execvp(args[0], args.data());
         int status = execvp(args[0], args.data());
         _exit(status);
     }

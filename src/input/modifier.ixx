@@ -1,7 +1,6 @@
 module;
 
 #include <CoreGraphics/CGEventTypes.h>
-#include <IOKit/hidsystem/ev_keymap.h>
 
 #include <array>
 #include <format>
@@ -76,7 +75,7 @@ export constexpr std::array<HotkeyFlag, 14> hotkey_flags = {
     Hotkey_Flag_NX,
 };
 
-export const std::array<std::string, 14> hotkey_flag_names = {
+export constexpr std::array<std::string, 14> hotkey_flag_names = {
     "alt",
     "lalt",
     "ralt",
@@ -113,9 +112,13 @@ export int builtinModifierToFlags(BuiltinModifier m) {
     return hotkey_flags[static_cast<size_t>(m)];
 }
 
-export std::string builtinModifierToString(BuiltinModifier m) {
-    return hotkey_flag_names[static_cast<size_t>(m)];
-}
+export template <>
+struct std::formatter<BuiltinModifier> : std::formatter<std::string_view> {
+    auto format(const BuiltinModifier& m, std::format_context& ctx) const {
+        std::string result = hotkey_flag_names[static_cast<size_t>(m)];
+        return std::format_to(ctx.out(), "{}", result);
+    }
+};
 
 export std::optional<BuiltinModifier> parseBuiltinModifier(const std::string& name) {
     for (size_t i = 0; i < hotkey_flag_names.size(); i++) {

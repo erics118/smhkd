@@ -5,21 +5,20 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-# Ensure macOS SDK is visible to the dependency scanner
-set(CMAKE_OSX_SYSROOT 
-    "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk"
-    CACHE PATH "macOS SDK root" FORCE)
-
-# Ensure the macOS SDK is visible to the dependency scanner for modules
- 
-
-add_compile_options(-fstack-protector-strong)
-add_compile_options(-Wno-elaborated-enum-base)
-add_compile_options(-Wno-deprecated-declarations)
+if(APPLE AND NOT DEFINED CMAKE_OSX_SYSROOT)
+    # Discover macOS SDK path without hardcoding
+    execute_process(
+        COMMAND xcrun --show-sdk-path
+        OUTPUT_VARIABLE SDK_PATH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET)
+    if(SDK_PATH)
+        set(CMAKE_OSX_SYSROOT "${SDK_PATH}" CACHE PATH "macOS SDK root" FORCE)
+    endif()
+endif()
 
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    add_compile_options(-O3)
-    add_definitions(-DNDEBUG)
+    set(_SMHKD_RELEASE_OPTS -O3)
 endif()
 
 find_library(CARBON_FRAMEWORK Carbon REQUIRED)
@@ -29,6 +28,17 @@ find_library(CORE_FOUNDATION_FRAMEWORK CoreFoundation REQUIRED)
 add_executable(${PROJECT_NAME}
         src/cli/main.cpp
 )
+
+target_compile_options(${PROJECT_NAME} PRIVATE
+    -fstack-protector-strong
+    -Wno-elaborated-enum-base
+    -Wno-deprecated-declarations
+    ${_SMHKD_RELEASE_OPTS}
+)
+
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    target_compile_definitions(${PROJECT_NAME} PRIVATE NDEBUG)
+endif()
 
 target_sources(${PROJECT_NAME}
     PRIVATE

@@ -60,8 +60,6 @@ export inline constexpr std::string_view PLIST_TEMPLATE = R"(<?xml version="1.0"
 </dict>
 </plist>)";
 
-extern "C" CFURLRef CFCopyHomeDirectoryURLForUser(void* user);
-
 export std::string get_home_directory();
 export std::string get_plist_path();
 export std::string get_plist_contents();
@@ -76,14 +74,10 @@ export void service_restart();
 export void service_stop();
 
 export std::string get_home_directory() {
-    CFURLRef homeurl_ref = CFCopyHomeDirectoryURLForUser(nullptr);
-    if (!homeurl_ref) {
-        throw std::runtime_error("failed to get home directory URL");
+    if (const char* homeDir = std::getenv("HOME")) {
+        return homeDir;
     }
-    std::string home_ref = cfStringToString(CFURLCopyFileSystemPath(homeurl_ref, kCFURLPOSIXPathStyle));
-    CFRelease(homeurl_ref);
-    if (home_ref.empty()) throw std::runtime_error("failed to get home directory path");
-    return home_ref;
+    throw std::runtime_error("failed to get home directory path");
 }
 
 export std::string get_plist_path() {

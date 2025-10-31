@@ -159,7 +159,7 @@ bool KeyHandler::handleKeyEvent(CGEventRef event, CGEventType type) {
     for (const auto& [hotkey, command] : hotkeys) {
         if (hotkey.chords.size() > 1) continue;
         if (hotkey.chords[0].isActivatedBy(current)) {
-            bool event_type_matches = !hotkey   .on_release && type == kCGEventKeyDown || hotkey.on_release && type == kCGEventKeyUp;
+            bool event_type_matches = !hotkey.on_release && type == kCGEventKeyDown || hotkey.on_release && type == kCGEventKeyUp;
             bool repeat_matches = isRepeat && hotkey.repeat || !isRepeat;
             if (event_type_matches && repeat_matches) {
                 if (!command.empty()) {

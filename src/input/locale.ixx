@@ -69,7 +69,7 @@ export bool initializeKeycodeMap() {
             CFStringRef keyCfString = CFStringCreateWithCharacters(nullptr, chars, len);
             if (!keyCfString) continue;
 
-            std::string keyString = cfStringToString(keyCfString);
+            std::string keyString = std::format("{}", keyCfString);
             CFRelease(keyCfString);
 
             if (!keyString.empty()) {

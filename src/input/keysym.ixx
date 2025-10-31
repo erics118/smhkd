@@ -81,13 +81,15 @@ export enum class LiteralKey : uint32_t {
     Rewind,         Fast,           BrightnessUp,
     BrightnessDown, IlluminationUp, IlluminationDown
 };
+
+
+export template <>
+struct std::formatter<LiteralKey> : std::formatter<std::string_view> {
+    auto format(const LiteralKey& k, std::format_context& ctx) const {
+        return std::format_to(ctx.out(), "{}", literal_keycode_str[static_cast<size_t>(k)]);
+    }
+};
 // clang-format on
-
-export int getImplicitFlags(const std::string& literal);
-
-export std::string literalKeyToString(LiteralKey k) {
-    return literal_keycode_str[static_cast<size_t>(k)];
-}
 
 export uint32_t literalKeyToKeycode(LiteralKey k) {
     return literal_keycode_value[static_cast<size_t>(k)];
@@ -102,10 +104,14 @@ export std::optional<LiteralKey> tryParseLiteralKey(const std::string& name) {
 
 // Offsets and flags are provided by smhkd.modifier
 
-export int getImplicitFlags(const std::string& literal) {
+export int getImplicitFlags(LiteralKey k) {
     constexpr int KEY_HAS_IMPLICIT_FN_MOD = 4;
     constexpr int KEY_HAS_IMPLICIT_NX_MOD = 35;
-    const auto* it = std::ranges::find(literal_keycode_str, literal);
+
+    std::string str = std::format("{}", k);
+
+    const auto* it = std::ranges::find(literal_keycode_str, str);
+    if (it == literal_keycode_str.end()) return 0;
     auto literal_index = std::distance(literal_keycode_str.begin(), it);
 
     int flags{};

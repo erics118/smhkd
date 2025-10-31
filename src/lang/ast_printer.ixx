@@ -1,5 +1,6 @@
 module;
 
+#include <format>
 #include <sstream>
 #include <string>
 #include <variant>
@@ -24,7 +25,7 @@ std::string key_atom_to_string(const ast::KeyAtom& atom) {
         [](const auto& v) -> std::string {
             using T = std::decay_t<decltype(v)>;
             if constexpr (std::is_same_v<T, LiteralKey>) {
-                return std::string("literal:") + literalKeyToString(v);
+                return std::format("literal: {}", v);
             } else if constexpr (std::is_same_v<T, ast::KeyChar>) {
                 if (v.isHex) {
                     char buf[8];
@@ -54,7 +55,7 @@ std::string modifier_to_string(const ast::ModifierAtom& m) {
         [](const auto& v) -> std::string {
             using T = std::decay_t<decltype(v)>;
             if constexpr (std::is_same_v<T, BuiltinModifier>) {
-                return builtinModifierToString(v);
+                return std::format("{}", v);
             } else {
                 return v;
             }
