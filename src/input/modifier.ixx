@@ -144,7 +144,6 @@ export struct ModifierFlags {
     [[nodiscard]] bool has(uint32_t flag) const;
 };
 
-namespace {
 int eventLRModifierFlagsToHotkeyFlags(CGEventFlags eventflags, int mod) {
     int flags{};
     int mask = cgevent_flags[mod];
@@ -168,7 +167,6 @@ bool compareLRModifier(const ModifierFlags& a, const ModifierFlags& b, int mod) 
         && a.has(hotkey_flags[mod + r_offset]) == b.has(hotkey_flags[mod + r_offset])
         && a.has(hotkey_flags[mod]) == b.has(hotkey_flags[mod]);
 }
-}  // namespace
 
 bool ModifierFlags::has(const uint32_t flag) const { return flags & flag; }
 

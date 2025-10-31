@@ -14,8 +14,9 @@ import smhkd.key_observer_handler;
 import smhkd.log;
 import smhkd.ast;
 import smhkd.locale;
+import smhkd.key_handler;
 
-smhkd::key_handler::KeyHandler* service = nullptr;
+KeyHandler* service = nullptr;
 std::string config_file;
 
 static void sigusr1_handler(int /*signal*/) {
@@ -129,7 +130,7 @@ int main(int argc, char* argv[]) {
     signal(SIGUSR1, sigusr1_handler);
 
     try {
-        service = new smhkd::key_handler::KeyHandler(config_file);
+        service = new KeyHandler(config_file);
         service->init();
         service->run();
     } catch (const std::exception& ex) {

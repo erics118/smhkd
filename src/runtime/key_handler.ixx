@@ -24,8 +24,7 @@ import smhkd.interpreter;
 import smhkd.ast;
 import smhkd.log;
 
-export namespace smhkd::key_handler {
-struct KeyHandler {
+export struct KeyHandler {
     std::string configFileName;
 
     CFRunLoopRef runLoop{};
@@ -201,4 +200,3 @@ void KeyHandler::loadConfig(const std::string& config_file) {
         error("Error while parsing hotkeys: {}", ex.what());
     }
 }
-}  // namespace smhkd::key_handler
