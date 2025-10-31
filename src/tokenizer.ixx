@@ -237,4 +237,3 @@ char Tokenizer::peekChar(int offset) {
     if (!hasMoreTokens()) return '\0';
     return contents[position + offset];
 }
-

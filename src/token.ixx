@@ -67,4 +67,3 @@ struct std::formatter<Token> : std::formatter<std::string_view> {
         return std::format_to(ctx.out(), "'{}' ({}, {}, {})", t.text, t.type, t.row, t.col);
     }
 };
-

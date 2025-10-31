@@ -76,4 +76,3 @@ export inline Args parse_args(const std::vector<std::string>& argv, const ArgsCo
     }
     return Args{res};
 }
-

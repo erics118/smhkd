@@ -19,17 +19,17 @@ export class Parser {
 
    public:
     explicit Parser(const std::string& contents) : tokenizer(contents) {}
-    Program parseProgram();
+    ast::Program parseProgram();
 
    private:
-    DefineModifierStmt parseDefineModifierStmt();
-    ConfigPropertyStmt parseConfigPropertyStmt();
-    KeySyntax parseKeyBraceExpansionSyntax();
-    HotkeyStmt parseHotkeyStmt();
+    ast::DefineModifierStmt parseDefineModifierStmt();
+    ast::ConfigPropertyStmt parseConfigPropertyStmt();
+    ast::KeySyntax parseKeyBraceExpansionSyntax();
+    ast::HotkeyStmt parseHotkeyStmt();
 };
 
-Program Parser::parseProgram() {
-    Program program;
+ast::Program Parser::parseProgram() {
+    ast::Program program;
     while (tokenizer.hasMoreTokens()) {
         Token tk = tokenizer.peek();
         if (tk.type == TokenType::EndOfFile) {
@@ -46,7 +46,7 @@ Program Parser::parseProgram() {
     return program;
 }
 
-DefineModifierStmt Parser::parseDefineModifierStmt() {
+ast::DefineModifierStmt Parser::parseDefineModifierStmt() {
     debug("Parsing define_modifier");
     Token dmToken = tokenizer.next();
     if (dmToken.type != TokenType::DefineModifier) {
@@ -61,7 +61,7 @@ DefineModifierStmt Parser::parseDefineModifierStmt() {
     if (eqToken.type != TokenType::Equals) {
         throw std::runtime_error("Expected '=' after custom modifier name");
     }
-    DefineModifierStmt stmt;
+    ast::DefineModifierStmt stmt;
     stmt.name = customName;
     int currentRow = eqToken.row;
     while (true) {
@@ -74,9 +74,9 @@ DefineModifierStmt Parser::parseDefineModifierStmt() {
         }
         if (tk.type == TokenType::Modifier || tk.type == TokenType::Key) {
             if (auto bi = parseBuiltinModifier(tk.text)) {
-                stmt.parts.push_back(ModifierAtom{*bi});
+                stmt.parts.push_back(ast::ModifierAtom{*bi});
             } else {
-                stmt.parts.push_back(ModifierAtom{tk.text});
+                stmt.parts.push_back(ast::ModifierAtom{tk.text});
             }
             tokenizer.next();
             continue;
@@ -89,7 +89,7 @@ DefineModifierStmt Parser::parseDefineModifierStmt() {
     return stmt;
 }
 
-ConfigPropertyStmt Parser::parseConfigPropertyStmt() {
+ast::ConfigPropertyStmt Parser::parseConfigPropertyStmt() {
     debug("Parsing a config property");
     Token cpToken = tokenizer.next();
     if (cpToken.type != TokenType::ConfigProperty) {
@@ -103,14 +103,14 @@ ConfigPropertyStmt Parser::parseConfigPropertyStmt() {
     if (intToken.type != TokenType::Modifier && intToken.type != TokenType::Key) {
         throw std::runtime_error("Expected integer after '='");
     }
-    ConfigPropertyStmt stmt;
+    ast::ConfigPropertyStmt stmt;
     stmt.name = cpToken.text;
     stmt.value = std::stoi(intToken.text);
     return stmt;
 }
 
-KeySyntax Parser::parseKeyBraceExpansionSyntax() {
-    KeySyntax ks;
+ast::KeySyntax Parser::parseKeyBraceExpansionSyntax() {
+    ast::KeySyntax ks;
     ks.isBraceExpansion = true;
     Token tk = tokenizer.next();
     if (tk.type != TokenType::OpenBrace) {
@@ -119,12 +119,12 @@ KeySyntax Parser::parseKeyBraceExpansionSyntax() {
     while (true) {
         tk = tokenizer.next();
         if (tk.type == TokenType::Key || tk.type == TokenType::Literal) {
-            KeyAtom atom;
+            ast::KeyAtom atom;
             if (tk.type == TokenType::Literal) {
                 if (auto lit = tryParseLiteralKey(tk.text)) atom.value = *lit;
-                else atom.value = KeyChar{tk.text.empty() ? '\0' : tk.text[0], false};
+                else atom.value = ast::KeyChar{tk.text.empty() ? '\0' : tk.text[0], false};
             } else {
-                atom.value = KeyChar{tk.text[0], false};
+                atom.value = ast::KeyChar{tk.text[0], false};
             }
             ks.items.push_back(atom);
             tk = tokenizer.next();
@@ -140,9 +140,9 @@ KeySyntax Parser::parseKeyBraceExpansionSyntax() {
     return ks;
 }
 
-HotkeyStmt Parser::parseHotkeyStmt() {
-    HotkeyStmt stmt;
-    HotkeySyntax syntax;
+ast::HotkeyStmt Parser::parseHotkeyStmt() {
+    ast::HotkeyStmt stmt;
+    ast::HotkeySyntax syntax;
     syntax.chords.emplace_back();
     bool foundColon = false;
     while (true) {
@@ -182,9 +182,9 @@ HotkeyStmt Parser::parseHotkeyStmt() {
             }
             if (tk.type == TokenType::Modifier) {
                 if (auto bi = parseBuiltinModifier(tk.text)) {
-                    syntax.chords.back().modifiers.push_back(ModifierAtom{*bi});
+                    syntax.chords.back().modifiers.push_back(ast::ModifierAtom{*bi});
                 } else {
-                    syntax.chords.back().modifiers.push_back(ModifierAtom{tk.text});
+                    syntax.chords.back().modifiers.push_back(ast::ModifierAtom{tk.text});
                 }
                 tokenizer.next();
                 continue;
@@ -194,20 +194,20 @@ HotkeyStmt Parser::parseHotkeyStmt() {
                 continue;
             }
             if (tk.type == TokenType::Literal || tk.type == TokenType::Key || tk.type == TokenType::KeyHex) {
-                KeySyntax ks;
+                ast::KeySyntax ks;
                 ks.isBraceExpansion = false;
-                KeyAtom atom;
+                ast::KeyAtom atom;
                 if (tk.type == TokenType::Literal) {
                     if (auto lit = tryParseLiteralKey(tk.text)) atom.value = *lit;
-                    else atom.value = KeyChar{tk.text.empty() ? '\0' : tk.text[0], false};
+                    else atom.value = ast::KeyChar{tk.text.empty() ? '\0' : tk.text[0], false};
                 } else if (tk.type == TokenType::Key) {
-                    atom.value = KeyChar{tk.text[0], false};
+                    atom.value = ast::KeyChar{tk.text[0], false};
                 } else {
                     try {
                         unsigned long v = std::stoul(tk.text, nullptr, 16);
-                        atom.value = KeyChar{static_cast<char>(static_cast<unsigned char>(v & 0xFF)), true};
+                        atom.value = ast::KeyChar{static_cast<char>(static_cast<unsigned char>(v & 0xFF)), true};
                     } catch (...) {
-                        atom.value = KeyChar{'\0', true};
+                        atom.value = ast::KeyChar{'\0', true};
                     }
                 }
                 ks.items.push_back(atom);
@@ -229,4 +229,3 @@ HotkeyStmt Parser::parseHotkeyStmt() {
     stmt.command = nextTk.text;
     return stmt;
 }
-

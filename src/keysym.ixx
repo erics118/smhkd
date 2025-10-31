@@ -1,7 +1,6 @@
 module;
 
 #include <Carbon/Carbon.h>
-#include <CoreGraphics/CGEventTypes.h>
 #include <IOKit/hidsystem/ev_keymap.h>
 
 #include <algorithm>
@@ -41,7 +40,7 @@ export inline const std::array<std::string, 47> literal_keycode_str =
     "brightness_down", "illumination_up", "illumination_down"
 };
 
-export inline const std::array<uint32_t, 47> literal_keycode_value = {
+export inline constexpr std::array<uint32_t, 47> literal_keycode_value = {
     kVK_Return,     kVK_Tab,           kVK_Space,
     kVK_Delete,     kVK_Escape,        kVK_ForwardDelete,
     kVK_Home,       kVK_End,           kVK_PageUp,

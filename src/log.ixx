@@ -85,4 +85,3 @@ void error(const std::format_string<Args...> fmt, Args&&... args) {
 // MAKE_LOG_FUNC(error, level::error)
 //
 // #undef MAKE_LOG_FUNC
-

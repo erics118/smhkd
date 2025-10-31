@@ -27,4 +27,3 @@ export struct Hotkey {
     Hotkey() : chords{Chord{}} {}
     explicit Hotkey(Chord chord) : chords{chord} {}
 };
-

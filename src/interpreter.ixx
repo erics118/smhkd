@@ -39,12 +39,12 @@ export struct InterpreterResult {
 export class Interpreter {
    public:
     Interpreter() = default;
-    [[nodiscard]] InterpreterResult interpret(const Program& program);
+    [[nodiscard]] InterpreterResult interpret(const ast::Program& program);
 };
 
 struct DefineData {
     std::string name;
-    std::vector<ModifierAtom> parts;
+    std::vector<ast::ModifierAtom> parts;
 };
 
 class DefineResolver {
@@ -97,14 +97,14 @@ class DefineResolver {
     std::unordered_set<std::string> resolving_;
 };
 
-inline void setChordKeyFromAtom(Chord& chord, const KeyAtom& atom) {
+inline void setChordKeyFromAtom(Chord& chord, const ast::KeyAtom& atom) {
     std::visit(
         [&](const auto& v) {
             using T = std::decay_t<decltype(v)>;
             if constexpr (std::is_same_v<T, LiteralKey>) {
                 chord.keysym.keycode = literalKeyToKeycode(v);
                 chord.modifiers.flags |= getImplicitFlags(literalKeyToString(v));
-            } else if constexpr (std::is_same_v<T, KeyChar>) {
+            } else if constexpr (std::is_same_v<T, ast::KeyChar>) {
                 if (v.isHex) {
                     chord.keysym.keycode = static_cast<uint32_t>(static_cast<unsigned char>(v.value));
                 } else {
@@ -116,22 +116,22 @@ inline void setChordKeyFromAtom(Chord& chord, const KeyAtom& atom) {
         atom.value);
 }
 
-inline InterpreterResult Interpreter::interpret(const Program& program) {
+inline InterpreterResult Interpreter::interpret(const ast::Program& program) {
     InterpreterResult result{};
     struct ConfigPropertiesStmt {
         std::vector<DefineData> defines;
-        std::vector<ConfigPropertyStmt> configProps;
-        std::vector<HotkeyStmt> hotkeyStmts;
+        std::vector<ast::ConfigPropertyStmt> configProps;
+        std::vector<ast::HotkeyStmt> hotkeyStmts;
     } acc;
     for (const auto& stmt : program.statements) {
         std::visit(
             [&](const auto& node) {
                 using T = std::decay_t<decltype(node)>;
-                if constexpr (std::is_same_v<T, DefineModifierStmt>) {
+                if constexpr (std::is_same_v<T, ast::DefineModifierStmt>) {
                     acc.defines.push_back(DefineData{node.name, node.parts});
-                } else if constexpr (std::is_same_v<T, ConfigPropertyStmt>) {
+                } else if constexpr (std::is_same_v<T, ast::ConfigPropertyStmt>) {
                     acc.configProps.push_back(node);
-                } else if constexpr (std::is_same_v<T, HotkeyStmt>) {
+                } else if constexpr (std::is_same_v<T, ast::HotkeyStmt>) {
                     acc.hotkeyStmts.push_back(node);
                 }
             },

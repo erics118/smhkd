@@ -19,13 +19,13 @@ std::string join(const std::vector<std::string>& items, const std::string& sep) 
     return out;
 }
 
-std::string key_atom_to_string(const KeyAtom& atom) {
+std::string key_atom_to_string(const ast::KeyAtom& atom) {
     return std::visit(
         [](const auto& v) -> std::string {
             using T = std::decay_t<decltype(v)>;
             if constexpr (std::is_same_v<T, LiteralKey>) {
                 return std::string("literal:") + literalKeyToString(v);
-            } else if constexpr (std::is_same_v<T, KeyChar>) {
+            } else if constexpr (std::is_same_v<T, ast::KeyChar>) {
                 if (v.isHex) {
                     char buf[8];
                     std::snprintf(buf, sizeof(buf), "%02x", static_cast<unsigned char>(v.value));
@@ -38,7 +38,7 @@ std::string key_atom_to_string(const KeyAtom& atom) {
         atom.value);
 }
 
-std::string key_syntax_to_string(const KeySyntax& ks) {
+std::string key_syntax_to_string(const ast::KeySyntax& ks) {
     if (ks.items.empty()) return "<none>";
     if (!ks.isBraceExpansion) {
         return key_atom_to_string(ks.items.front());
@@ -49,7 +49,7 @@ std::string key_syntax_to_string(const KeySyntax& ks) {
     return std::string("{") + join(parts, ", ") + "}";
 }
 
-std::string modifier_to_string(const ModifierAtom& m) {
+std::string modifier_to_string(const ast::ModifierAtom& m) {
     return std::visit(
         [](const auto& v) -> std::string {
             using T = std::decay_t<decltype(v)>;
@@ -62,21 +62,21 @@ std::string modifier_to_string(const ModifierAtom& m) {
         m.value);
 }
 
-export inline std::string dump_ast(const Program& program) {
+export inline std::string dump_ast(const ast::Program& program) {
     std::ostringstream oss;
     oss << "Program{\n";
     for (const auto& s : program.statements) {
         std::visit(
             [&](const auto& node) {
                 using T = std::decay_t<decltype(node)>;
-                if constexpr (std::is_same_v<T, DefineModifierStmt>) {
+                if constexpr (std::is_same_v<T, ast::DefineModifierStmt>) {
                     std::vector<std::string> mods;
                     mods.reserve(node.parts.size());
                     for (const auto& m : node.parts) mods.push_back(modifier_to_string(m));
                     oss << "  define_modifier: " << node.name << " = " << join(mods, " + ") << "\n";
-                } else if constexpr (std::is_same_v<T, ConfigPropertyStmt>) {
+                } else if constexpr (std::is_same_v<T, ast::ConfigPropertyStmt>) {
                     oss << "  config: " << node.name << " = " << node.value << "\n";
-                } else if constexpr (std::is_same_v<T, HotkeyStmt>) {
+                } else if constexpr (std::is_same_v<T, ast::HotkeyStmt>) {
                     const auto& syn = node.syntax;
                     oss << "  hotkey: ";
                     if (syn.passthrough) oss << "passthrough, ";
@@ -105,4 +105,3 @@ export inline std::string dump_ast(const Program& program) {
     oss << "}\n";
     return oss.str();
 }
-

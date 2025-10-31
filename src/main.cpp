@@ -98,7 +98,7 @@ void parse_arguments(int argc, char* argv[]) {
         std::ifstream file(config_file);
         std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
         Parser p(contents);
-        Program prog = p.parseProgram();
+        ast::Program prog = p.parseProgram();
         auto dumped = dump_ast(prog);
         std::print("{}", dumped);
         exit(0);
