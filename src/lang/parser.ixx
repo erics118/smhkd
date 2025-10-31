@@ -1,5 +1,6 @@
 module;
 
+#include <format>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -22,6 +23,7 @@ export class Parser {
     ast::Program parseProgram();
 
    private:
+    Token consume(TokenType expected);
     ast::DefineModifierStmt parseDefineModifierStmt();
     ast::ConfigPropertyStmt parseConfigPropertyStmt();
     ast::KeySyntax parseKeyBraceExpansionSyntax();
@@ -46,21 +48,23 @@ ast::Program Parser::parseProgram() {
     return program;
 }
 
+Token Parser::consume(TokenType expected) {
+    Token token = tokenizer.next();
+    if (token.type != expected) {
+        throw std::runtime_error(std::format("Expected {} but got {}", expected, token));
+    }
+    return token;
+}
+
 ast::DefineModifierStmt Parser::parseDefineModifierStmt() {
     debug("Parsing define_modifier");
-    Token dmToken = tokenizer.next();
-    if (dmToken.type != TokenType::DefineModifier) {
-        throw std::runtime_error("Expected 'define_modifier' token");
-    }
+    consume(TokenType::DefineModifier);
     Token nameToken = tokenizer.next();
     if (nameToken.type != TokenType::Modifier && nameToken.type != TokenType::Key) {
         throw std::runtime_error("Expected custom modifier name after define_modifier");
     }
     std::string customName = nameToken.text;
-    Token eqToken = tokenizer.next();
-    if (eqToken.type != TokenType::Equals) {
-        throw std::runtime_error("Expected '=' after custom modifier name");
-    }
+    Token eqToken = consume(TokenType::Equals);
     ast::DefineModifierStmt stmt;
     stmt.name = customName;
     int currentRow = eqToken.row;
@@ -91,15 +95,10 @@ ast::DefineModifierStmt Parser::parseDefineModifierStmt() {
 
 ast::ConfigPropertyStmt Parser::parseConfigPropertyStmt() {
     debug("Parsing a config property");
-    Token cpToken = tokenizer.next();
-    if (cpToken.type != TokenType::ConfigProperty) {
-        throw std::runtime_error("Expected a config property token");
-    }
-    Token eqToken = tokenizer.next();
-    if (eqToken.type != TokenType::Equals) {
-        throw std::runtime_error("Expected '=' after config property");
-    }
-    Token intToken = tokenizer.next();
+    Token cpToken = consume(TokenType::ConfigProperty);
+    consume(TokenType::Equals);
+    // we dont have an int token, so its either a key or a modifier
+    Token intToken = consume(TokenType::Key);
     if (intToken.type != TokenType::Modifier && intToken.type != TokenType::Key) {
         throw std::runtime_error("Expected integer after '='");
     }
@@ -112,10 +111,8 @@ ast::ConfigPropertyStmt Parser::parseConfigPropertyStmt() {
 ast::KeySyntax Parser::parseKeyBraceExpansionSyntax() {
     ast::KeySyntax ks;
     ks.isBraceExpansion = true;
-    Token tk = tokenizer.next();
-    if (tk.type != TokenType::OpenBrace) {
-        throw std::runtime_error("Expected opening brace");
-    }
+    consume(TokenType::OpenBrace);
+    Token tk;
     while (true) {
         tk = tokenizer.next();
         if (tk.type == TokenType::Key || tk.type == TokenType::Literal) {
@@ -152,32 +149,32 @@ ast::HotkeyStmt Parser::parseHotkeyStmt() {
                 throw std::runtime_error("Unexpected end of file");
             }
             if (tk.type == TokenType::Colon) {
-                tokenizer.next();
+                consume(TokenType::Colon);
                 foundColon = true;
                 break;
             }
             if (tk.type == TokenType::Semicolon) {
-                tokenizer.next();
+                consume(TokenType::Semicolon);
                 syntax.chords.emplace_back();
                 break;
             }
             if (tk.type == TokenType::Plus) {
-                tokenizer.next();
+                consume(TokenType::Plus);
                 continue;
             }
             if (tk.type == TokenType::At) {
                 syntax.passthrough = true;
-                tokenizer.next();
+                consume(TokenType::At);
                 continue;
             }
             if (tk.type == TokenType::Ampersand) {
                 syntax.repeat = true;
-                tokenizer.next();
+                consume(TokenType::Ampersand);
                 continue;
             }
             if (tk.type == TokenType::Caret) {
                 syntax.onRelease = true;
-                tokenizer.next();
+                consume(TokenType::Caret);
                 continue;
             }
             if (tk.type == TokenType::Modifier) {
@@ -186,7 +183,7 @@ ast::HotkeyStmt Parser::parseHotkeyStmt() {
                 } else {
                     syntax.chords.back().modifiers.push_back(ast::ModifierAtom{tk.text});
                 }
-                tokenizer.next();
+                consume(TokenType::Modifier);
                 continue;
             }
             if (tk.type == TokenType::OpenBrace) {
@@ -212,7 +209,7 @@ ast::HotkeyStmt Parser::parseHotkeyStmt() {
                 }
                 ks.items.push_back(atom);
                 syntax.chords.back().key = ks;
-                tokenizer.next();
+                consume(tk.type);
                 continue;
             }
             break;
@@ -221,10 +218,7 @@ ast::HotkeyStmt Parser::parseHotkeyStmt() {
             break;
         }
     }
-    const Token& nextTk = tokenizer.next();
-    if (nextTk.type != TokenType::Command) {
-        throw std::runtime_error("Expected command after colon");
-    }
+    Token nextTk = consume(TokenType::Command);
     stmt.syntax = std::move(syntax);
     stmt.command = nextTk.text;
     return stmt;

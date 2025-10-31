@@ -10,6 +10,9 @@ module;
 
 export module smhkd.modifier;
 
+export constexpr int l_offset = 1;
+export constexpr int r_offset = 2;
+
 export enum HotkeyFlag {
     Hotkey_Flag_Alt = (1 << 0),
     Hotkey_Flag_LAlt = (1 << 1),
@@ -32,9 +35,6 @@ export enum HotkeyFlag {
     Hotkey_Flag_NX = (1 << 13),
 };
 
-export constexpr int l_offset = 1;
-export constexpr int r_offset = 2;
-
 export constexpr std::array<int, 13> cgevent_flags = {
     kCGEventFlagMaskAlternate,
     NX_DEVICELALTKEYMASK,
@@ -55,7 +55,7 @@ export constexpr std::array<int, 13> cgevent_flags = {
     kCGEventFlagMaskSecondaryFn,
 };
 
-export constexpr std::array<HotkeyFlag, 13> hotkey_flags = {
+export constexpr std::array<HotkeyFlag, 14> hotkey_flags = {
     Hotkey_Flag_Alt,
     Hotkey_Flag_LAlt,
     Hotkey_Flag_RAlt,
@@ -73,9 +73,10 @@ export constexpr std::array<HotkeyFlag, 13> hotkey_flags = {
     Hotkey_Flag_RControl,
 
     Hotkey_Flag_Fn,
+    Hotkey_Flag_NX,
 };
 
-export const std::array<std::string, 13> hotkey_flag_names = {
+export const std::array<std::string, 14> hotkey_flag_names = {
     "alt",
     "lalt",
     "ralt",
@@ -89,6 +90,7 @@ export const std::array<std::string, 13> hotkey_flag_names = {
     "lctrl",
     "rctrl",
     "fn",
+    "nx",
 };
 
 export enum class BuiltinModifier {
@@ -131,8 +133,11 @@ export constexpr int NX_MOD_OFFSET = 13;
 
 export struct ModifierFlags {
     int flags;
+
     std::strong_ordering operator<=>(const ModifierFlags& other) const = default;
+
     [[nodiscard]] bool isActivatedBy(const ModifierFlags& other) const;
+
     [[nodiscard]] bool has(uint32_t flag) const;
 };
 

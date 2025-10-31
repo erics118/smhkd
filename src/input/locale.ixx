@@ -1,5 +1,7 @@
 module;
 
+// based off of: https://github.com/koekeishiya/skhd/blob/2c9d3b9c9440797cd80856b6a54ec8817a6f3d19/src/locale.c#L88
+
 #include <Carbon/Carbon.h>
 #include <CoreFoundation/CoreFoundation.h>
 
@@ -21,10 +23,6 @@ export std::unordered_map<std::string, Keycode> keycodeMap;
 
 // From keysym module/header
 // literal arrays come from smhkd.keysym
-
-export bool initializeKeycodeMap();
-export [[nodiscard]] uint32_t getKeycode(const std::string& key);
-export [[nodiscard]] std::string getNameOfKeycode(uint32_t keycode);
 
 export bool initializeKeycodeMap() {
     static const std::array<uint32_t, 36> layoutDependentKeycodes = {
@@ -83,22 +81,20 @@ export bool initializeKeycodeMap() {
     return !keycodeMap.empty();
 }
 
-export uint32_t getKeycode(const std::string& key) {
+export Keycode getKeycode(const std::string& key) {
     if (key.length() == 1) {
-        auto it = keycodeMap.find(key);
-        if (it != keycodeMap.end()) {
-            return static_cast<uint32_t>(it->second);
+        if (const auto it = keycodeMap.find(key); it != keycodeMap.end()) {
+            return it->second;
         }
     }
-    const auto* it = std::ranges::find(literal_keycode_str, key);
-    if (it != literal_keycode_str.end()) {
+    if (const auto* it = std::ranges::find(literal_keycode_str, key); it != literal_keycode_str.end()) {
         return literal_keycode_value[std::distance(literal_keycode_str.begin(), it)];
     }
     try {
         return std::stoi(key, nullptr, 16);
     } catch (...) {
     }
-    return static_cast<uint32_t>(-1);
+    return static_cast<Keycode>(-1);
 }
 
 export std::string getNameOfKeycode(uint32_t keycode) {

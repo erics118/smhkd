@@ -19,7 +19,7 @@ export struct Keysym {
 };
 
 // clang-format off
-export const std::array<std::string, 47> literal_keycode_str =
+export constexpr std::array<std::string, 47> literal_keycode_str =
 {
     "return",          "tab",             "space",
     "backspace",       "escape",          "delete",
@@ -59,60 +59,31 @@ export constexpr std::array<uint32_t, 47> literal_keycode_value = {
     NX_KEYTYPE_REWIND,          NX_KEYTYPE_FAST,            NX_KEYTYPE_BRIGHTNESS_UP,
     NX_KEYTYPE_BRIGHTNESS_DOWN, NX_KEYTYPE_ILLUMINATION_UP, NX_KEYTYPE_ILLUMINATION_DOWN
 };
-// clang-format on
 
-export int getImplicitFlags(const std::string& literal);
 
 // Enum for known literal keys
 export enum class LiteralKey : uint32_t {
-    Return = 0,
-    Tab,
-    Space,
-    Backspace,
-    Escape,
-    Delete,
-    Home,
-    End,
-    PageUp,
-    PageDown,
-    Insert,
-    Left,
-    Right,
-    Up,
-    Down,
-    F1,
-    F2,
-    F3,
-    F4,
-    F5,
-    F6,
-    F7,
-    F8,
-    F9,
-    F10,
-    F11,
-    F12,
-    F13,
-    F14,
-    F15,
-    F16,
-    F17,
-    F18,
-    F19,
-    F20,
-    SoundUp,
-    SoundDown,
-    Mute,
-    Play,
-    Previous,
-    Next,
-    Rewind,
-    Fast,
-    BrightnessUp,
-    BrightnessDown,
-    IlluminationUp,
-    IlluminationDown
+    Return = 0,     Tab,            Space,
+    Backspace,      Escape,         Delete,
+    Home,           End,            PageUp,
+    PageDown,       Insert,         Left,
+    Right,          Up,             Down,
+    F1,             F2,             F3,
+    F4,             F5,             F6,
+    F7,             F8,             F9,
+    F10,            F11,            F12,
+    F13,            F14,            F15,
+    F16,            F17,            F18,
+    F19,            F20,
+
+    SoundUp,        SoundDown,      Mute,
+    Play,           Previous,       Next,
+    Rewind,         Fast,           BrightnessUp,
+    BrightnessDown, IlluminationUp, IlluminationDown
 };
+// clang-format on
+
+export int getImplicitFlags(const std::string& literal);
 
 export std::string literalKeyToString(LiteralKey k) {
     return literal_keycode_str[static_cast<size_t>(k)];
