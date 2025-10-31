@@ -1,25 +1,26 @@
-#pragma once
+module;
 
 #include <Carbon/Carbon.h>
 #include <CoreGraphics/CGEventTypes.h>
 #include <IOKit/hidsystem/ev_keymap.h>
 
+#include <algorithm>
 #include <array>
 #include <compare>
 #include <optional>
 #include <print>
 #include <string>
 
-#include "locale.hpp"
+export module smhkd.keysym;
+import smhkd.modifier;
 
-struct Keysym {
+export struct Keysym {
     uint32_t keycode;
-
     std::strong_ordering operator<=>(const Keysym& other) const = default;
 };
 
 // clang-format off
-inline const std::array<std::string, 47> literal_keycode_str =
+export inline const std::array<std::string, 47> literal_keycode_str =
 {
     "return",          "tab",             "space",
     "backspace",       "escape",          "delete",
@@ -40,7 +41,7 @@ inline const std::array<std::string, 47> literal_keycode_str =
     "brightness_down", "illumination_up", "illumination_down"
 };
 
-inline const std::array<uint32_t, 47> literal_keycode_value = {
+export inline const std::array<uint32_t, 47> literal_keycode_value = {
     kVK_Return,     kVK_Tab,           kVK_Space,
     kVK_Delete,     kVK_Escape,        kVK_ForwardDelete,
     kVK_Home,       kVK_End,           kVK_PageUp,
@@ -61,10 +62,10 @@ inline const std::array<uint32_t, 47> literal_keycode_value = {
 };
 // clang-format on
 
-int getImplicitFlags(const std::string& literal);
+export int getImplicitFlags(const std::string& literal);
 
-// Enum for known literal keys in the same order as arrays above
-enum class LiteralKey : uint32_t {
+// Enum for known literal keys
+export enum class LiteralKey : uint32_t {
     Return = 0,
     Tab,
     Space,
@@ -114,24 +115,34 @@ enum class LiteralKey : uint32_t {
     IlluminationDown
 };
 
-inline std::string literalKeyToString(LiteralKey k) {
+export inline std::string literalKeyToString(LiteralKey k) {
     return literal_keycode_str[static_cast<size_t>(k)];
 }
 
-inline uint32_t literalKeyToKeycode(LiteralKey k) {
+export inline uint32_t literalKeyToKeycode(LiteralKey k) {
     return literal_keycode_value[static_cast<size_t>(k)];
 }
 
-inline std::optional<LiteralKey> tryParseLiteralKey(const std::string& name) {
+export inline std::optional<LiteralKey> tryParseLiteralKey(const std::string& name) {
     for (size_t i = 0; i < literal_keycode_str.size(); i++) {
         if (literal_keycode_str[i] == name) return static_cast<LiteralKey>(i);
     }
     return std::nullopt;
 }
 
-template <>
-struct std::formatter<Keysym> : std::formatter<std::string_view> {
-    auto format(const Keysym& keysym, std::format_context& ctx) const {
-        return std::format_to(ctx.out(), "{}", getNameOfKeycode(keysym.keycode));
+// Offsets and flags are provided by smhkd.modifier
+
+export inline int getImplicitFlags(const std::string& literal) {
+    constexpr int KEY_HAS_IMPLICIT_FN_MOD = 4;
+    constexpr int KEY_HAS_IMPLICIT_NX_MOD = 35;
+    const auto* it = std::ranges::find(literal_keycode_str, literal);
+    auto literal_index = std::distance(literal_keycode_str.begin(), it);
+
+    int flags{};
+    if ((literal_index > KEY_HAS_IMPLICIT_FN_MOD) && (literal_index < KEY_HAS_IMPLICIT_NX_MOD)) {
+        flags = hotkey_flags[FN_MOD_OFFSET];
+    } else if (literal_index >= KEY_HAS_IMPLICIT_NX_MOD) {
+        flags = hotkey_flags[NX_MOD_OFFSET];
     }
-};
+    return flags;
+}

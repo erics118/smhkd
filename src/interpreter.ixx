@@ -1,51 +1,46 @@
-#include "interpreter.hpp"
+module;
 
-
+#include <chrono>
+#include <map>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
+#include <variant>
 #include <vector>
 
-#include "chord.hpp"
-#include "keysym.hpp"
-#include "log.hpp"
-#include "modifier.hpp"
+export module smhkd.interpreter;
+import smhkd.ast;
+import smhkd.chord;
+import smhkd.hotkey;
+import smhkd.locale;
+import smhkd.keysym;
+import smhkd.modifier;
+import smhkd.log;
 
-namespace {
+export struct ConfigProperties {
+    // max time between chord presses
+    std::chrono::milliseconds maxChordInterval{3000};
 
-// Expand a command containing a single-level brace list like echo {1,2,3}
-std::vector<std::string> expandCommandString(const std::string& command) {
-    std::vector<std::string> result;
+    // minimum time for a keysym to be held to be considered as a hold_modifier
+    // otherwise it's considered a normal keysym event
+    std::chrono::milliseconds holdModifierThreshold{500};
 
-    size_t start = command.find('{');
-    size_t end = command.find('}');
+    // max time between keysyms to be considered as simultaneous
+    std::chrono::milliseconds simultaneousThreshold{50};
+};
 
-    if (start == std::string::npos || end == std::string::npos || start > end) {
-        result.push_back(command);
-        return result;
-    }
+export struct InterpreterResult {
+    std::map<Hotkey, std::string> hotkeys;
+    ConfigProperties config;
+};
 
-    std::string prefix = command.substr(0, start);
-    std::string content = command.substr(start + 1, end - start - 1);
-    std::string suffix = command.substr(end + 1);
-
-    size_t pos = 0;
-    while (pos < content.size()) {
-        size_t comma = content.find(',', pos);
-        if (comma == std::string::npos) {
-            comma = content.size();
-        }
-        std::string rest = content.substr(pos, comma - pos) + suffix;
-        result.push_back(prefix + rest);
-        pos = comma + 1;
-    }
-
-    return result;
-}
-
-}  // namespace
+export class Interpreter {
+   public:
+    Interpreter() = default;
+    [[nodiscard]] InterpreterResult interpret(const Program& program);
+};
 
 struct DefineData {
     std::string name;
@@ -55,26 +50,21 @@ struct DefineData {
 class DefineResolver {
    public:
     explicit DefineResolver(std::vector<DefineData> defines) : defines_(std::move(defines)) {}
-
     int resolveFlags(const std::string& name) {
-        if (resolving_.count(name)) {
+        if (resolving_.contains(name)) {
             throw std::runtime_error("Cyclic define_modifier detected: " + name);
         }
         if (auto it = cache_.find(name); it != cache_.end()) {
             return it->second;
         }
-
         resolving_.insert(name);
-        int flags = 0;
-        // first try builtin
         if (auto bi = parseBuiltinModifier(name)) {
             int builtin = builtinModifierToFlags(*bi);
             resolving_.erase(name);
             cache_[name] = builtin;
             return builtin;
         }
-
-        // otherwise look up custom
+        int flags = 0;
         for (const auto& d : defines_) {
             if (d.name == name) {
                 for (const auto& part : d.parts) {
@@ -96,8 +86,6 @@ class DefineResolver {
                 return flags;
             }
         }
-
-        // unknown
         resolving_.erase(name);
         cache_[name] = 0;
         return 0;
@@ -109,7 +97,7 @@ class DefineResolver {
     std::unordered_set<std::string> resolving_;
 };
 
-static void setChordKeyFromAtom(Chord& chord, const KeyAtom& atom) {
+inline void setChordKeyFromAtom(Chord& chord, const KeyAtom& atom) {
     std::visit(
         [&](const auto& v) {
             using T = std::decay_t<decltype(v)>;
@@ -128,33 +116,29 @@ static void setChordKeyFromAtom(Chord& chord, const KeyAtom& atom) {
         atom.value);
 }
 
-InterpreterResult Interpreter::interpret(const Program& program) {
+inline InterpreterResult Interpreter::interpret(const Program& program) {
     InterpreterResult result{};
-
-    // Collect defines for later resolution
-    std::vector<DefineData> defines;
-    std::vector<ConfigPropertyStmt> configProps;
-    std::vector<HotkeyStmt> hotkeyStmts;
-
+    struct ConfigPropertiesStmt {
+        std::vector<DefineData> defines;
+        std::vector<ConfigPropertyStmt> configProps;
+        std::vector<HotkeyStmt> hotkeyStmts;
+    } acc;
     for (const auto& stmt : program.statements) {
         std::visit(
             [&](const auto& node) {
                 using T = std::decay_t<decltype(node)>;
                 if constexpr (std::is_same_v<T, DefineModifierStmt>) {
-                    defines.push_back(DefineData{node.name, node.parts});
+                    acc.defines.push_back(DefineData{node.name, node.parts});
                 } else if constexpr (std::is_same_v<T, ConfigPropertyStmt>) {
-                    configProps.push_back(node);
+                    acc.configProps.push_back(node);
                 } else if constexpr (std::is_same_v<T, HotkeyStmt>) {
-                    hotkeyStmts.push_back(node);
+                    acc.hotkeyStmts.push_back(node);
                 }
             },
             stmt);
     }
-
-    DefineResolver resolver(defines);
-
-    // Apply config properties
-    for (const auto& c : configProps) {
+    DefineResolver resolver(acc.defines);
+    for (const auto& c : acc.configProps) {
         if (c.name == "max_chord_interval") {
             result.config.maxChordInterval = std::chrono::milliseconds(c.value);
         } else if (c.name == "hold_modifier_threshold") {
@@ -165,19 +149,13 @@ InterpreterResult Interpreter::interpret(const Program& program) {
             throw std::runtime_error("Unknown config property: " + c.name);
         }
     }
-
-    // Build hotkeys
-    for (const auto& h : hotkeyStmts) {
+    for (const auto& h : acc.hotkeyStmts) {
         const auto& syn = h.syntax;
-
-        // Base hotkey template
         Hotkey base;
         base.passthrough = syn.passthrough;
         base.repeat = syn.repeat;
         base.on_release = syn.onRelease;
         base.chords.clear();
-
-        // Pre-build chords with modifiers only; keys are added per-expansion
         for (const auto& chordSyn : syn.chords) {
             Chord c{};
             c.modifiers.flags = 0;
@@ -188,17 +166,11 @@ InterpreterResult Interpreter::interpret(const Program& program) {
                 } else {
                     const auto& cname = std::get<std::string>(modName.value);
                     flags = resolver.resolveFlags(cname);
-                    if (flags == 0) {
-                        warn("Unknown modifier '{}' in hotkey", cname);
-                    }
                 }
                 c.modifiers.flags |= flags;
             }
             base.chords.push_back(c);
         }
-
-        // We only support a single keysym per chord in the current syntax.
-        // Find if any chord uses a brace expansion; if none, emit single mapping
         int braceChordIndex = -1;
         if (!syn.chords.empty()) {
             for (int i = 0; i < static_cast<int>(syn.chords.size()); i++) {
@@ -208,9 +180,7 @@ InterpreterResult Interpreter::interpret(const Program& program) {
                 }
             }
         }
-
         if (braceChordIndex < 0) {
-            // No brace expansion; set keys and emit
             Hotkey hk = base;
             for (size_t i = 0; i < syn.chords.size(); i++) {
                 if (!syn.chords[i].key.has_value() || syn.chords[i].key->items.empty()) {
@@ -221,14 +191,7 @@ InterpreterResult Interpreter::interpret(const Program& program) {
             result.hotkeys[hk] = h.command;
             continue;
         }
-
-        // With brace expansion: expand keys and possibly commands
         const auto& keyItems = syn.chords[braceChordIndex].key->items;
-        std::vector<std::string> commands = expandCommandString(h.command);
-        if (!commands.empty() && commands.size() != keyItems.size()) {
-            throw std::runtime_error("Expansion keysyms and commands must be the same size");
-        }
-
         for (size_t i = 0; i < keyItems.size(); i++) {
             Hotkey hk = base;
             for (size_t ci = 0; ci < syn.chords.size(); ci++) {
@@ -241,10 +204,8 @@ InterpreterResult Interpreter::interpret(const Program& program) {
                     setChordKeyFromAtom(hk.chords[ci], syn.chords[ci].key->items.front());
                 }
             }
-            const std::string& cmd = commands.empty() ? h.command : commands[i];
-            result.hotkeys[hk] = cmd;
+            result.hotkeys[hk] = h.command;
         }
     }
-
     return result;
 }

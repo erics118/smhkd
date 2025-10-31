@@ -1,15 +1,32 @@
-#include "locale.hpp"
+module;
 
 #include <Carbon/Carbon.h>
 #include <CoreFoundation/CoreFoundation.h>
 
 #include <algorithm>
+#include <array>
+#include <format>
+#include <memory>
+#include <type_traits>
+#include <unordered_map>
 
-#include "keysym.hpp"
-#include "log.hpp"
-#include "utils.hpp"
+export module smhkd.locale;
+import smhkd.utils;
+import smhkd.keysym;
 
-bool initializeKeycodeMap() {
+export using Keycode = uint32_t;
+
+// global keycode map
+export inline std::unordered_map<std::string, Keycode> keycodeMap;
+
+// From keysym module/header
+// literal arrays come from smhkd.keysym
+
+export bool initializeKeycodeMap();
+export [[nodiscard]] uint32_t getKeycode(const std::string& key);
+export [[nodiscard]] std::string getNameOfKeycode(uint32_t keycode);
+
+export bool initializeKeycodeMap() {
     static const std::array<uint32_t, 36> layoutDependentKeycodes = {
         kVK_ANSI_A, kVK_ANSI_B, kVK_ANSI_C, kVK_ANSI_D, kVK_ANSI_E,
         kVK_ANSI_F, kVK_ANSI_G, kVK_ANSI_H, kVK_ANSI_I, kVK_ANSI_J,
@@ -66,44 +83,34 @@ bool initializeKeycodeMap() {
     return !keycodeMap.empty();
 }
 
-uint32_t getKeycode(const std::string& key) {
-    // debug("getting keycode for '{}'", key);
-
+export uint32_t getKeycode(const std::string& key) {
     if (key.length() == 1) {
         auto it = keycodeMap.find(key);
         if (it != keycodeMap.end()) {
             return static_cast<uint32_t>(it->second);
         }
     }
-
-    // handle literals, ie enter, space, tab, etc
     const auto* it = std::ranges::find(literal_keycode_str, key);
     if (it != literal_keycode_str.end()) {
         return literal_keycode_value[std::distance(literal_keycode_str.begin(), it)];
     }
-
     try {
         return std::stoi(key, nullptr, 16);
     } catch (...) {
-        warn("Keycode not found for '{}'", key);
     }
-
-    return -1;
+    return static_cast<uint32_t>(-1);
 }
 
-std::string getNameOfKeycode(uint32_t keycode) {
+export std::string getNameOfKeycode(uint32_t keycode) {
     for (const auto& [key, code] : keycodeMap) {
         if (code == keycode) {
             return key;
         }
     }
-
     for (int i = 0; i < literal_keycode_str.size(); i++) {
         if (literal_keycode_value[i] == keycode) {
             return literal_keycode_str[i];
         }
     }
-
-    // return as hex
     return std::format("{:#02x}", keycode);
 }

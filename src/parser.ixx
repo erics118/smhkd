@@ -1,19 +1,35 @@
-#include "parser.hpp"
+module;
 
 #include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "ast.hpp"
-#include "keysym.hpp"
-#include "log.hpp"
-#include "modifier.hpp"
-#include "tokenizer.hpp"
+export module smhkd.parser;
+import smhkd.ast;
+import smhkd.token;
+import smhkd.tokenizer;
+import smhkd.keysym;
+import smhkd.log;
+import smhkd.modifier;
+
+export class Parser {
+   private:
+    Tokenizer tokenizer;
+
+   public:
+    explicit Parser(const std::string& contents) : tokenizer(contents) {}
+    Program parseProgram();
+
+   private:
+    DefineModifierStmt parseDefineModifierStmt();
+    ConfigPropertyStmt parseConfigPropertyStmt();
+    KeySyntax parseKeyBraceExpansionSyntax();
+    HotkeyStmt parseHotkeyStmt();
+};
 
 Program Parser::parseProgram() {
     Program program;
-
     while (tokenizer.hasMoreTokens()) {
         Token tk = tokenizer.peek();
         if (tk.type == TokenType::EndOfFile) {
@@ -27,43 +43,35 @@ Program Parser::parseProgram() {
             program.statements.emplace_back(parseHotkeyStmt());
         }
     }
-
     return program;
 }
 
 DefineModifierStmt Parser::parseDefineModifierStmt() {
     debug("Parsing define_modifier");
-
     Token dmToken = tokenizer.next();
     if (dmToken.type != TokenType::DefineModifier) {
         throw std::runtime_error("Expected 'define_modifier' token");
     }
-
     Token nameToken = tokenizer.next();
     if (nameToken.type != TokenType::Modifier && nameToken.type != TokenType::Key) {
         throw std::runtime_error("Expected custom modifier name after define_modifier");
     }
     std::string customName = nameToken.text;
-
     Token eqToken = tokenizer.next();
     if (eqToken.type != TokenType::Equals) {
         throw std::runtime_error("Expected '=' after custom modifier name");
     }
-
     DefineModifierStmt stmt;
     stmt.name = customName;
-
     int currentRow = eqToken.row;
     while (true) {
         const Token& tk = tokenizer.peek();
         if (tk.type == TokenType::EndOfFile) break;
-        if (tk.row != currentRow) break;  // stop at newline
-
+        if (tk.row != currentRow) break;
         if (tk.type == TokenType::Plus) {
             tokenizer.next();
             continue;
         }
-
         if (tk.type == TokenType::Modifier || tk.type == TokenType::Key) {
             if (auto bi = parseBuiltinModifier(tk.text)) {
                 stmt.parts.push_back(ModifierAtom{*bi});
@@ -73,35 +81,28 @@ DefineModifierStmt Parser::parseDefineModifierStmt() {
             tokenizer.next();
             continue;
         }
-
         break;
     }
-
     if (stmt.parts.empty()) {
         throw std::runtime_error("No expansions found for custom modifier '" + customName + "'");
     }
-
     return stmt;
 }
 
 ConfigPropertyStmt Parser::parseConfigPropertyStmt() {
     debug("Parsing a config property");
-
     Token cpToken = tokenizer.next();
     if (cpToken.type != TokenType::ConfigProperty) {
         throw std::runtime_error("Expected a config property token");
     }
-
     Token eqToken = tokenizer.next();
     if (eqToken.type != TokenType::Equals) {
         throw std::runtime_error("Expected '=' after config property");
     }
-
     Token intToken = tokenizer.next();
     if (intToken.type != TokenType::Modifier && intToken.type != TokenType::Key) {
         throw std::runtime_error("Expected integer after '='");
     }
-
     ConfigPropertyStmt stmt;
     stmt.name = cpToken.text;
     stmt.value = std::stoi(intToken.text);
@@ -115,19 +116,17 @@ KeySyntax Parser::parseKeyBraceExpansionSyntax() {
     if (tk.type != TokenType::OpenBrace) {
         throw std::runtime_error("Expected opening brace");
     }
-
     while (true) {
         tk = tokenizer.next();
         if (tk.type == TokenType::Key || tk.type == TokenType::Literal) {
             KeyAtom atom;
             if (tk.type == TokenType::Literal) {
                 if (auto lit = tryParseLiteralKey(tk.text)) atom.value = *lit;
-                else atom.value = KeyChar{tk.text.empty() ? '\0' : tk.text[0], false};  // fallback
+                else atom.value = KeyChar{tk.text.empty() ? '\0' : tk.text[0], false};
             } else {
                 atom.value = KeyChar{tk.text[0], false};
             }
             ks.items.push_back(atom);
-
             tk = tokenizer.next();
             if (tk.type == TokenType::Comma) {
                 continue;
@@ -145,7 +144,6 @@ HotkeyStmt Parser::parseHotkeyStmt() {
     HotkeyStmt stmt;
     HotkeySyntax syntax;
     syntax.chords.emplace_back();
-
     bool foundColon = false;
     while (true) {
         while (true) {
@@ -201,10 +199,10 @@ HotkeyStmt Parser::parseHotkeyStmt() {
                 KeyAtom atom;
                 if (tk.type == TokenType::Literal) {
                     if (auto lit = tryParseLiteralKey(tk.text)) atom.value = *lit;
-                    else atom.value = KeyChar{tk.text.empty() ? '\0' : tk.text[0], false};  // fallback
+                    else atom.value = KeyChar{tk.text.empty() ? '\0' : tk.text[0], false};
                 } else if (tk.type == TokenType::Key) {
                     atom.value = KeyChar{tk.text[0], false};
-                } else {  // KeyHex
+                } else {
                     try {
                         unsigned long v = std::stoul(tk.text, nullptr, 16);
                         atom.value = KeyChar{static_cast<char>(static_cast<unsigned char>(v & 0xFF)), true};
@@ -219,12 +217,10 @@ HotkeyStmt Parser::parseHotkeyStmt() {
             }
             break;
         }
-
         if (foundColon) {
             break;
         }
     }
-
     const Token& nextTk = tokenizer.next();
     if (nextTk.type != TokenType::Command) {
         throw std::runtime_error("Expected command after colon");
@@ -233,3 +229,4 @@ HotkeyStmt Parser::parseHotkeyStmt() {
     stmt.command = nextTk.text;
     return stmt;
 }
+

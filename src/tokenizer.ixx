@@ -1,12 +1,43 @@
-#include "tokenizer.hpp"
+module;
 
 #include <algorithm>
 #include <string>
 
-#include "keysym.hpp"
-#include "token.hpp"
+export module smhkd.tokenizer;
+import smhkd.token;
+import smhkd.keysym;
 
-// peek the next token without consuming
+export class Tokenizer {
+   private:
+    std::string contents;
+    size_t position{};
+    int row{};
+    int col{};
+    bool peeked{};
+    Token nextToken_;
+    bool nextTokenIsCommand{};
+
+   public:
+    explicit Tokenizer(const std::string& contents) : contents(contents) {}
+
+    [[nodiscard]] const Token& peek();
+    Token next();
+    [[nodiscard]] bool hasMoreTokens(int offset = 0);
+
+   private:
+    Token getNextToken();
+    [[nodiscard]] std::string readHex();
+    [[nodiscard]] Token readCommandToken();
+    [[nodiscard]] bool isIdentifierChar(char c);
+    [[nodiscard]] std::string readIdentifier();
+    void skipWhitespaceAndComments();
+    void skipWhitespace();
+    void eatComment();
+    void advance();
+    void advanceNewline();
+    [[nodiscard]] char peekChar(int offset = 0);
+};
+
 const Token& Tokenizer::peek() {
     if (!peeked) {
         nextToken_ = getNextToken();
@@ -15,11 +46,8 @@ const Token& Tokenizer::peek() {
     return nextToken_;
 }
 
-// get the next token and consume it
-// public facing function that handles peeking, while getNextToken does the actual work
 Token Tokenizer::next() {
     Token token = peeked ? nextToken_ : getNextToken();
-    // debug("token: {}", token);
     peeked = false;
     return token;
 }
@@ -31,125 +59,92 @@ bool Tokenizer::hasMoreTokens(int offset) {
     return (position + offset < contents.size());
 }
 
-// TODO: require plus sign
-// TODO: more error handling
-// NOLINTNEXTLINE(misc-no-recursion)
 Token Tokenizer::getNextToken() {
     skipWhitespaceAndComments();
-
-    // If at EOF
     if (position >= contents.size()) {
         return Token{TokenType::EndOfFile, "", row, col};
     }
-
-    // If next token must be a Command
     if (nextTokenIsCommand) {
         nextTokenIsCommand = false;
         return readCommandToken();
     }
-
     char c = peekChar();
     int startRow = row;
     int startCol = col;
 
-    // single-character tokens
     if (c == '+') {
         advance();
         return Token{TokenType::Plus, "+", startRow, startCol};
     }
-
     if (c == '=') {
         advance();
         return Token{TokenType::Equals, "=", startRow, startCol};
     }
-
     if (c == ':') {
         advance();
-        // next token is a command, taking the entire line
         nextTokenIsCommand = true;
         return Token{TokenType::Colon, ":", startRow, startCol};
     }
-
     if (c == '^') {
         advance();
         return Token{TokenType::Caret, "^", startRow, startCol};
     }
-
     if (c == '@') {
         advance();
         return Token{TokenType::At, "@", startRow, startCol};
     }
-
     if (c == '&') {
         advance();
         return Token{TokenType::Ampersand, "&", startRow, startCol};
     }
-
     if (c == '{') {
         advance();
         return Token{TokenType::OpenBrace, "{", startRow, startCol};
     }
-
     if (c == '}') {
         advance();
         return Token{TokenType::CloseBrace, "}", startRow, startCol};
     }
-
     if (c == ',') {
         advance();
         return Token{TokenType::Comma, ",", startRow, startCol};
     }
-
     if (c == ';') {
         advance();
         return Token{TokenType::Semicolon, ";", startRow, startCol};
     }
-
     if (c == '0' && peekChar(1) == 'x') {
         std::string hex = readHex();
         return Token{TokenType::KeyHex, hex, startRow, startCol};
     }
 
-    // otherwise, read until delimiter
-    std::string text = readIdentifier();
+    const std::string text = readIdentifier();
     if (text.empty()) {
-        // newline or comment, so get next token
         return getNextToken();
     }
 
-    // check if literal
     if (std::ranges::contains(literal_keycode_str, text)) {
         return Token{TokenType::Literal, text, startRow, startCol};
     }
-
-    // special case: "define_modifier"
     if (text == "define_modifier") {
         return Token{TokenType::DefineModifier, text, startRow, startCol};
     }
-
-    // check if config property
     if (text == "max_chord_interval" || text == "hold_modifier_threshold" || text == "simultaneous_threshold") {
         return Token{TokenType::ConfigProperty, text, startRow, startCol};
     }
-
-    // if single char, key
     if (text.size() == 1) {
         return Token{TokenType::Key, text, startRow, startCol};
     }
-
-    // otherwise, modifier
     return Token{TokenType::Modifier, text, startRow, startCol};
 }
 
 std::string Tokenizer::readHex() {
     std::string result;
-    // consume the 0x
     advance();
     advance();
-
     while (hasMoreTokens()) {
         char c = peekChar();
-        if (!std::isxdigit(c)) {
+        if (!std::isxdigit(static_cast<unsigned char>(c))) {
             break;
         }
         result.push_back(c);
@@ -158,7 +153,6 @@ std::string Tokenizer::readHex() {
     return result;
 }
 
-// read the rest of the line as a single token
 Token Tokenizer::readCommandToken() {
     int startRow = row;
     int startCol = col;
@@ -171,20 +165,14 @@ Token Tokenizer::readCommandToken() {
         line.push_back(c);
         advance();
     }
-
-    // consume newline
     if (peekChar() == '\n') {
         advanceNewline();
     }
-
     return Token{TokenType::Command, line, startRow, startCol};
 }
 
-bool Tokenizer::isIdentifierChar(char c) {
-    return std::isalnum(c) || c == '_';
-}
+bool Tokenizer::isIdentifierChar(char c) { return std::isalnum(static_cast<unsigned char>(c)) || c == '_'; }
 
-// read until whitespace, newline, plus, colon, '#'
 std::string Tokenizer::readIdentifier() {
     std::string result;
     while (hasMoreTokens()) {
@@ -198,7 +186,6 @@ std::string Tokenizer::readIdentifier() {
     return result;
 }
 
-// skip whitespace and comments
 void Tokenizer::skipWhitespaceAndComments() {
     while (hasMoreTokens()) {
         skipWhitespace();
@@ -215,7 +202,7 @@ void Tokenizer::skipWhitespace() {
         char c = peekChar();
         if (c == '\n') {
             advanceNewline();
-        } else if (std::isspace(c)) {
+        } else if (std::isspace(static_cast<unsigned char>(c))) {
             advance();
         } else {
             break;
@@ -223,7 +210,6 @@ void Tokenizer::skipWhitespace() {
     }
 }
 
-// TODO: link comment to hotkey
 void Tokenizer::eatComment() {
     while (hasMoreTokens()) {
         if (peekChar() == '\n') {
@@ -251,3 +237,4 @@ char Tokenizer::peekChar(int offset) {
     if (!hasMoreTokens()) return '\0';
     return contents[position + offset];
 }
+

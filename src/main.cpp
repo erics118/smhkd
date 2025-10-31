@@ -3,17 +3,20 @@
 #include <fstream>
 #include <print>
 
-#include "ast_printer.hpp"
-#include "cli.hpp"
-#include "key_handler.hpp"
-#include "key_observer_handler.hpp"
-#include "log.hpp"
-#include "parser.hpp"
-#include "process.hpp"
-#include "service.hpp"
-#include "utils.hpp"
+import smhkd.utils;
+import smhkd.cli;
+import smhkd.process;
+import smhkd.service;
+import smhkd.parser;
+import smhkd.ast_printer;
+// handlers are included via headers and built from .cpp under modules build
+import smhkd.key_handler;
+import smhkd.key_observer_handler;
+import smhkd.log;
+import smhkd.ast;
+import smhkd.locale;
 
-KeyHandler* service = nullptr;
+smhkd::key_handler::KeyHandler* service = nullptr;
 std::string config_file;
 
 static void sigusr1_handler(int /*signal*/) {
@@ -69,7 +72,7 @@ void parse_arguments(int argc, char* argv[]) {
     }
 
     if (args.get('o', "observe")) {
-        KeyObserverHandler observer;
+        smhkd::key_observer_handler::KeyObserverHandler observer;
         observer.init();
         observer.run();
     }
@@ -85,12 +88,12 @@ void parse_arguments(int argc, char* argv[]) {
         config_file = *val;
     } else {
         config_file = get_config_file("smhkd").value_or("");
+        debug(config_file);
     }
 
     if (args.get("dump-ast")) {
-        if (config_file.empty() || !file_exists(config_file)) {
-            error("config file not found");
-        }
+        if (!file_exists(config_file)) error("config file not found");
+        if (config_file.empty()) error("config file empty");
 
         std::ifstream file(config_file);
         std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
@@ -127,7 +130,7 @@ int main(int argc, char* argv[]) {
     signal(SIGUSR1, sigusr1_handler);
 
     try {
-        service = new KeyHandler(config_file);
+        service = new smhkd::key_handler::KeyHandler(config_file);
         service->init();
         service->run();
     } catch (const std::exception& ex) {

@@ -1,14 +1,14 @@
-#include "ast_printer.hpp"
+module;
 
 #include <sstream>
 #include <string>
 #include <variant>
 #include <vector>
 
-#include "keysym.hpp"
-#include "modifier.hpp"
-
-namespace {
+export module smhkd.ast_printer;
+import smhkd.ast;
+import smhkd.keysym;
+import smhkd.modifier;
 
 std::string join(const std::vector<std::string>& items, const std::string& sep) {
     std::string out;
@@ -33,6 +33,7 @@ std::string key_atom_to_string(const KeyAtom& atom) {
                 }
                 return std::string("key:") + std::string(1, v.value);
             }
+            return std::string{};
         },
         atom.value);
 }
@@ -61,9 +62,7 @@ std::string modifier_to_string(const ModifierAtom& m) {
         m.value);
 }
 
-}  // namespace
-
-std::string dump_ast(const Program& program) {
+export inline std::string dump_ast(const Program& program) {
     std::ostringstream oss;
     oss << "Program{\n";
     for (const auto& s : program.statements) {
@@ -74,24 +73,23 @@ std::string dump_ast(const Program& program) {
                     std::vector<std::string> mods;
                     mods.reserve(node.parts.size());
                     for (const auto& m : node.parts) mods.push_back(modifier_to_string(m));
-                    oss << "  define_modifier " << node.name << " = " << join(mods, " + ") << "\n";
+                    oss << "  define_modifier: " << node.name << " = " << join(mods, " + ") << "\n";
                 } else if constexpr (std::is_same_v<T, ConfigPropertyStmt>) {
-                    oss << "  config " << node.name << " = " << node.value << "\n";
+                    oss << "  config: " << node.name << " = " << node.value << "\n";
                 } else if constexpr (std::is_same_v<T, HotkeyStmt>) {
                     const auto& syn = node.syntax;
-                    oss << "  hotkey ";
-                    if (syn.passthrough) oss << "@";
-                    if (syn.repeat) oss << "&";
-                    if (syn.onRelease) oss << "^";
-                    oss << " [";
+                    oss << "  hotkey: ";
+                    if (syn.passthrough) oss << "passthrough, ";
+                    if (syn.repeat) oss << "repeat, ";
+                    if (syn.onRelease) oss << "onRelease, ";
+                    oss << "[";
                     for (size_t i = 0; i < syn.chords.size(); i++) {
                         if (i) oss << "; ";
                         const auto& cs = syn.chords[i];
                         if (!cs.modifiers.empty()) {
-                            std::vector<std::string> mods;
-                            mods.reserve(cs.modifiers.size());
-                            for (const auto& m : cs.modifiers) mods.push_back(modifier_to_string(m));
-                            oss << join(mods, " + ") << " + ";
+                            for (const auto& mod : cs.modifiers) {
+                                oss << modifier_to_string(mod) << " + ";
+                            }
                         }
                         if (cs.key) {
                             oss << key_syntax_to_string(*cs.key);
@@ -99,7 +97,7 @@ std::string dump_ast(const Program& program) {
                             oss << "<missing-key>";
                         }
                     }
-                    oss << "] : " << node.command << "\n";
+                    oss << "] \"" << node.command << "\"\n";
                 }
             },
             s);
@@ -107,3 +105,4 @@ std::string dump_ast(const Program& program) {
     oss << "}\n";
     return oss.str();
 }
+

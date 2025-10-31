@@ -1,30 +1,32 @@
-#pragma once
+module;
 
 #include <format>
 #include <string>
 
-enum class TokenType {
-    DefineModifier,  // 'define_modifier'
-    Modifier,        // built-in or user-defined
-    Key,             // single character
-    KeyHex,          // hex keycode
-    Plus,            // '+'
-    Equals,          // '='
-    Colon,           // ':'
-    Command,         // entire line after ':'
-    Literal,         // literal, ie enter, space tab
-    Caret,           // on release '^'
-    At,              // passthrough '@'
-    Ampersand,       // repeat '&'
-    EndOfFile,       // end of file
-    OpenBrace,       // '{'
-    CloseBrace,      // '}'
-    Comma,           // ','
-    Semicolon,       // ';'
-    ConfigProperty,  // a config property
+export module smhkd.token;
+
+export enum class TokenType {
+    DefineModifier,
+    Modifier,
+    Key,
+    KeyHex,
+    Plus,
+    Equals,
+    Colon,
+    Command,
+    Literal,
+    Caret,
+    At,
+    Ampersand,
+    EndOfFile,
+    OpenBrace,
+    CloseBrace,
+    Comma,
+    Semicolon,
+    ConfigProperty,
 };
 
-template <>
+export template <>
 struct std::formatter<TokenType> : std::formatter<std::string_view> {
     auto format(const TokenType& tt, std::format_context& ctx) const {
         std::string_view name;
@@ -52,17 +54,17 @@ struct std::formatter<TokenType> : std::formatter<std::string_view> {
     }
 };
 
-// individual token
-struct Token {
+export struct Token {
     TokenType type;
     std::string text;
     int row;
     int col;
 };
 
-template <>
+export template <>
 struct std::formatter<Token> : std::formatter<std::string_view> {
     auto format(const Token& t, std::format_context& ctx) const {
         return std::format_to(ctx.out(), "'{}' ({}, {}, {})", t.text, t.type, t.row, t.col);
     }
 };
+
