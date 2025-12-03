@@ -1,5 +1,6 @@
 module;
 
+#include <cctype>
 #include <chrono>
 #include <map>
 #include <stdexcept>
@@ -116,6 +117,73 @@ void setChordKeyFromAtom(Chord& chord, const ast::KeyAtom& atom) {
         atom.value);
 }
 
+// Parse brace expansion from a command string, e.g., "echo {apple,banana}" -> ["echo apple", "echo banana"]
+// Returns empty vector if no brace expansion found
+std::vector<std::string> parseCommandBraceExpansion(const std::string& command) {
+    std::vector<std::string> result;
+    size_t braceStart = command.find('{');
+    if (braceStart == std::string::npos) {
+        return result;  // No brace expansion found
+    }
+
+    size_t braceEnd = command.find('}', braceStart);
+    if (braceEnd == std::string::npos) {
+        return result;  // Unmatched brace
+    }
+
+    // Extract the prefix (before the brace) and suffix (after the brace)
+    std::string prefix = command.substr(0, braceStart);
+    std::string suffix = command.substr(braceEnd + 1);
+
+    // Parse the items inside the braces
+    std::string braceContent = command.substr(braceStart + 1, braceEnd - braceStart - 1);
+    std::vector<std::string> items;
+    size_t start = 0;
+    while (start < braceContent.size()) {
+        // Skip leading whitespace
+        while (start < braceContent.size() && std::isspace(static_cast<unsigned char>(braceContent[start]))) {
+            start++;
+        }
+        if (start >= braceContent.size()) break;
+
+        size_t commaPos = braceContent.find(',', start);
+        if (commaPos == std::string::npos) {
+            // Last item - trim trailing whitespace
+            std::string item = braceContent.substr(start);
+            size_t end = item.size();
+            while (end > 0 && std::isspace(static_cast<unsigned char>(item[end - 1]))) {
+                end--;
+            }
+            if (end > 0) {
+                items.push_back(item.substr(0, end));
+            }
+            break;
+        }
+        // Extract item and trim trailing whitespace
+        std::string item = braceContent.substr(start, commaPos - start);
+        size_t end = item.size();
+        while (end > 0 && std::isspace(static_cast<unsigned char>(item[end - 1]))) {
+            end--;
+        }
+        if (end > 0) {
+            items.push_back(item.substr(0, end));
+        }
+        start = commaPos + 1;
+    }
+
+    if (items.empty()) {
+        return result;  // Empty brace expansion
+    }
+
+    // Expand each item
+    for (const auto& item : items) {
+        std::string expanded = prefix + item + suffix;
+        result.push_back(expanded);
+    }
+
+    return result;
+}
+
 InterpreterResult Interpreter::interpret(const ast::Program& program) {
     InterpreterResult result{};
 
@@ -196,6 +264,15 @@ InterpreterResult Interpreter::interpret(const ast::Program& program) {
         }
 
         const auto& keyItems = syn.chords[braceChordIndex].key->items;
+        std::vector<std::string> commandExpansions = parseCommandBraceExpansion(h.command);
+
+        // If command has brace expansion, it must match the number of key items
+        if (!commandExpansions.empty()) {
+            if (commandExpansions.size() != keyItems.size()) {
+                throw std::runtime_error("Brace expansion mismatch: " + std::to_string(keyItems.size()) + " key items but " + std::to_string(commandExpansions.size()) + " command expansions");
+            }
+        }
+
         for (size_t i = 0; i < keyItems.size(); i++) {
             Hotkey hk = base;
             for (size_t ci = 0; ci < syn.chords.size(); ci++) {
@@ -208,8 +285,10 @@ InterpreterResult Interpreter::interpret(const ast::Program& program) {
                     setChordKeyFromAtom(hk.chords[ci], syn.chords[ci].key->items.front());
                 }
             }
-            debug("h.command: {}", h.command);
-            result.hotkeys[hk] = h.command;
+            // Use expanded command if available, otherwise use original
+            std::string command = commandExpansions.empty() ? h.command : commandExpansions[i];
+            debug("h.command: {}", command);
+            result.hotkeys[hk] = command;
         }
     }
     return result;
