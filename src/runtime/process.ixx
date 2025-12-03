@@ -18,7 +18,7 @@ export pid_t read_pid_file();
 export void create_pid_file();
 export bool check_privileges();
 
-inline constexpr std::string_view PIDFILE_FMT = "/tmp/smhkd_{}.pid";
+constexpr std::string_view PIDFILE_FMT = "/tmp/smhkd_{}.pid";
 
 export pid_t read_pid_file() {
     const auto* user = std::getenv("USER");

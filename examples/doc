@@ -31,7 +31,7 @@ simple_keysym := <key> | <keycode> | <literal> | <mouse>
 # two or more simple keysyms pressed at the same time
 simultaneous_keysym := '[' <simple_keysym> (',' <simple_keysym>)+ ']'
 
-# a keysym with brace expansion, allowing for easily binding multiple keysyms
+# a keysym with brace expansion, syntactic sugar for easily binding multiple keysyms
 brace_expansion_keysym := '{' <simple_keysym> (',' <simple_keysym>)+ '}'
 
 # keysym

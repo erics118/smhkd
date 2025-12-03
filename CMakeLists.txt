@@ -43,7 +43,7 @@ endif()
 target_sources(${PROJECT_NAME}
     PRIVATE
         FILE_SET cxx_modules TYPE CXX_MODULES FILES
-            src/utils.ixx
+        src/utils.ixx
         src/input/keysym.ixx
         src/input/modifier.ixx
         src/input/locale.ixx
@@ -61,7 +61,6 @@ target_sources(${PROJECT_NAME}
         src/runtime/service.ixx
         src/runtime/key_handler.ixx
         src/runtime/key_observer_handler.ixx
-            
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
@@ -74,7 +73,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     ${CORE_FOUNDATION_FRAMEWORK}
 )
 
-target_compile_definitions(${PROJECT_NAME} PRIVATE 
+target_compile_definitions(${PROJECT_NAME} PRIVATE
     SMHKD_USE_MODULES=1
     SMHKD_VERSION="${PROJECT_VERSION}"
 )

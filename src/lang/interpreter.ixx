@@ -97,7 +97,7 @@ class DefineResolver {
     std::unordered_set<std::string> resolving_;
 };
 
-inline void setChordKeyFromAtom(Chord& chord, const ast::KeyAtom& atom) {
+void setChordKeyFromAtom(Chord& chord, const ast::KeyAtom& atom) {
     std::visit(
         [&](const auto& v) {
             using T = std::decay_t<decltype(v)>;
@@ -116,13 +116,15 @@ inline void setChordKeyFromAtom(Chord& chord, const ast::KeyAtom& atom) {
         atom.value);
 }
 
-inline InterpreterResult Interpreter::interpret(const ast::Program& program) {
+InterpreterResult Interpreter::interpret(const ast::Program& program) {
     InterpreterResult result{};
-    struct ConfigPropertiesStmt {
+
+    struct ConfigProperties {
         std::vector<DefineData> defines;
         std::vector<ast::ConfigPropertyStmt> configProps;
         std::vector<ast::HotkeyStmt> hotkeyStmts;
     } acc;
+
     for (const auto& stmt : program.statements) {
         std::visit(
             [&](const auto& node) {
@@ -181,7 +183,7 @@ inline InterpreterResult Interpreter::interpret(const ast::Program& program) {
                 }
             }
         }
-        if (braceChordIndex < 0) {
+        if (braceChordIndex == -1) {
             Hotkey hk = base;
             for (size_t i = 0; i < syn.chords.size(); i++) {
                 if (!syn.chords[i].key.has_value() || syn.chords[i].key->items.empty()) {
@@ -192,6 +194,7 @@ inline InterpreterResult Interpreter::interpret(const ast::Program& program) {
             result.hotkeys[hk] = h.command;
             continue;
         }
+
         const auto& keyItems = syn.chords[braceChordIndex].key->items;
         for (size_t i = 0; i < keyItems.size(); i++) {
             Hotkey hk = base;
@@ -205,6 +208,7 @@ inline InterpreterResult Interpreter::interpret(const ast::Program& program) {
                     setChordKeyFromAtom(hk.chords[ci], syn.chords[ci].key->items.front());
                 }
             }
+            debug("h.command: {}", h.command);
             result.hotkeys[hk] = h.command;
         }
     }

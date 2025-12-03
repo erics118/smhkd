@@ -23,9 +23,9 @@ module;
 export module smhkd.service;
 import smhkd.utils;
 
-export inline constexpr std::string LAUNCHCTL_PATH = "/bin/launchctl";
-export inline constexpr std::string_view PLIST_NAME = "com.erics118.smhkd";
-export inline constexpr std::string_view PLIST_TEMPLATE = R"(<?xml version="1.0" encoding="UTF-8"?>
+export constexpr std::string LAUNCHCTL_PATH = "/bin/launchctl";
+export constexpr std::string_view PLIST_NAME = "com.erics118.smhkd";
+export constexpr std::string_view PLIST_TEMPLATE = R"(<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>

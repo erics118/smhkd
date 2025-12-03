@@ -24,17 +24,20 @@ struct KeyObserverHandler {
     [[nodiscard]] bool handleKeyEvent(CGEventRef event, CGEventType type);
 };
 
-inline bool KeyObserverHandler::init() {
+bool KeyObserverHandler::init() {
     runLoop = CFRunLoopGetCurrent();
     if (!runLoop) return false;
     if (!setupEventTap()) return false;
     return true;
 }
 
-inline bool KeyObserverHandler::setupEventTap() {
+bool KeyObserverHandler::setupEventTap() {
     CGEventMask eventMask = CGEventMaskBit(kCGEventKeyDown) | CGEventMaskBit(kCGEventKeyUp) | CGEventMaskBit(kCGEventFlagsChanged);
     CFMachPortRef tap = CGEventTapCreate(kCGSessionEventTap, kCGHeadInsertEventTap, kCGEventTapOptionDefault, eventMask, eventCallback, this);
-    if (!tap) error("failed to create event tap");
+    if (!tap) {
+        error("failed to create event tap");
+        return false;
+    }
     CFRunLoopSourceRef runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0);
     CFRunLoopAddSource(runLoop, runLoopSource, kCFRunLoopCommonModes);
     CGEventTapEnable(tap, true);
@@ -43,13 +46,13 @@ inline bool KeyObserverHandler::setupEventTap() {
     return true;
 }
 
-inline CGEventRef KeyObserverHandler::eventCallback(CGEventTapProxy /*proxy*/, CGEventType type, CGEventRef event, void* refcon) {
+CGEventRef KeyObserverHandler::eventCallback(CGEventTapProxy /*proxy*/, CGEventType type, CGEventRef event, void* refcon) {
     auto* keyHandler = static_cast<KeyObserverHandler*>(refcon);
     if (keyHandler->handleKeyEvent(event, type)) return nullptr;
     return event;
 }
 
-inline bool KeyObserverHandler::handleKeyEvent(CGEventRef event, CGEventType type) {
+bool KeyObserverHandler::handleKeyEvent(CGEventRef event, CGEventType type) {
     auto keyCode = static_cast<CGKeyCode>(CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode));
     CGEventFlags flags = CGEventGetFlags(event);
 
@@ -81,7 +84,7 @@ inline bool KeyObserverHandler::handleKeyEvent(CGEventRef event, CGEventType typ
     return true;
 }
 
-inline void KeyObserverHandler::run() const {
+void KeyObserverHandler::run() const {
     if (!runLoop) return;
     CFRunLoopRun();
 }

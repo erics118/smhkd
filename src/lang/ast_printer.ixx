@@ -63,7 +63,7 @@ std::string modifier_to_string(const ast::ModifierAtom& m) {
         m.value);
 }
 
-export inline std::string dump_ast(const ast::Program& program) {
+export std::string dump_ast(const ast::Program& program) {
     std::ostringstream oss;
     oss << "Program{\n";
     for (const auto& s : program.statements) {

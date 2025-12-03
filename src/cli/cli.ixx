@@ -41,7 +41,7 @@ struct std::formatter<Args> : std::formatter<std::string_view> {
     }
 };
 
-export inline Args parse_args(const std::vector<std::string>& argv, const ArgsConfig& config) {
+export Args parse_args(const std::vector<std::string>& argv, const ArgsConfig& config) {
     std::unordered_map<std::string, std::string> res;
     for (size_t i = 0; i < argv.size(); ++i) {
         std::string a = argv[i];
