@@ -5,43 +5,12 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-if(APPLE AND NOT DEFINED CMAKE_OSX_SYSROOT)
-    # Discover macOS SDK path without hardcoding
-    execute_process(
-        COMMAND xcrun --show-sdk-path
-        OUTPUT_VARIABLE SDK_PATH
-        OUTPUT_STRIP_TRAILING_WHITESPACE
-        ERROR_QUIET)
-    if(SDK_PATH)
-        set(CMAKE_OSX_SYSROOT "${SDK_PATH}" CACHE PATH "macOS SDK root" FORCE)
-    endif()
-endif()
-
-if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    set(_SMHKD_RELEASE_OPTS -O3)
-endif()
-
-find_library(CARBON_FRAMEWORK Carbon REQUIRED)
-find_library(COCOA_FRAMEWORK Cocoa REQUIRED)
-find_library(CORE_FOUNDATION_FRAMEWORK CoreFoundation REQUIRED)
-
 add_executable(${PROJECT_NAME}
         src/cli/main.cpp
 )
 
-target_compile_options(${PROJECT_NAME} PRIVATE
-    -fstack-protector-strong
-    -Wno-elaborated-enum-base
-    -Wno-deprecated-declarations
-    ${_SMHKD_RELEASE_OPTS}
-)
-
-if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    target_compile_definitions(${PROJECT_NAME} PRIVATE NDEBUG)
-endif()
-
-target_sources(${PROJECT_NAME}
-    PRIVATE
+# c++ modules
+target_sources(${PROJECT_NAME} PRIVATE
         FILE_SET cxx_modules TYPE CXX_MODULES FILES
         src/utils.ixx
         src/input/keysym.ixx
@@ -64,22 +33,20 @@ target_sources(${PROJECT_NAME}
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-)
-
-target_link_libraries(${PROJECT_NAME} PRIVATE
-    ${CARBON_FRAMEWORK}
-    ${COCOA_FRAMEWORK}
-    ${CORE_FOUNDATION_FRAMEWORK}
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
-    SMHKD_USE_MODULES=1
-    SMHKD_VERSION="${PROJECT_VERSION}"
+        SMHKD_VERSION="${PROJECT_VERSION}"
 )
 
-## Keep headers active for now while module co-exists
+# macOS frameworks
+find_library(CARBON_FRAMEWORK Carbon REQUIRED)
+find_library(COCOA_FRAMEWORK Cocoa REQUIRED)
+find_library(CORE_FOUNDATION_FRAMEWORK CoreFoundation REQUIRED)
 
-set_target_properties(${PROJECT_NAME} PROPERTIES
-    MACOSX_BUNDLE FALSE
+target_link_libraries(${PROJECT_NAME} PRIVATE
+        ${CARBON_FRAMEWORK}
+        ${COCOA_FRAMEWORK}
+        ${CORE_FOUNDATION_FRAMEWORK}
 )
