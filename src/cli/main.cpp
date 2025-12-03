@@ -3,6 +3,10 @@
 #include <fstream>
 #include <print>
 
+#ifndef SMHKD_VERSION
+#define SMHKD_VERSION "unknown"
+#endif
+
 import smhkd.utils;
 import smhkd.cli;
 import smhkd.process;
@@ -37,9 +41,15 @@ void parse_arguments(int argc, char* argv[]) {
             "stop-service",
             "restart-service",
             "dump-ast",
+            "version",
         },
     };
     Args args = parse_args(std::vector<std::string>(argv, argv + argc), config);
+
+    if (args.get("version")) {
+        std::print("smhkd-v{}\n", SMHKD_VERSION);
+        exit(0);
+    }
 
     if (args.get("install-service")) {
         service_install();

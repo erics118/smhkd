@@ -74,7 +74,10 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     ${CORE_FOUNDATION_FRAMEWORK}
 )
 
-target_compile_definitions(${PROJECT_NAME} PRIVATE SMHKD_USE_MODULES=1)
+target_compile_definitions(${PROJECT_NAME} PRIVATE 
+    SMHKD_USE_MODULES=1
+    SMHKD_VERSION="${PROJECT_VERSION}"
+)
 
 ## Keep headers active for now while module co-exists
 
