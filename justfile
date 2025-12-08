@@ -4,7 +4,10 @@ default: debug
 
 # Configure the build with specified build type
 configure: 
-    cmake -S . -B ./build -G Ninja
+    cmake -S . -B ./build \
+        -G Ninja \
+        -DCMAKE_EXPORT_COMPILE_COMMANDS=1 \
+        -DCMAKE_BUILD_TYPE={{build-type}};
 
 # Build with current configuration
 build: configure
