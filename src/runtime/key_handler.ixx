@@ -112,7 +112,7 @@ bool KeyHandler::checkAndExecuteSequence(const Chord& current) {
         if (!matches) continue;
 
         if (currentChords.size() == hotkey.chords.size()) {
-            debug("Matched complete chord sequence");
+            debug("Matched complete chord sequence ending with: {}", hotkey);
             if (!command.empty()) {
                 debug("executing command: {}", command);
                 executeCommand(command);
@@ -120,7 +120,7 @@ bool KeyHandler::checkAndExecuteSequence(const Chord& current) {
             clearSequence();
             return true;
         }
-        debug("Matched partial chord sequence");
+        debug("Matched partial chord sequence: {}", hotkey);
         return true;
     }
     clearSequence();

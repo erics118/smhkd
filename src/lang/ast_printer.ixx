@@ -29,11 +29,9 @@ std::string key_atom_to_string(const ast::KeyAtom& atom) {
                 return std::format("literal: {}", v);
             } else if constexpr (std::is_same_v<T, ast::KeyChar>) {
                 if (v.isHex) {
-                    char buf[8];
-                    std::snprintf(buf, sizeof(buf), "%02x", static_cast<unsigned char>(v.value));
-                    return std::string("hex:") + buf;
+                    return std::format("key:{:02x}", static_cast<unsigned char>(v.value));
                 }
-                return std::string("key:") + std::string(1, v.value);
+                return std::string{"key:"} + v.value;
             }
             return std::string{};
         },

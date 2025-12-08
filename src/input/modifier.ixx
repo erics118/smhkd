@@ -145,6 +145,35 @@ export struct ModifierFlags {
     [[nodiscard]] bool has(uint32_t flag) const;
 };
 
+export template <>
+struct std::formatter<ModifierFlags> : std::formatter<std::string_view> {
+    auto format(const ModifierFlags& m, std::format_context& ctx) const {
+        if (m.flags == 0) {
+            return std::format_to(ctx.out(), "");
+        }
+
+        std::vector<std::string> parts;
+
+        // Check each modifier flag in order
+        for (size_t i = 0; i < hotkey_flags.size(); ++i) {
+            if (m.has(hotkey_flags[i])) {
+                parts.push_back(hotkey_flag_names[i]);
+            }
+        }
+
+        if (parts.empty()) {
+            return std::format_to(ctx.out(), "");
+        }
+
+        std::string result = parts[0];
+        for (size_t i = 1; i < parts.size(); ++i) {
+            result += "+" + parts[i];
+        }
+
+        return std::format_to(ctx.out(), "{}", result);
+    }
+};
+
 int eventLRModifierFlagsToHotkeyFlags(CGEventFlags eventflags, int mod) {
     int flags{};
     int mask = cgevent_flags[mod];

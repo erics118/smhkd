@@ -45,6 +45,7 @@ void parse_arguments(int argc, char* argv[]) {
             "version",
         },
     };
+
     Args args = parse_args(std::vector<std::string>(argv, argv + argc), config);
 
     if (args.get("version")) {
