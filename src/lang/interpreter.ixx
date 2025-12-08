@@ -40,14 +40,29 @@ export class Interpreter {
    public:
     Interpreter() = default;
     [[nodiscard]] InterpreterResult interpret(const ast::Program& program);
+
+   private:
+    std::unordered_map<std::string, std::vector<ast::ModifierAtom>> defines;
+    std::unordered_map<std::string, int> cache;
+
+    // modifier resolution
+    int resolveModifierFlags(const std::string& name);
+
+    // hotkey building
+    void setChordKeyFromAtom(Chord& chord, const ast::KeyAtom& atom);
+    Hotkey buildBaseHotkey(const ast::HotkeySyntax& syn);
+    void setHotkeyKeys(Hotkey& hk, const ast::HotkeySyntax& syn, int braceChordIndex, size_t braceItemIndex);
+
+    // command parsing
+    std::string trim(std::string_view s);
+    std::string unescapeDoubleBraces(std::string_view s);
+    std::vector<std::string> parseCommandBraceExpansion(const std::string& command);
 };
 
 // resolves modifier name to its flag value
 // handles builtin modifiers and custom modifiers
 // modifiers must be defined before usage.
-int resolveModifierFlags(const std::string& name,
-    const std::unordered_map<std::string, std::vector<ast::ModifierAtom>>& defines,
-    std::unordered_map<std::string, int>& cache) {
+int Interpreter::resolveModifierFlags(const std::string& name) {
     if (auto it = cache.find(name); it != cache.end()) return it->second;
     if (auto bi = parseBuiltinModifier(name)) return cache[name] = builtinModifierToFlags(*bi);
     if (auto it = defines.find(name); it != defines.end()) {
@@ -55,7 +70,7 @@ int resolveModifierFlags(const std::string& name,
         for (const auto& part : it->second) {
             int partFlags = std::holds_alternative<BuiltinModifier>(part.value)
                               ? builtinModifierToFlags(std::get<BuiltinModifier>(part.value))
-                              : resolveModifierFlags(std::get<std::string>(part.value), defines, cache);
+                              : resolveModifierFlags(std::get<std::string>(part.value));
             if (partFlags == 0) return cache[name] = 0;  // Invalid modifier reference
             flags |= partFlags;
         }
@@ -65,7 +80,7 @@ int resolveModifierFlags(const std::string& name,
 }
 
 // Sets the chord's keycode from an AST key atom (LiteralKey or KeyChar)
-void setChordKeyFromAtom(Chord& chord, const ast::KeyAtom& atom) {
+void Interpreter::setChordKeyFromAtom(Chord& chord, const ast::KeyAtom& atom) {
     std::visit([&](const auto& v) {
         using T = std::decay_t<decltype(v)>;
         if constexpr (std::is_same_v<T, LiteralKey>) {
@@ -85,9 +100,7 @@ void setChordKeyFromAtom(Chord& chord, const ast::KeyAtom& atom) {
 // build a base hotkey with the modifiers, without the keysyms
 // because keysyms are handled during brace expansion
 // TODO: allow for brace expansions to include modifiers
-Hotkey buildBaseHotkey(const ast::HotkeySyntax& syn,
-    const std::unordered_map<std::string, std::vector<ast::ModifierAtom>>& defines,
-    std::unordered_map<std::string, int>& cache) {
+Hotkey Interpreter::buildBaseHotkey(const ast::HotkeySyntax& syn) {
     Hotkey base{.passthrough = syn.passthrough, .repeat = syn.repeat, .on_release = syn.onRelease};
     base.chords.reserve(syn.chords.size());
     for (const auto& chordSyn : syn.chords) {
@@ -95,7 +108,7 @@ Hotkey buildBaseHotkey(const ast::HotkeySyntax& syn,
         for (const auto& modName : chordSyn.modifiers) {
             c.modifiers.flags |= std::holds_alternative<BuiltinModifier>(modName.value)
                                    ? builtinModifierToFlags(std::get<BuiltinModifier>(modName.value))
-                                   : resolveModifierFlags(std::get<std::string>(modName.value), defines, cache);
+                                   : resolveModifierFlags(std::get<std::string>(modName.value));
         }
         base.chords.push_back(c);
     }
@@ -103,7 +116,7 @@ Hotkey buildBaseHotkey(const ast::HotkeySyntax& syn,
 }
 
 // sets the keysyms for chords in a hotkey
-void setHotkeyKeys(Hotkey& hk, const ast::HotkeySyntax& syn, int braceChordIndex, size_t braceItemIndex) {
+void Interpreter::setHotkeyKeys(Hotkey& hk, const ast::HotkeySyntax& syn, int braceChordIndex, size_t braceItemIndex) {
     for (size_t i = 0; i < syn.chords.size(); i++) {
         const auto& key = syn.chords[i].key;
         if (!key.has_value() || key->items.empty()) {
@@ -118,7 +131,7 @@ void setHotkeyKeys(Hotkey& hk, const ast::HotkeySyntax& syn, int braceChordIndex
 }
 
 // trims leading and trailing whitespace from a string
-std::string trim(std::string_view s) {
+std::string Interpreter::trim(std::string_view s) {
     auto start = std::ranges::find_if_not(s, [](unsigned char c) { return std::isspace(c); });
     if (start == s.end()) return "";
     auto end = std::find_if_not(s.rbegin(), std::make_reverse_iterator(start), [](unsigned char c) { return std::isspace(c); }).base();
@@ -127,7 +140,7 @@ std::string trim(std::string_view s) {
 
 // converts double braces to single braces: {{ -> { and }} -> }
 // used to escape literal braces in command strings
-std::string unescapeDoubleBraces(std::string_view s) {
+std::string Interpreter::unescapeDoubleBraces(std::string_view s) {
     std::string result;
     result.reserve(s.size());
     for (size_t i = 0; i < s.size(); i++) {
@@ -141,9 +154,9 @@ std::string unescapeDoubleBraces(std::string_view s) {
     return result;
 }
 
-// parses brace expension in command strings.
+// parses brace expansion in command strings.
 // returns a vector of the expanded commands
-std::vector<std::string> parseCommandBraceExpansion(const std::string& command) {
+std::vector<std::string> Interpreter::parseCommandBraceExpansion(const std::string& command) {
     // find start brace
     size_t braceStart = std::string::npos;
     for (size_t i = 0; i < command.size(); i++) {
@@ -188,7 +201,8 @@ std::vector<std::string> parseCommandBraceExpansion(const std::string& command) 
 
 InterpreterResult Interpreter::interpret(const ast::Program& program) {
     InterpreterResult result{};
-    std::unordered_map<std::string, std::vector<ast::ModifierAtom>> defines;
+    defines.clear();
+    cache.clear();
 
     // first pass: collect modifier definitions and process config properties
     for (const auto& stmt : program.statements) {
@@ -207,14 +221,12 @@ InterpreterResult Interpreter::interpret(const ast::Program& program) {
             stmt);
     }
 
-    std::unordered_map<std::string, int> cache;
-
     // second pass: process hotkeys and handle brace expansions
     for (const auto& stmt : program.statements) {
         if (!std::holds_alternative<ast::HotkeyStmt>(stmt)) continue;
         const auto& h = std::get<ast::HotkeyStmt>(stmt);
         const auto& syn = h.syntax;
-        Hotkey base = buildBaseHotkey(syn, defines, cache);
+        Hotkey base = buildBaseHotkey(syn);
 
         // find brace expansion chord if any (only one brace expansion per hotkey)
         int braceChordIndex = -1;
