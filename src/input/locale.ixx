@@ -78,33 +78,3 @@ export bool initializeKeycodeMap() {
 
     return !keycodeMap.empty();
 }
-
-export Keycode getKeycode(const std::string& key) {
-    if (key.length() == 1) {
-        if (const auto it = keycodeMap.find(key); it != keycodeMap.end()) {
-            return it->second;
-        }
-    }
-    if (const auto* it = std::ranges::find(literal_keycode_str, key); it != literal_keycode_str.end()) {
-        return literal_keycode_value[std::distance(literal_keycode_str.begin(), it)];
-    }
-    try {
-        return std::stoi(key, nullptr, 16);
-    } catch (...) {
-    }
-    return static_cast<Keycode>(-1);
-}
-
-export std::string getNameOfKeycode(uint32_t keycode) {
-    for (const auto& [key, code] : keycodeMap) {
-        if (code == keycode) {
-            return key;
-        }
-    }
-    for (int i = 0; i < literal_keycode_str.size(); i++) {
-        if (literal_keycode_value[i] == keycode) {
-            return literal_keycode_str[i];
-        }
-    }
-    return std::format("{:#02x}", keycode);
-}

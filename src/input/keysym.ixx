@@ -106,17 +106,12 @@ export std::optional<LiteralKey> tryParseLiteralKey(const std::string& name) {
     return std::nullopt;
 }
 
-// Offsets and flags are provided by smhkd.modifier
-
 export int getImplicitFlags(LiteralKey k) {
     constexpr int KEY_HAS_IMPLICIT_FN_MOD = 4;
     constexpr int KEY_HAS_IMPLICIT_NX_MOD = 35;
 
-    std::string str = std::format("{}", k);
-
-    const auto* it = std::ranges::find(literal_keycode_str, str);
-    if (it == literal_keycode_str.end()) return 0;
-    auto literal_index = std::distance(literal_keycode_str.begin(), it);
+    // Use enum index directly instead of converting to string and searching
+    auto literal_index = static_cast<size_t>(k);
 
     int flags{};
     if ((literal_index > KEY_HAS_IMPLICIT_FN_MOD) && (literal_index < KEY_HAS_IMPLICIT_NX_MOD)) {
@@ -126,3 +121,31 @@ export int getImplicitFlags(LiteralKey k) {
     }
     return flags;
 }
+
+// convert a single character to a keycode
+export uint32_t getKeycode(char key) {
+    // check the locale-dependent keycode map first
+    if (const auto it = keycodeMap.find(std::string{key}); it != keycodeMap.end()) {
+        return it->second;
+    }
+
+    // fallback to use char value directly
+    return static_cast<uint32_t>(static_cast<unsigned char>(key));
+}
+
+export template <>
+struct std::formatter<Keysym> : std::formatter<std::string_view> {
+    auto format(const Keysym& k, std::format_context& ctx) const {
+        for (const auto& [key, code] : keycodeMap) {
+            if (code == k.keycode) {
+                return std::format_to(ctx.out(), "{}", key);
+            }
+        }
+        for (int i = 0; i < literal_keycode_str.size(); i++) {
+            if (literal_keycode_value[i] == k.keycode) {
+                return std::format_to(ctx.out(), "{}", literal_keycode_str[i]);
+            }
+        }
+        return std::format_to(ctx.out(), "{:#02x}", k.keycode);
+    }
+};

@@ -161,6 +161,7 @@ bool KeyHandler::handleKeyEvent(CGEventRef event, CGEventType type) {
             bool event_type_matches = !hotkey.on_release && type == kCGEventKeyDown || hotkey.on_release && type == kCGEventKeyUp;
             bool repeat_matches = isRepeat && hotkey.repeat || !isRepeat;
             if (event_type_matches && repeat_matches) {
+                debug("hotkey matched: {}", hotkey);
                 if (!command.empty()) {
                     debug("executing command: {}", command);
                     executeCommand(command);
