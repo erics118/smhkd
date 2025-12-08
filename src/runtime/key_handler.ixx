@@ -120,7 +120,7 @@ bool KeyHandler::checkAndExecuteSequence(const Chord& current) {
             clearSequence();
             return true;
         }
-        debug("Matched partial chord sequence: {}", hotkey);
+        debug("Matched partial chord sequence: {}", current);
         return true;
     }
     clearSequence();

@@ -31,7 +31,7 @@ struct std::formatter<Chord> : std::formatter<std::string_view> {
             return std::format_to(ctx.out(), "{}", keyStr);
         }
 
-        return std::format_to(ctx.out(), "{}+{}", modStr, keyStr);
+        return std::format_to(ctx.out(), "{} + {}", modStr, keyStr);
     }
 };
 

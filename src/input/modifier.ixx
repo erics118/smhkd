@@ -167,7 +167,7 @@ struct std::formatter<ModifierFlags> : std::formatter<std::string_view> {
 
         std::string result = parts[0];
         for (size_t i = 1; i < parts.size(); ++i) {
-            result += "+" + parts[i];
+            result += " + " + parts[i];
         }
 
         return std::format_to(ctx.out(), "{}", result);

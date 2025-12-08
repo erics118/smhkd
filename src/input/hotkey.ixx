@@ -29,7 +29,7 @@ struct std::formatter<Hotkey> : std::formatter<std::string_view> {
         if (!h.chords.empty()) {
             result = std::format("{}", h.chords[0]);
             for (size_t i = 1; i < h.chords.size(); ++i) {
-                result += " " + std::format("{}", h.chords[i]);
+                result += " ; " + std::format("{}", h.chords[i]);
             }
         }
 
