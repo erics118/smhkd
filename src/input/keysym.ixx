@@ -6,12 +6,16 @@ module;
 #include <algorithm>
 #include <array>
 #include <compare>
+#include <format>
 #include <optional>
 #include <print>
 #include <string>
+#include <unordered_map>
 
-export module smhkd.keysym;
-import smhkd.modifier;
+export module keysym;
+
+import modifier;
+import locale;
 
 export struct Keysym {
     uint32_t keycode;

@@ -3,11 +3,13 @@ module;
 #include <CoreGraphics/CGEventTypes.h>
 
 #include <compare>
+#include <format>
+#include <string>
 #include <vector>
 
-export module smhkd.hotkey;
-import smhkd.chord;
-import smhkd.modifier;
+export module hotkey;
+import chord;
+import modifier;
 
 export struct Hotkey {
     bool passthrough{};

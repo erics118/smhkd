@@ -11,9 +11,9 @@ module;
 #include <string>
 #include <vector>
 
-import smhkd.log;
+export module utils;
 
-export module smhkd.utils;
+import log;
 
 export template <>
 struct std::formatter<CFStringRef> : std::formatter<std::string_view> {

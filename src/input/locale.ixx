@@ -5,16 +5,14 @@ module;
 #include <Carbon/Carbon.h>
 #include <CoreFoundation/CoreFoundation.h>
 
-#include <algorithm>
 #include <array>
 #include <format>
 #include <memory>
 #include <type_traits>
 #include <unordered_map>
 
-export module smhkd.locale;
-import smhkd.utils;
-import smhkd.keysym;
+export module locale;
+import utils;
 
 export using Keycode = uint32_t;
 
@@ -22,7 +20,7 @@ export using Keycode = uint32_t;
 export std::unordered_map<std::string, Keycode> keycodeMap;
 
 // From keysym module/header
-// literal arrays come from smhkd.keysym
+// literal arrays come from keysym
 
 export bool initializeKeycodeMap() {
     static const std::array<uint32_t, 36> layoutDependentKeycodes = {

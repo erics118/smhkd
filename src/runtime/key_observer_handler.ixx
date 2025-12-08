@@ -6,11 +6,11 @@ module;
 #include <print>
 #include <string>
 
-export module smhkd.key_observer_handler;
+export module key_observer_handler;
 
-import smhkd.chord;
-import smhkd.modifier;
-import smhkd.log;
+import chord;
+import modifier;
+import log;
 
 export namespace smhkd::key_observer_handler {
 struct KeyObserverHandler {

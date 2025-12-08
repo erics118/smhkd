@@ -4,12 +4,13 @@ module;
 #include <IOKit/hidsystem/ev_keymap.h>
 
 #include <compare>
+#include <format>
 
-export module smhkd.chord;
-import smhkd.token;
-import smhkd.keysym;
-import smhkd.modifier;
-import smhkd.locale;
+export module chord;
+
+import token;
+import keysym;
+import modifier;
 
 export struct Chord {
     Keysym keysym;

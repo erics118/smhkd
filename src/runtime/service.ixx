@@ -20,8 +20,8 @@ module;
 #include <string_view>
 #include <vector>
 
-export module smhkd.service;
-import smhkd.utils;
+export module service;
+import utils;
 
 export constexpr std::string LAUNCHCTL_PATH = "/bin/launchctl";
 export constexpr std::string_view PLIST_NAME = "com.erics118.smhkd";

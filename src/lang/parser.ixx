@@ -6,13 +6,14 @@ module;
 #include <utility>
 #include <vector>
 
-export module smhkd.parser;
-import smhkd.ast;
-import smhkd.token;
-import smhkd.tokenizer;
-import smhkd.keysym;
-import smhkd.log;
-import smhkd.modifier;
+export module parser;
+
+import ast;
+import token;
+import tokenizer;
+import keysym;
+import log;
+import modifier;
 
 export class Parser {
    private:

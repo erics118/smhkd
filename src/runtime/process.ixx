@@ -12,7 +12,7 @@ module;
 #include <print>
 #include <string>
 
-export module smhkd.process;
+export module process;
 
 export pid_t read_pid_file();
 export void create_pid_file();

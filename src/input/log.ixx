@@ -5,7 +5,7 @@ module;
 #include <print>
 #include <string>
 
-export module smhkd.log;
+export module log;
 
 enum class level : std::uint8_t {
     debug,

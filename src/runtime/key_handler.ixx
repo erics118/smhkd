@@ -11,18 +11,18 @@ module;
 #include <utility>
 #include <vector>
 
-export module smhkd.key_handler;
+export module key_handler;
 
-import smhkd.hotkey;
-import smhkd.chord;
-import smhkd.modifier;
-import smhkd.log;
-import smhkd.utils;
-import smhkd.service;
-import smhkd.parser;
-import smhkd.interpreter;
-import smhkd.ast;
-import smhkd.log;
+import hotkey;
+import chord;
+import modifier;
+import log;
+import utils;
+import service;
+import parser;
+import interpreter;
+import ast;
+import log;
 
 export struct KeyHandler {
     std::string configFileName;

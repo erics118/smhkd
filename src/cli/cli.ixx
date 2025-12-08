@@ -8,7 +8,7 @@ module;
 #include <unordered_set>
 #include <vector>
 
-export module smhkd.cli;
+export module cli;
 
 export struct ArgsConfig {
     std::unordered_set<std::string> short_args;

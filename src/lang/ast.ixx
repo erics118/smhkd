@@ -1,14 +1,13 @@
 module;
 
-#include <format>
 #include <optional>
 #include <string>
 #include <variant>
 #include <vector>
 
-export module smhkd.ast;
-import smhkd.keysym;
-import smhkd.modifier;
+export module ast;
+import keysym;
+import modifier;
 
 export namespace ast {
 

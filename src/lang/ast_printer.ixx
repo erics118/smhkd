@@ -6,10 +6,11 @@ module;
 #include <variant>
 #include <vector>
 
-export module smhkd.ast_printer;
-import smhkd.ast;
-import smhkd.keysym;
-import smhkd.modifier;
+export module ast_printer;
+
+import ast;
+import keysym;
+import modifier;
 
 std::string join(const std::vector<std::string>& items, const std::string& sep) {
     std::string out;

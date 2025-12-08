@@ -3,9 +3,9 @@ module;
 #include <algorithm>
 #include <string>
 
-export module smhkd.tokenizer;
-import smhkd.token;
-import smhkd.keysym;
+export module tokenizer;
+import token;
+import keysym;
 
 export class Tokenizer {
    private:

@@ -1,27 +1,23 @@
 module;
 
 #include <algorithm>
-#include <cctype>
 #include <chrono>
-#include <iterator>
 #include <map>
 #include <ranges>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
-#include <utility>
 #include <variant>
 #include <vector>
 
-export module smhkd.interpreter;
-import smhkd.ast;
-import smhkd.chord;
-import smhkd.hotkey;
-import smhkd.locale;
-import smhkd.keysym;
-import smhkd.modifier;
-import smhkd.log;
+export module interpreter;
+import ast;
+import chord;
+import hotkey;
+import locale;
+import keysym;
+import modifier;
+import log;
 
 export struct ConfigProperties {
     // max time between chord presses

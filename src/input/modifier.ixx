@@ -6,8 +6,9 @@ module;
 #include <format>
 #include <optional>
 #include <string>
+#include <vector>
 
-export module smhkd.modifier;
+export module modifier;
 
 export constexpr int l_offset = 1;
 export constexpr int r_offset = 2;

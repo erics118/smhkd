@@ -2,23 +2,24 @@
 
 #include <fstream>
 #include <print>
+#include <string>
 
 #ifndef SMHKD_VERSION
 #define SMHKD_VERSION "unknown"
 #endif
 
-import smhkd.utils;
-import smhkd.cli;
-import smhkd.process;
-import smhkd.service;
-import smhkd.parser;
-import smhkd.ast_printer;
-import smhkd.key_handler;
-import smhkd.key_observer_handler;
-import smhkd.log;
-import smhkd.ast;
-import smhkd.locale;
-import smhkd.key_handler;
+import utils;
+import cli;
+import process;
+import service;
+import parser;
+import ast_printer;
+import key_handler;
+import key_observer_handler;
+import log;
+import ast;
+import locale;
+import key_handler;
 
 KeyHandler* service = nullptr;
 std::string config_file;

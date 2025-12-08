@@ -3,7 +3,7 @@ module;
 #include <format>
 #include <string>
 
-export module smhkd.token;
+export module token;
 
 export enum class TokenType {
     DefineModifier,
