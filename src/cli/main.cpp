@@ -13,13 +13,11 @@ import cli;
 import process;
 import service;
 import parser;
-import ast_printer;
 import key_handler;
 import key_observer_handler;
 import log;
 import ast;
 import locale;
-import key_handler;
 
 KeyHandler* service = nullptr;
 std::string config_file;
