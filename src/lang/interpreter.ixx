@@ -54,8 +54,8 @@ export class Interpreter {
     void setHotkeyKeys(Hotkey& hk, const ast::HotkeySyntax& syn, int braceChordIndex, size_t braceItemIndex);
 
     // command parsing
-    std::string trim(std::string_view s);
-    std::string unescapeDoubleBraces(std::string_view s);
+    static std::string trim(std::string_view s);
+    static std::string unescapeDoubleBraces(std::string_view s);
     std::vector<std::string> parseCommandBraceExpansion(const std::string& command);
 };
 
@@ -71,12 +71,16 @@ int Interpreter::resolveModifierFlags(const std::string& name) {
             int partFlags = std::holds_alternative<BuiltinModifier>(part.value)
                               ? builtinModifierToFlags(std::get<BuiltinModifier>(part.value))
                               : resolveModifierFlags(std::get<std::string>(part.value));
-            if (partFlags == 0) return cache[name] = 0;  // Invalid modifier reference
+            if (partFlags == 0) {
+                warn("invalid modifier reference in custom modifier definition '{}'", name);
+                return cache[name] = 0;
+            }
             flags |= partFlags;
         }
         return cache[name] = flags;
     }
-    return cache[name] = 0;  // Modifier not found
+    warn("unknown modifier '{}'", name);
+    return cache[name] = 0;
 }
 
 // Sets the chord's keycode from an AST key atom (LiteralKey or KeyChar)
@@ -242,7 +246,9 @@ InterpreterResult Interpreter::interpret(const ast::Program& program) {
 
         // make sure command brace expansion matches key brace expansion count
         if (!commandExpansions.empty() && commandExpansions.size() != expansionCount) {
-            throw std::runtime_error("Brace expansion mismatch: " + std::to_string(expansionCount) + " key items but " + std::to_string(commandExpansions.size()) + " command expansions");
+            warn("brace expansion mismatch: found {} key items in brace expansion but found {} command expansions. Skipping this hotkey.",
+                expansionCount, commandExpansions.size());
+            continue;  // Skip this hotkey
         }
 
         // generate hotkeys for each expansion

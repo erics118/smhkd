@@ -24,7 +24,9 @@ std::string config_file;
 
 static void sigusr1_handler(int /*signal*/) {
     debug("SIGUSR1 received.. reloading config");
-    service->reload();
+    if (service) {
+        service->reload();
+    }
 }
 
 void parse_arguments(int argc, char* argv[]) {
@@ -82,7 +84,7 @@ void parse_arguments(int argc, char* argv[]) {
     }
 
     if (args.get('o', "observe")) {
-        smhkd::key_observer_handler::KeyObserverHandler observer;
+        KeyObserverHandler observer;
         observer.init();
         observer.run();
     }
@@ -98,19 +100,16 @@ void parse_arguments(int argc, char* argv[]) {
         config_file = *val;
     } else {
         config_file = get_config_file("smhkd").value_or("");
-        debug(config_file);
     }
 
-    if (args.get("dump-ast")) {
-        if (!file_exists(config_file)) error("config file not found");
-        if (config_file.empty()) error("config file empty");
+    validate_config_file(config_file);
 
+    if (args.get("dump-ast")) {
         std::ifstream file(config_file);
-        std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+        const std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
         Parser p(contents);
-        ast::Program prog = p.parseProgram();
-        auto dumped = dump_ast(prog);
-        std::print("{}", dumped);
+        ast::Program program = p.parseProgram();
+        std::print("{}\n", program);
         exit(0);
     }
 }
@@ -124,11 +123,7 @@ int main(int argc, char* argv[]) {
         error("failed to initialize keycode map");
     }
 
-    try {
-        parse_arguments(argc, argv);
-    } catch (const std::exception& ex) {
-        error(ex.what());
-    }
+    parse_arguments(argc, argv);
 
     create_pid_file();
 
@@ -139,11 +134,7 @@ int main(int argc, char* argv[]) {
     signal(SIGCHLD, SIG_IGN);
     signal(SIGUSR1, sigusr1_handler);
 
-    try {
-        service = new KeyHandler(config_file);
-        service->init();
-        service->run();
-    } catch (const std::exception& ex) {
-        error("Error while parsing hotkeys: {}", ex.what());
-    }
+    service = new KeyHandler(config_file);
+    service->init();
+    service->run();
 }

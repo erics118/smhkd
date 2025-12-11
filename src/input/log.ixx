@@ -38,7 +38,9 @@ void print(const level ll, const std::format_string<Args...> fmt, Args&&... args
 }
 
 export template <typename T>
-void debug(const T& msg) { print(level::debug, msg); }
+void debug(const T& msg) {
+    print(level::debug, msg);
+}
 
 export template <typename... Args>
 void debug(const std::format_string<Args...> fmt, Args&&... args) {
@@ -46,7 +48,9 @@ void debug(const std::format_string<Args...> fmt, Args&&... args) {
 }
 
 export template <typename T>
-void info(const T& msg) { print(level::info, msg); }
+void info(const T& msg) {
+    print(level::info, msg);
+}
 
 export template <typename... Args>
 void info(const std::format_string<Args...> fmt, Args&&... args) {
@@ -54,7 +58,9 @@ void info(const std::format_string<Args...> fmt, Args&&... args) {
 }
 
 export template <typename T>
-void warn(const T& msg) { print(level::warn, msg); }
+void warn(const T& msg) {
+    print(level::warn, msg);
+}
 
 export template <typename... Args>
 void warn(const std::format_string<Args...> fmt, Args&&... args) {
@@ -62,7 +68,9 @@ void warn(const std::format_string<Args...> fmt, Args&&... args) {
 }
 
 export template <typename T>
-void error(const T& msg) { print(level::error, msg); }
+void error(const T& msg) {
+    print(level::error, msg);
+}
 
 export template <typename... Args>
 void error(const std::format_string<Args...> fmt, Args&&... args) {

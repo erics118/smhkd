@@ -5,27 +5,25 @@ module;
 #include <libproc.h>
 #include <spawn.h>
 #include <sys/fcntl.h>
-#include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
 #include <array>
-#include <cstdio>
+#include <cerrno>
 #include <filesystem>
 #include <format>
 #include <fstream>
-#include <print>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
 
 export module service;
 import utils;
+import log;
 
-export constexpr std::string LAUNCHCTL_PATH = "/bin/launchctl";
-export constexpr std::string_view PLIST_NAME = "com.erics118.smhkd";
-export constexpr std::string_view PLIST_TEMPLATE = R"(<?xml version="1.0" encoding="UTF-8"?>
+constexpr std::string LAUNCHCTL_PATH = "/bin/launchctl";
+constexpr std::string_view PLIST_NAME = "com.erics118.smhkd";
+constexpr std::string_view PLIST_TEMPLATE = R"(<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
@@ -77,26 +75,35 @@ export std::string get_home_directory() {
     if (const char* homeDir = std::getenv("HOME")) {
         return homeDir;
     }
-    throw std::runtime_error("failed to get home directory path");
+    error("failed to get home directory path");
+    return "";
 }
 
 export std::string get_plist_path() {
     auto home = get_home_directory();
-    if (home.empty()) throw std::runtime_error("failed to get plist path");
+    if (home.empty()) {
+        error("failed to get plist path");
+    }
     return std::format("{}/Library/LaunchAgents/{}.plist", home, PLIST_NAME);
 }
 
 export std::string get_plist_contents() {
     const char* user = getenv("USER");
-    if (!user) throw std::runtime_error("USER environment variable not set");
+    if (!user) {
+        error("USER environment variable not set");
+    }
     const char* path_env = getenv("PATH");
-    if (!path_env) throw std::runtime_error("PATH environment variable not set");
+    if (!path_env) {
+        error("PATH environment variable not set");
+    }
     std::array<char, 4096> exe_path{};
     if (proc_pidpath(getpid(), exe_path.data(), exe_path.size()) <= 0) {
-        throw std::runtime_error("failed to get executable path");
+        error("failed to get executable path");
     }
     auto contents = std::format(PLIST_TEMPLATE, PLIST_NAME, exe_path.data(), path_env, user, user);
-    if (contents.empty()) throw std::runtime_error("failed to get plist contents");
+    if (contents.empty()) {
+        error("failed to get plist contents");
+    }
     return contents;
 }
 
@@ -119,7 +126,7 @@ export int launchctl_exec(const std::vector<std::string>& args, bool suppress_ou
         posix_spawn_file_actions_addopen(&actions, STDERR_FILENO, "/dev/null", O_WRONLY | O_APPEND, 0);
     }
     pid_t pid{};
-    int status = posix_spawn(&pid, c_args[0], &actions, nullptr, c_args.data(), nullptr);
+    int status = posix_spawn(&pid, c_args.at(0), &actions, nullptr, c_args.data(), nullptr);
     posix_spawn_file_actions_destroy(&actions);
     if (status != 0) {
         return 1;
@@ -134,11 +141,11 @@ export int launchctl_exec(const std::vector<std::string>& args, bool suppress_ou
 }
 
 export [[nodiscard]] std::string get_domain_target() {
-    static std::string target = std::format("gui/{}", getuid());
+    static const std::string target = std::format("gui/{}", getuid());
     return target;
 }
 export [[nodiscard]] std::string get_service_target() {
-    static std::string target = std::format("gui/{}/{}", getuid(), PLIST_NAME);
+    static const std::string target = std::format("gui/{}/{}", getuid(), PLIST_NAME);
     return target;
 }
 export [[nodiscard]] bool is_service_bootstrapped() {
@@ -150,32 +157,36 @@ export [[nodiscard]] bool is_service_bootstrapped() {
 export void service_install() {
     auto plist_path = get_plist_path();
     if (std::filesystem::exists(plist_path)) {
-        throw std::runtime_error(std::format("service file '{}' is already installed", plist_path));
+        error("service file '{}' is already installed", plist_path);
     }
     auto plist_contents = get_plist_contents();
     std::filesystem::create_directories(std::filesystem::path{plist_path}.parent_path());
     std::ofstream file(plist_path);
     if (!file) {
-        throw std::runtime_error(std::format("failed to open '{}' for writing", plist_path));
+        error("failed to open '{}' for writing", plist_path);
     }
     file << plist_contents;
     if (!file) {
-        throw std::runtime_error(std::format("failed to write to '{}'", plist_path));
+        error("failed to write to '{}'", plist_path);
     }
 }
 
 export void service_uninstall() {
     auto plist_path = get_plist_path();
     if (!std::filesystem::exists(plist_path)) {
-        throw std::runtime_error(std::format("service file '{}' is not installed", plist_path));
+        error("service file '{}' is not installed", plist_path);
     }
-    std::filesystem::remove(plist_path);
+    std::error_code ec;
+    std::filesystem::remove(plist_path, ec);
+    if (ec) {
+        error("failed to remove service file '{}'", plist_path);
+    }
 }
 
 export void service_start() {
     auto plist_path = get_plist_path();
     if (!std::filesystem::exists(plist_path)) {
-        std::print(stdout, "{}\n", std::format("service file '{}' does not exist, installing", plist_path));
+        warn("service file '{}' does not exist, installing", plist_path);
         service_install();
     }
     auto service_target = get_service_target();
@@ -191,7 +202,7 @@ export void service_start() {
 export void service_restart() {
     auto plist_path = get_plist_path();
     if (!std::filesystem::exists(plist_path)) {
-        throw std::runtime_error(std::format("service file '{}' is not installed", plist_path));
+        error("service file '{}' is not installed", plist_path);
     }
     auto service_target = std::format("gui/{}/{}", getuid(), PLIST_NAME);
     launchctl_exec({"kickstart", "-k", service_target});
@@ -200,7 +211,7 @@ export void service_restart() {
 export void service_stop() {
     auto plist_path = get_plist_path();
     if (!std::filesystem::exists(plist_path)) {
-        throw std::runtime_error(std::format("service file '{}' is not installed", plist_path));
+        error("service file '{}' is not installed", plist_path);
     }
     auto service_target = get_service_target();
     auto domain_target = get_domain_target();

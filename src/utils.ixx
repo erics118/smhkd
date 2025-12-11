@@ -4,7 +4,6 @@ module;
 #include <CoreFoundation/CFString.h>
 #include <unistd.h>
 
-#include <cstdlib>
 #include <filesystem>
 #include <format>
 #include <optional>
@@ -38,6 +37,15 @@ export [[nodiscard]] bool file_exists(const std::string& filename) {
     return std::filesystem::exists(filename) && std::filesystem::is_regular_file(filename);
 }
 
+export void validate_config_file(const std::string& config_file) {
+    if (config_file.empty()) {
+        error("config file path is empty");
+    }
+    if (!file_exists(config_file)) {
+        error("config file not found: {}", config_file);
+    }
+}
+
 export [[nodiscard]] std::optional<std::string> get_config_file(const std::string& name) {
     char* xdgHome = getenv("XDG_CONFIG_HOME");
     std::string path;
@@ -63,13 +71,14 @@ export void executeCommand(const std::string& command) {
     pid_t cpid = fork();
 
     if (cpid < 0) {
+        warn("failed to fork process for command execution");
         return;
     }
 
     if (cpid == 0) {
         setsid();
 
-        std::vector<std::string> stringStorage = {"/bin/bash", "-c", command};
+        std::vector<std::string> stringStorage = {"/bin/zsh", "-c", command};
         std::vector<char*> args;
         args.reserve(stringStorage.size());
         for (auto& str : stringStorage) {
@@ -78,6 +87,7 @@ export void executeCommand(const std::string& command) {
         args.push_back(nullptr);
 
         int status = execvp(args[0], args.data());
+        warn("failed to execute command '{}'", command);
         _exit(status);
     }
 }

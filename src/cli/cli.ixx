@@ -2,13 +2,13 @@ module;
 
 #include <format>
 #include <optional>
-#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
 export module cli;
+import log;
 
 export struct ArgsConfig {
     std::unordered_set<std::string> short_args;
@@ -44,15 +44,15 @@ struct std::formatter<Args> : std::formatter<std::string_view> {
 export Args parse_args(const std::vector<std::string>& argv, const ArgsConfig& config) {
     std::unordered_map<std::string, std::string> res;
     for (size_t i = 0; i < argv.size(); ++i) {
-        std::string a = argv[i];
+        std::string a = argv.at(i);
         if (a.starts_with("--")) {
             a = a.substr(2);
             if (config.long_args.contains(a)) {
                 res[a] = "true";
             } else if (i + 1 != argv.size() && config.long_args.contains(a + ':')) {
-                res[a] = argv[++i];
+                res[a] = argv.at(++i);
             } else {
-                throw std::runtime_error("unknown long argument: " + a);
+                error("unknown long argument: {}", a);
             }
         } else if (a.starts_with("-")) {
             a = a.substr(1);
@@ -61,16 +61,16 @@ export Args parse_args(const std::vector<std::string>& argv, const ArgsConfig& c
                 if (config.short_args.contains(std::string{ch})) {
                     res[std::string{ch}] = "true";
                 } else {
-                    throw std::runtime_error("unknown short argument: " + std::string{ch});
+                    error("unknown short argument: {}", std::string{ch});
                 }
             }
             char last_char = a.back();
             if (config.short_args.contains(std::string{last_char})) {
                 res[std::string{last_char}] = "true";
             } else if (i + 1 != argv.size() && config.short_args.contains(std::string{last_char} + ':')) {
-                res[std::string{last_char}] = argv[++i];
+                res[std::string{last_char}] = argv.at(++i);
             } else {
-                throw std::runtime_error("unknown short argument: " + std::string{last_char});
+                error("unknown short argument: {}", std::string{last_char});
             }
         }
     }

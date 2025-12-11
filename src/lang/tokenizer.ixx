@@ -171,7 +171,9 @@ Token Tokenizer::readCommandToken() {
     return Token{TokenType::Command, line, startRow, startCol};
 }
 
-bool Tokenizer::isIdentifierChar(char c) { return std::isalnum(static_cast<unsigned char>(c)) || c == '_'; }
+bool Tokenizer::isIdentifierChar(char c) {
+    return std::isalnum(static_cast<unsigned char>(c)) || c == '_';
+}
 
 std::string Tokenizer::readIdentifier() {
     std::string result;

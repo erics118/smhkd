@@ -49,6 +49,7 @@ export struct KeyHandler {
     [[nodiscard]] bool handleKeyEvent(CGEventRef event, CGEventType type);
 
     void reload() {
+        clearSequence();
         loadConfig(configFileName);
     }
 
@@ -91,7 +92,7 @@ void KeyHandler::clearSequence() {
 
 bool KeyHandler::checkAndExecuteSequence(const Chord& current) {
     auto now = std::chrono::system_clock::now();
-    if (now != std::chrono::time_point<std::chrono::system_clock>::min() && now - lastKeyPressTime > config.maxChordInterval) {
+    if (lastKeyPressTime != std::chrono::time_point<std::chrono::system_clock>::min() && now - lastKeyPressTime > config.maxChordInterval) {
         clearSequence();
         return false;
     }
@@ -158,8 +159,8 @@ bool KeyHandler::handleKeyEvent(CGEventRef event, CGEventType type) {
     for (const auto& [hotkey, command] : hotkeys) {
         if (hotkey.chords.size() > 1) continue;
         if (hotkey.chords[0].isActivatedBy(current)) {
-            bool event_type_matches = !hotkey.on_release && type == kCGEventKeyDown || hotkey.on_release && type == kCGEventKeyUp;
-            bool repeat_matches = isRepeat && hotkey.repeat || !isRepeat;
+            bool event_type_matches = (!hotkey.on_release && type == kCGEventKeyDown) || (hotkey.on_release && type == kCGEventKeyUp);
+            bool repeat_matches = (isRepeat && hotkey.repeat) || !isRepeat;
             if (event_type_matches && repeat_matches) {
                 debug("hotkey matched: {}", hotkey);
                 if (!command.empty()) {
@@ -184,20 +185,14 @@ void KeyHandler::run() const {
 }
 
 void KeyHandler::loadConfig(const std::string& config_file) {
-    if (!file_exists(config_file)) error("config file not found");
-    if (config_file.empty()) error("config file empty");
-
     info("config file set to: {}", config_file);
     std::ifstream file(config_file);
     std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-    try {
-        Parser parser(contents);
-        ast::Program program = parser.parseProgram();
-        Interpreter interpreter;
-        auto result = interpreter.interpret(program);
-        this->hotkeys = std::move(result.hotkeys);
-        this->config = result.config;
-    } catch (const std::exception& ex) {
-        error("Error while parsing hotkeys: {}", ex.what());
-    }
+
+    Parser parser(contents);
+    ast::Program program = parser.parseProgram();
+    Interpreter interpreter;
+    auto result = interpreter.interpret(program);
+    this->hotkeys = std::move(result.hotkeys);
+    this->config = result.config;
 }

@@ -27,4 +27,4 @@ clean:
     rm -rf ./build;
 
 sign:
-	codesign --force -s - ./build/smhkd
+	codesign --force -s "smhkd-cert" ./build/smhkd

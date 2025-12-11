@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.28)
 project(smhkd VERSION 1.0.0 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -25,7 +25,6 @@ target_sources(${PROJECT_NAME} PRIVATE
         src/lang/tokenizer.ixx
         src/lang/parser.ixx
         src/lang/interpreter.ixx
-        src/lang/ast_printer.ixx
         src/input/hotkey.ixx
         src/cli/cli.ixx
         src/runtime/process.ixx
