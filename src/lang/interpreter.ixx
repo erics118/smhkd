@@ -4,9 +4,9 @@ module;
 #include <chrono>
 #include <map>
 #include <ranges>
-#include <stdexcept>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <variant>
 #include <vector>
 
@@ -104,15 +104,25 @@ void Interpreter::setChordKeyFromAtom(Chord& chord, const ast::KeyAtom& atom) {
 // build a base hotkey with the modifiers, without the keysyms
 // because keysyms are handled during brace expansion
 // TODO: allow for brace expansions to include modifiers
+// returns a hotkey with empty chords if any modifier is invalid
 Hotkey Interpreter::buildBaseHotkey(const ast::HotkeySyntax& syn) {
     Hotkey base{.passthrough = syn.passthrough, .repeat = syn.repeat, .on_release = syn.onRelease};
     base.chords.reserve(syn.chords.size());
     for (const auto& chordSyn : syn.chords) {
         Chord c{.modifiers = {.flags = 0}};
         for (const auto& modName : chordSyn.modifiers) {
-            c.modifiers.flags |= std::holds_alternative<BuiltinModifier>(modName.value)
-                                   ? builtinModifierToFlags(std::get<BuiltinModifier>(modName.value))
-                                   : resolveModifierFlags(std::get<std::string>(modName.value));
+            int flags = 0;
+            if (std::holds_alternative<BuiltinModifier>(modName.value)) {
+                flags = builtinModifierToFlags(std::get<BuiltinModifier>(modName.value));
+            } else {
+                flags = resolveModifierFlags(std::get<std::string>(modName.value));
+                // if a non-builtin modifier resolves to 0, it's an invalid modifier
+                if (flags == 0) {
+                    // already warned, so just return an empty hotkey
+                    return Hotkey{};
+                }
+            }
+            c.modifiers.flags |= flags;
         }
         base.chords.push_back(c);
     }
@@ -124,7 +134,10 @@ void Interpreter::setHotkeyKeys(Hotkey& hk, const ast::HotkeySyntax& syn, int br
     for (size_t i = 0; i < syn.chords.size(); i++) {
         const auto& key = syn.chords[i].key;
         if (!key.has_value() || key->items.empty()) {
-            throw std::runtime_error("Chord missing keysym in hotkey");
+            warn("chord {} in multi-chord sequence is missing a keysym", i + 1);
+            // mark hotkey as invalid by clearing chords
+            hk.chords.clear();
+            return;
         }
         const auto& keyAtom = (i == braceChordIndex && braceItemIndex < key->items.size())
                                 ? key->items[braceItemIndex]
@@ -217,9 +230,15 @@ InterpreterResult Interpreter::interpret(const ast::Program& program) {
             } else if constexpr (std::is_same_v<T, ast::ConfigPropertyStmt>) {
                 auto ms = std::chrono::milliseconds(node.value);
                 if (node.name == "max_chord_interval") result.config.maxChordInterval = ms;
-                else if (node.name == "hold_modifier_threshold") result.config.holdModifierThreshold = ms;
-                else if (node.name == "simultaneous_threshold") result.config.simultaneousThreshold = ms;
-                else throw std::runtime_error("Unknown config property: " + node.name);
+                else if (node.name == "hold_modifier_threshold")
+                    result.config.holdModifierThreshold = ms;
+                else if (node.name == "simultaneous_threshold")
+                    result.config.simultaneousThreshold = ms;
+                else {
+                    warn("unknown config property: '{}'. Valid properties are: max_chord_interval, hold_modifier_threshold, simultaneous_threshold",
+                        node.name);
+                    // skip this config property
+                }
             }
         },
             stmt);
@@ -232,9 +251,14 @@ InterpreterResult Interpreter::interpret(const ast::Program& program) {
         const auto& syn = h.syntax;
         Hotkey base = buildBaseHotkey(syn);
 
+        // skip hotkeys with invalid modifiers (ie empty chords)
+        if (base.chords.empty()) {
+            continue;
+        }
+
         // find brace expansion chord if any (only one brace expansion per hotkey)
         int braceChordIndex = -1;
-        for (int i = 0; i < static_cast<int>(syn.chords.size()); i++) {
+        for (int i = 0; i < syn.chords.size(); i++) {
             if (syn.chords[i].key && syn.chords[i].key->isBraceExpansion) {
                 braceChordIndex = i;
                 break;
@@ -255,6 +279,10 @@ InterpreterResult Interpreter::interpret(const ast::Program& program) {
         for (size_t i = 0; i < expansionCount; i++) {
             Hotkey hk = base;
             setHotkeyKeys(hk, syn, braceChordIndex, i);
+            // skip invalid hotkey
+            if (hk.chords.empty()) {
+                continue;
+            }
             std::string command = commandExpansions.empty() ? h.command : commandExpansions[i];
             debug("adding command: {} : {}", hk, command);
             result.hotkeys[hk] = command;
