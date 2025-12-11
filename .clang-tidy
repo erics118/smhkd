@@ -1,0 +1,33 @@
+---
+Checks: >
+  performance-*,
+  portability-*,
+  readability-*,
+  misc-*,
+  modernize-*,
+  google-*,
+  cppcoreguidelines-*,
+  clang-analyzer-*,
+  bugprone-*,
+  -readability-identifier-length,
+  -modernize-use-trailing-return-type,
+  -misc-non-private-member-variables-in-classes,
+  -readability-implicit-bool-conversion,
+  -readability-magic-numbers,
+  -readability-braces-around-statements,
+  -google-readability-braces-around-statements,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -readability-uppercase-literal-suffix,
+  -cppcoreguidelines-macro-usage,
+  -readability-use-anyofallof,
+  -performance-enum-size,
+  -cppcoreguidelines-pro-bounds-constant-array-index,
+  -modernize-use-designated-initializers,
+  -readability-convert-member-functions-to-static,
+  -google-readability-todo,
+  -readability-function-cognitive-complexity,
+  *-const-correctness
+
+CheckOptions:
+  - key: misc-unused-parameters.StrictMode
+    value: 'false'
