@@ -116,6 +116,56 @@ ast::DefineModifierStmt Parser::parseDefineModifierStmt() {
 ast::ConfigPropertyStmt Parser::parseConfigPropertyStmt() {
     debug("Parsing a config property");
     Token cpToken = consume(TokenType::ConfigProperty);
+    ast::ConfigPropertyStmt stmt;
+    stmt.name = cpToken.text;
+
+    if (cpToken.text == "blacklist") {
+        if (tokenizer.peek().type != TokenType::Equals) {
+            warn(
+                "parse error at line {}, column {}: expected '=' after blacklist config but got {} ('{}')",
+                tokenizer.peek().row, tokenizer.peek().col, tokenizer.peek().type, tokenizer.peek().text);
+            return stmt;
+        }
+        consume(TokenType::Equals);
+        if (tokenizer.peek().type != TokenType::OpenBracket) {
+            warn(
+                "parse error at line {}, column {}: expected '[' after blacklist config but got {} ('{}')",
+                tokenizer.peek().row, tokenizer.peek().col, tokenizer.peek().type, tokenizer.peek().text);
+            return stmt;
+        }
+        consume(TokenType::OpenBracket);
+        while (tokenizer.hasMoreTokens()) {
+            const Token& tk = tokenizer.peek();
+            if (tk.type == TokenType::CloseBracket) {
+                consume(TokenType::CloseBracket);
+                break;
+            }
+            if (tk.type == TokenType::EndOfFile) {
+                warn("parse error at line {}, column {}: unexpected end of file while parsing blacklist", tk.row, tk.col);
+                break;
+            }
+            if (tk.type == TokenType::Comma) {
+                consume(TokenType::Comma);
+                continue;
+            }
+            if (tk.type == TokenType::String || tk.type == TokenType::Modifier || tk.type == TokenType::Key) {
+                Token valueToken = tokenizer.next();
+                if (!valueToken.text.empty()) {
+                    stmt.listValues.push_back(valueToken.text);
+                }
+                continue;
+            }
+            warn(
+                "parse error at line {}, column {}: unexpected token {} ('{}') in blacklist. Expected quoted string or identifier",
+                tk.row, tk.col, tk.type, tk.text);
+            tokenizer.next();  // consume to prevent infinite loop
+        }
+        if (stmt.listValues.empty()) {
+            warn("blacklist config provided but no process names were parsed");
+        }
+        return stmt;
+    }
+
     consume(TokenType::Equals);
     // we don't have an int token, so it's either a key or a modifier
     Token intToken = tokenizer.next();
@@ -126,9 +176,13 @@ ast::ConfigPropertyStmt Parser::parseConfigPropertyStmt() {
         // return empty statement
         return ast::ConfigPropertyStmt{};
     }
-    ast::ConfigPropertyStmt stmt;
-    stmt.name = cpToken.text;
-    stmt.value = std::stoi(intToken.text);
+    try {
+        stmt.intValue = std::stoi(intToken.text);
+    } catch (...) {
+        warn(
+            "parse error at line {}, column {}: value '{}' for config property '{}' is not a valid integer",
+            intToken.row, intToken.col, intToken.text, cpToken.text);
+    }
     return stmt;
 }
 

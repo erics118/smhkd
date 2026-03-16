@@ -17,15 +17,16 @@ export class KeyObserverHandler {
     CFRunLoopRef runLoop{};
     CFMachPortRef eventTap{};
 
+    // exit chord: ctrl + c
+    static constexpr Chord EXIT_CHORD{
+        .keysym = {.keycode = 8},
+        .modifiers = {.flags = Hotkey_Flag_Control}};
+
     bool setupEventTap() {
         CGEventMask eventMask = CGEventMaskBit(kCGEventKeyDown) | CGEventMaskBit(kCGEventKeyUp) | CGEventMaskBit(kCGEventFlagsChanged);
         CFMachPortRef tap = CGEventTapCreate(kCGSessionEventTap, kCGHeadInsertEventTap, kCGEventTapOptionDefault, eventMask, eventCallback, this);
         if (!tap) {
-            error(
-                "Failed to create event tap for key observer. This usually means:\n"
-                "  1. Accessibility permissions are not granted (check System Settings > Privacy & Security > Accessibility)\n"
-                "  2. Another application is using the event tap\n"
-                "  3. The system is in a restricted state");
+            return false;
         }
         CFRunLoopSourceRef runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0);
         CFRunLoopAddSource(runLoop, runLoopSource, kCFRunLoopCommonModes);
@@ -50,10 +51,7 @@ export class KeyObserverHandler {
             .modifiers = eventModifierFlagsToHotkeyFlags(flags),
         };
 
-        auto exitChord = Chord{
-            .keysym = {.keycode = 8},
-            .modifiers = {.flags = Hotkey_Flag_Control},
-        };
+        auto exitChord = EXIT_CHORD;
 
         if (exitChord.isActivatedBy(current)) {
             std::exit(1);
@@ -78,13 +76,26 @@ export class KeyObserverHandler {
    public:
     bool init() {
         runLoop = CFRunLoopGetCurrent();
-        if (!runLoop) return false;
-        if (!setupEventTap()) return false;
+        if (!runLoop) {
+            error("Failed to get current run loop");
+            return false;
+        }
+        if (!setupEventTap()) {
+            error("failed to setup event tap");
+            return false;
+        }
         return true;
     }
 
     void run() const {
-        if (!runLoop) return;
+        if (!runLoop) {
+            error("run loop not initialized");
+            return;
+        }
+        if (!eventTap) {
+            error("event tap not initialized");
+            return;
+        }
         CFRunLoopRun();
     }
 };

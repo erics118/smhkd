@@ -29,6 +29,9 @@ export struct ConfigProperties {
 
     // max time between keysyms to be considered as simultaneous
     std::chrono::milliseconds simultaneousThreshold{50};
+
+    // process names to ignore (case-insensitive)
+    std::vector<std::string> blacklist;
 };
 
 export struct InterpreterResult {
@@ -228,14 +231,30 @@ InterpreterResult Interpreter::interpret(const ast::Program& program) {
             if constexpr (std::is_same_v<T, ast::DefineModifierStmt>) {
                 defines[node.name] = node.parts;
             } else if constexpr (std::is_same_v<T, ast::ConfigPropertyStmt>) {
-                auto ms = std::chrono::milliseconds(node.value);
+                if (node.name == "blacklist") {
+                    if (!node.listValues.empty()) {
+                        result.config.blacklist = node.listValues;
+                    } else {
+                        warn("blacklist config provided without any process names; ignoring");
+                    }
+                    return;
+                }
+
+                if (!node.intValue) {
+                    warn(
+                        "config property '{}' requires an integer value. Skipping this property",
+                        node.name);
+                    return;
+                }
+
+                auto ms = std::chrono::milliseconds(*node.intValue);
                 if (node.name == "max_chord_interval") result.config.maxChordInterval = ms;
                 else if (node.name == "hold_modifier_threshold")
                     result.config.holdModifierThreshold = ms;
                 else if (node.name == "simultaneous_threshold")
                     result.config.simultaneousThreshold = ms;
                 else {
-                    warn("unknown config property: '{}'. Valid properties are: max_chord_interval, hold_modifier_threshold, simultaneous_threshold",
+                    warn("unknown config property: '{}'. Valid properties are: max_chord_interval, hold_modifier_threshold, simultaneous_threshold, blacklist",
                         node.name);
                     // skip this config property
                 }

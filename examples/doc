@@ -11,9 +11,13 @@ simultaneous_threshold := max time between keysyms to be considered as a <simult
 
 config_property_name := 'max_chord_interval' | 
                        'hold_modifier_threshold' | 
-                       'simultaneous_threshold'
+                       'simultaneous_threshold' |
+                       'blacklist'
 
-config_property := <config_property_name> '=' <number>
+string_literal := '"' <any_char_except_quote_or_newline>* '"'
+
+config_property := <config_property_name> '=' <number> |
+                 'blacklist' '=' '[' <string_literal>+ ']'
 
 # keysym =======================================================================================
 key         := single letter or number # a-z, 0-9
@@ -88,3 +92,7 @@ hotkey      := <chords> ':' <command>
 #     <config_property>
 #     <custom_modifier>
 #     <hotkey>
+
+# notes:
+#   - blacklist is matched against the frontmost process name (case-insensitive)
+#     and causes hotkey processing to be skipped while that process is focused

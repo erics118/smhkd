@@ -27,6 +27,7 @@ export class Tokenizer {
    private:
     Token getNextToken();
     [[nodiscard]] std::string readHex();
+    [[nodiscard]] std::string readQuotedString();
     [[nodiscard]] Token readCommandToken();
     [[nodiscard]] bool isIdentifierChar(char c);
     [[nodiscard]] std::string readIdentifier();
@@ -117,6 +118,18 @@ Token Tokenizer::getNextToken() {
         std::string hex = readHex();
         return Token{TokenType::KeyHex, hex, startRow, startCol};
     }
+    if (c == '[') {
+        advance();
+        return Token{TokenType::OpenBracket, "[", startRow, startCol};
+    }
+    if (c == ']') {
+        advance();
+        return Token{TokenType::CloseBracket, "]", startRow, startCol};
+    }
+    if (c == '"') {
+        std::string value = readQuotedString();
+        return Token{TokenType::String, value, startRow, startCol};
+    }
 
     const std::string text = readIdentifier();
     if (text.empty()) {
@@ -129,7 +142,7 @@ Token Tokenizer::getNextToken() {
     if (text == "define_modifier") {
         return Token{TokenType::DefineModifier, text, startRow, startCol};
     }
-    if (text == "max_chord_interval" || text == "hold_modifier_threshold" || text == "simultaneous_threshold") {
+    if (text == "max_chord_interval" || text == "hold_modifier_threshold" || text == "simultaneous_threshold" || text == "blacklist") {
         return Token{TokenType::ConfigProperty, text, startRow, startCol};
     }
     if (text.size() == 1) {
@@ -145,6 +158,31 @@ std::string Tokenizer::readHex() {
     while (hasMoreTokens()) {
         char c = peekChar();
         if (!std::isxdigit(static_cast<unsigned char>(c))) {
+            break;
+        }
+        result.push_back(c);
+        advance();
+    }
+    return result;
+}
+
+std::string Tokenizer::readQuotedString() {
+    std::string result;
+    advance();  // consume opening quote
+    while (hasMoreTokens()) {
+        char c = peekChar();
+        if (c == '\\' && hasMoreTokens(1) && peekChar(1) == '"') {
+            result.push_back('"');
+            advance();
+            advance();
+            continue;
+        }
+        if (c == '"') {
+            advance();  // consume closing quote
+            break;
+        }
+        if (c == '\n') {
+            // stop at newline to avoid consuming subsequent statements unintentionally
             break;
         }
         result.push_back(c);

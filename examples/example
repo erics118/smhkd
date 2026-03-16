@@ -1,6 +1,11 @@
 # define the max possible time between chords to be 5000 milliseconds
 max_chord_interval = 5000
 
+blacklist = [
+    "Safari"
+    "processname1"
+]
+
 cmd + u :
     echo cmd u
 

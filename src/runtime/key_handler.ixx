@@ -3,7 +3,10 @@ module;
 #include <Carbon/Carbon.h>
 #include <CoreFoundation/CoreFoundation.h>
 
+#include <algorithm>
+#include <cctype>
 #include <chrono>
+#include <cstring>
 #include <fstream>
 #include <map>
 #include <optional>
@@ -56,6 +59,9 @@ export struct KeyHandler {
    private:
     void clearSequence();
     bool checkAndExecuteSequence(const Chord& current);
+    bool isBlacklistedProcess() const;
+    static std::string getFrontProcessName();
+    static std::string toLower(std::string s);
 };
 
 bool KeyHandler::init() {
@@ -148,6 +154,12 @@ bool KeyHandler::handleKeyEvent(CGEventRef event, CGEventType type) {
         std::exit(1);
     }
 
+    if (!config.blacklist.empty() && isBlacklistedProcess()) {
+        clearSequence();
+        lastTriggeredChord = std::nullopt;
+        return false;
+    }
+
     if (type == kCGEventKeyUp && lastTriggeredChord && lastTriggeredChord->keysym.keycode == keyCode) {
         lastTriggeredChord = std::nullopt;
     }
@@ -176,6 +188,46 @@ bool KeyHandler::handleKeyEvent(CGEventRef event, CGEventType type) {
         }
     }
     return false;
+}
+
+bool KeyHandler::isBlacklistedProcess() const {
+    auto name = getFrontProcessName();
+    if (name.empty()) return false;
+    auto lowerName = toLower(std::move(name));
+    for (const auto& blocked : config.blacklist) {
+        if (toLower(blocked) == lowerName) {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::string KeyHandler::getFrontProcessName() {
+    ProcessSerialNumber psn{};
+    if (GetFrontProcess(&psn) != noErr) {
+        return "";
+    }
+    CFStringRef cfName{};
+    if (CopyProcessName(&psn, &cfName) != noErr || !cfName) {
+        return "";
+    }
+
+    CFIndex length = CFStringGetLength(cfName);
+    CFIndex maxSize = CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;
+    std::string buffer(static_cast<size_t>(maxSize), '\0');
+    if (!CFStringGetCString(cfName, buffer.data(), maxSize, kCFStringEncodingUTF8)) {
+        CFRelease(cfName);
+        return "";
+    }
+    buffer.resize(strlen(buffer.c_str()));
+    CFRelease(cfName);
+
+    return buffer;
+}
+
+std::string KeyHandler::toLower(std::string s) {
+    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return s;
 }
 
 void KeyHandler::run() const {

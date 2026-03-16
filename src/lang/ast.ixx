@@ -23,7 +23,8 @@ struct DefineModifierStmt {
 
 struct ConfigPropertyStmt {
     std::string name;
-    int value{};
+    std::optional<int> intValue;
+    std::vector<std::string> listValues;
 };
 
 struct KeyChar {
@@ -179,7 +180,20 @@ struct std::formatter<ast::DefineModifierStmt> : std::formatter<std::string_view
 template <>
 struct std::formatter<ast::ConfigPropertyStmt> : std::formatter<std::string_view> {
     auto format(const ast::ConfigPropertyStmt& stmt, std::format_context& ctx) const {
-        return std::format_to(ctx.out(), "config: {} = {}", stmt.name, stmt.value);
+        std::string renderedValue;
+        if (stmt.intValue) {
+            renderedValue = std::format("{}", *stmt.intValue);
+        } else if (!stmt.listValues.empty()) {
+            renderedValue = "[";
+            for (size_t i = 0; i < stmt.listValues.size(); i++) {
+                if (i > 0) renderedValue += ", ";
+                renderedValue += std::format("\"{}\"", stmt.listValues[i]);
+            }
+            renderedValue += "]";
+        } else {
+            renderedValue = "<unset>";
+        }
+        return std::format_to(ctx.out(), "config: {} = {}", stmt.name, renderedValue);
     }
 };
 

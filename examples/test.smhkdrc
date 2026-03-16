@@ -1,0 +1,8 @@
+
+define_modifier hammer = cmd + alt + shift
+
+hammer + d : echo hi
+
+aaa + f : echo hi
+
+ctrl + 1 ; cmd + 2 : echo 2
