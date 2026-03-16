@@ -3,10 +3,13 @@ build-type := "Debug"
 default: debug
 
 # Configure the build with specified build type
-configure: 
+configure:
+    SDKROOT=$(/usr/bin/xcrun --show-sdk-path); \
     cmake -S . -B ./build \
         -G Ninja \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=1 \
+        -DCMAKE_CXX_COMPILER="/opt/homebrew/opt/llvm/bin/clang++" \
+        -DCMAKE_OSX_SYSROOT="$SDKROOT" \
         -DCMAKE_BUILD_TYPE={{build-type}};
 
 # Build with current configuration
@@ -27,4 +30,4 @@ clean:
     rm -rf ./build;
 
 sign:
-	codesign --force -s "smhkd-cert" ./build/smhkd
+    codesign --force -i com.erics118.smhkd -s "smhkd-cert" ./build/smhkd
