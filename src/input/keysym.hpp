@@ -1,5 +1,7 @@
-module;
+#pragma once
 
+#include "modifier.hpp"
+#include "locale.hpp"
 #include <Carbon/Carbon.h>
 #include <IOKit/hidsystem/ev_keymap.h>
 
@@ -12,12 +14,9 @@ module;
 #include <string>
 #include <unordered_map>
 
-export module keysym;
 
-import modifier;
-import locale;
 
-export struct Keysym {
+struct Keysym {
     uint32_t keycode;
     std::strong_ordering operator<=>(const Keysym& other) const = default;
 };
@@ -28,7 +27,7 @@ struct LiteralKeyInfo {
 };
 
 // clang-format off
-export constexpr std::array<LiteralKeyInfo, 47> literal_keys = {{
+constexpr std::array<LiteralKeyInfo, 47> literal_keys = {{
     {"return",            kVK_Return                 },
     {"tab",               kVK_Tab                    },
     {"space",             kVK_Space                  },
@@ -80,7 +79,7 @@ export constexpr std::array<LiteralKeyInfo, 47> literal_keys = {{
 
 
 // Enum for known literal keys
-export enum class LiteralKey : uint32_t {
+enum class LiteralKey : uint32_t {
     Return = 0,     Tab,            Space,
     Backspace,      Escape,         Delete,
     Home,           End,            PageUp,
@@ -101,7 +100,7 @@ export enum class LiteralKey : uint32_t {
 };
 
 
-export template <>
+template <>
 struct std::formatter<LiteralKey> : std::formatter<std::string_view> {
     auto format(const LiteralKey& k, std::format_context& ctx) const {
         return std::format_to(ctx.out(), "{}", literal_keys[static_cast<size_t>(k)].name);
@@ -109,18 +108,18 @@ struct std::formatter<LiteralKey> : std::formatter<std::string_view> {
 };
 // clang-format on
 
-export uint32_t literalKeyToKeycode(LiteralKey k) {
+uint32_t literalKeyToKeycode(LiteralKey k) {
     return literal_keys[static_cast<size_t>(k)].keycode;
 }
 
-export std::optional<LiteralKey> tryParseLiteralKey(const std::string& name) {
+std::optional<LiteralKey> tryParseLiteralKey(const std::string& name) {
     for (size_t i = 0; i < literal_keys.size(); i++) {
         if (literal_keys[i].name == name) return static_cast<LiteralKey>(i);
     }
     return std::nullopt;
 }
 
-export int getImplicitFlags(LiteralKey k) {
+int getImplicitFlags(LiteralKey k) {
     // Indices 5–34 (delete through f20) need fn: forward-delete, navigation, and function keys.
     // Indices 35+ (media keys) need nx.
     constexpr size_t FIRST_FN_KEY_INDEX = 5;
@@ -133,7 +132,7 @@ export int getImplicitFlags(LiteralKey k) {
 }
 
 // convert a single character to a keycode
-export uint32_t getKeycode(char key) {
+uint32_t getKeycode(char key) {
     // check the locale-dependent keycode map first
     if (const auto it = keycodeMap.find(std::string{key}); it != keycodeMap.end()) {
         return it->second;
@@ -143,7 +142,7 @@ export uint32_t getKeycode(char key) {
     return static_cast<uint32_t>(static_cast<unsigned char>(key));
 }
 
-export template <>
+template <>
 struct std::formatter<Keysym> : std::formatter<std::string_view> {
     auto format(const Keysym& k, std::format_context& ctx) const {
         for (const auto& [key, code] : keycodeMap) {

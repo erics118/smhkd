@@ -1,13 +1,12 @@
-module;
+#pragma once
 
+#include "token.hpp"
+#include "../input/keysym.hpp"
 #include <algorithm>
 #include <string>
 
-export module tokenizer;
-import token;
-import keysym;
 
-export class Tokenizer {
+class Tokenizer {
    private:
     std::string_view contents;
     size_t position{};

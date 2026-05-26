@@ -1,5 +1,14 @@
-module;
+#pragma once
 
+#include "../input/hotkey.hpp"
+#include "../input/chord.hpp"
+#include "../input/modifier.hpp"
+#include "../input/log.hpp"
+#include "../utils.hpp"
+#include "service.hpp"
+#include "../lang/parser.hpp"
+#include "../lang/interpreter.hpp"
+#include "../lang/ast.hpp"
 #include <Carbon/Carbon.h>
 #include <CoreFoundation/CoreFoundation.h>
 
@@ -13,20 +22,9 @@ module;
 #include <utility>
 #include <vector>
 
-export module key_handler;
 
-import hotkey;
-import chord;
-import modifier;
-import log;
-import utils;
-import service;
-import parser;
-import interpreter;
-import ast;
-import log;
 
-export struct KeyHandler {
+struct KeyHandler {
     std::string configFileName;
 
     CFRunLoopRef runLoop{};

@@ -1,11 +1,9 @@
-module;
+#pragma once
 
 #include <format>
 #include <iostream>
 #include <print>
 #include <string>
-
-export module log;
 
 enum class level : std::uint8_t {
     debug,
@@ -37,42 +35,42 @@ void print(const level ll, const std::format_string<Args...> fmt, Args&&... args
     print(ll, std::format(fmt, std::forward<Args>(args)...));
 }
 
-export template <typename T>
+template <typename T>
 void debug(const T& msg) {
     print(level::debug, msg);
 }
 
-export template <typename... Args>
+template <typename... Args>
 void debug(const std::format_string<Args...> fmt, Args&&... args) {
     print(level::debug, fmt, std::forward<Args>(args)...);
 }
 
-export template <typename T>
+template <typename T>
 void info(const T& msg) {
     print(level::info, msg);
 }
 
-export template <typename... Args>
+template <typename... Args>
 void info(const std::format_string<Args...> fmt, Args&&... args) {
     print(level::info, fmt, std::forward<Args>(args)...);
 }
 
-export template <typename T>
+template <typename T>
 void warn(const T& msg) {
     print(level::warn, msg);
 }
 
-export template <typename... Args>
+template <typename... Args>
 void warn(const std::format_string<Args...> fmt, Args&&... args) {
     print(level::warn, fmt, std::forward<Args>(args)...);
 }
 
-export template <typename T>
+template <typename T>
 void error(const T& msg) {
     print(level::error, msg);
 }
 
-export template <typename... Args>
+template <typename... Args>
 void error(const std::format_string<Args...> fmt, Args&&... args) {
     print(level::error, fmt, std::forward<Args>(args)...);
 }

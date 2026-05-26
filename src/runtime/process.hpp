@@ -1,5 +1,6 @@
-module;
+#pragma once
 
+#include "../input/log.hpp"
 #include <Carbon/Carbon.h>
 #include <fcntl.h>
 #include <sys/file.h>
@@ -12,16 +13,14 @@ module;
 #include <print>
 #include <string>
 
-export module process;
-import log;
 
-export pid_t read_pid_file();
-export void create_pid_file();
-export bool check_privileges();
+pid_t read_pid_file();
+void create_pid_file();
+bool check_privileges();
 
 constexpr std::string_view PIDFILE_FMT = "/tmp/smhkd_{}.pid";
 
-export pid_t read_pid_file() {
+pid_t read_pid_file() {
     const auto* user = std::getenv("USER");
     if (!user) {
         error("could not create path to pid file because 'env USER' is not set");
@@ -48,7 +47,7 @@ export pid_t read_pid_file() {
     return pid;
 }
 
-export void create_pid_file() {
+void create_pid_file() {
     const auto* user = std::getenv("USER");
     if (!user) {
         error("could not create path to pid file because 'env USER' is not set");
@@ -73,7 +72,7 @@ export void create_pid_file() {
     info("created pid file: {}", pid_file);
 }
 
-export bool check_privileges() {
+bool check_privileges() {
     std::array<CFStringRef, 1> keys = {kAXTrustedCheckOptionPrompt};
     std::array<CFTypeRef, 1> values = {kCFBooleanTrue};
     CFDictionaryRef options = CFDictionaryCreate(

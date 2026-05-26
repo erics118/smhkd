@@ -1,5 +1,6 @@
-module;
+#pragma once
 
+#include "../utils.hpp"
 // based off of: https://github.com/koekeishiya/skhd/blob/2c9d3b9c9440797cd80856b6a54ec8817a6f3d19/src/locale.c#L88
 
 #include <Carbon/Carbon.h>
@@ -11,18 +12,16 @@ module;
 #include <type_traits>
 #include <unordered_map>
 
-export module locale;
-import utils;
 
-export using Keycode = uint32_t;
+using Keycode = uint32_t;
 
 // global keycode map
-export std::unordered_map<std::string, Keycode> keycodeMap;
+std::unordered_map<std::string, Keycode> keycodeMap;
 
 // From keysym module/header
 // literal arrays come from keysym
 
-export bool initializeKeycodeMap() {
+bool initializeKeycodeMap() {
     static const std::array<uint32_t, 36> layoutDependentKeycodes = {
         kVK_ANSI_A, kVK_ANSI_B, kVK_ANSI_C, kVK_ANSI_D, kVK_ANSI_E,
         kVK_ANSI_F, kVK_ANSI_G, kVK_ANSI_H, kVK_ANSI_I, kVK_ANSI_J,

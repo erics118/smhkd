@@ -1,4 +1,4 @@
-module;
+#pragma once
 
 #include <CoreGraphics/CGEventTypes.h>
 
@@ -8,9 +8,8 @@ module;
 #include <string>
 #include <vector>
 
-export module modifier;
 
-export enum HotkeyFlag {
+enum HotkeyFlag {
     Hotkey_Flag_Alt = (1 << 0),
     Hotkey_Flag_LAlt = (1 << 1),
     Hotkey_Flag_RAlt = (1 << 2),
@@ -32,7 +31,7 @@ export enum HotkeyFlag {
     Hotkey_Flag_NX = (1 << 13),
 };
 
-export enum class BuiltinModifier {
+enum class BuiltinModifier {
     Alt = 0,
     LAlt,
     RAlt,
@@ -87,25 +86,25 @@ constexpr std::array<LRModifierGroup, 4> lr_modifier_groups = {{
 }};
 // clang-format on
 
-export int builtinModifierToFlags(BuiltinModifier m) {
+int builtinModifierToFlags(BuiltinModifier m) {
     return builtin_modifiers[static_cast<size_t>(m)].flag;
 }
 
-export template <>
+template <>
 struct std::formatter<BuiltinModifier> : std::formatter<std::string_view> {
     auto format(const BuiltinModifier& m, std::format_context& ctx) const {
         return std::format_to(ctx.out(), "{}", builtin_modifiers[static_cast<size_t>(m)].name);
     }
 };
 
-export std::optional<BuiltinModifier> parseBuiltinModifier(const std::string& name) {
+std::optional<BuiltinModifier> parseBuiltinModifier(const std::string& name) {
     for (size_t i = 0; i < builtin_modifiers.size(); i++) {
         if (builtin_modifiers[i].name == name) return static_cast<BuiltinModifier>(i);
     }
     return std::nullopt;
 }
 
-export struct ModifierFlags {
+struct ModifierFlags {
     int flags;
 
     std::strong_ordering operator<=>(const ModifierFlags& other) const = default;
@@ -115,7 +114,7 @@ export struct ModifierFlags {
     [[nodiscard]] bool has(uint32_t flag) const;
 };
 
-export template <>
+template <>
 struct std::formatter<ModifierFlags> : std::formatter<std::string_view> {
     auto format(const ModifierFlags& m, std::format_context& ctx) const {
         if (m.flags == 0) return std::format_to(ctx.out(), "");
@@ -157,7 +156,7 @@ bool compareLRModifier(const ModifierFlags& a, const ModifierFlags& b, const LRM
 
 bool ModifierFlags::has(const uint32_t flag) const { return flags & flag; }
 
-export ModifierFlags eventModifierFlagsToHotkeyFlags(CGEventFlags flags) {
+ModifierFlags eventModifierFlagsToHotkeyFlags(CGEventFlags flags) {
     int res{};
     for (const auto& group : lr_modifier_groups) {
         res |= eventLRModifierFlagsToHotkeyFlags(flags, group);

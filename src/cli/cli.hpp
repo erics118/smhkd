@@ -1,5 +1,6 @@
-module;
+#pragma once
 
+#include "../input/log.hpp"
 #include <format>
 #include <optional>
 #include <string>
@@ -7,15 +8,13 @@ module;
 #include <unordered_set>
 #include <vector>
 
-export module cli;
-import log;
 
-export struct ArgsConfig {
+struct ArgsConfig {
     std::unordered_set<std::string> short_args;
     std::unordered_set<std::string> long_args;
 };
 
-export struct Args {
+struct Args {
     std::unordered_map<std::string, std::string> args;
     [[nodiscard]] bool contains(const std::string& arg) const { return args.contains(arg); }
     [[nodiscard]] bool contains(char short_arg) const { return contains(std::string{short_arg}); }
@@ -30,7 +29,7 @@ export struct Args {
     }
 };
 
-export template <>
+template <>
 struct std::formatter<Args> : std::formatter<std::string_view> {
     auto format(const Args& args, std::format_context& ctx) const {
         std::string result;
@@ -41,7 +40,7 @@ struct std::formatter<Args> : std::formatter<std::string_view> {
     }
 };
 
-export Args parse_args(const std::vector<std::string>& argv, const ArgsConfig& config) {
+Args parse_args(const std::vector<std::string>& argv, const ArgsConfig& config) {
     std::unordered_map<std::string, std::string> res;
     for (size_t i = 0; i < argv.size(); ++i) {
         std::string a = argv.at(i);

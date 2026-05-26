@@ -1,5 +1,12 @@
-module;
+#pragma once
 
+#include "ast.hpp"
+#include "../input/chord.hpp"
+#include "../input/hotkey.hpp"
+#include "../input/locale.hpp"
+#include "../input/keysym.hpp"
+#include "../input/modifier.hpp"
+#include "../input/log.hpp"
 #include <algorithm>
 #include <chrono>
 #include <map>
@@ -10,16 +17,8 @@ module;
 #include <variant>
 #include <vector>
 
-export module interpreter;
-import ast;
-import chord;
-import hotkey;
-import locale;
-import keysym;
-import modifier;
-import log;
 
-export struct ConfigProperties {
+struct ConfigProperties {
     // max time between chord presses
     std::chrono::milliseconds maxChordInterval{3000};
 
@@ -34,12 +33,12 @@ export struct ConfigProperties {
     std::vector<std::string> blacklist;
 };
 
-export struct InterpreterResult {
+struct InterpreterResult {
     std::map<Hotkey, std::string> hotkeys;
     ConfigProperties config;
 };
 
-export class Interpreter {
+class Interpreter {
    public:
     Interpreter() = default;
     [[nodiscard]] InterpreterResult interpret(const ast::Program& program);

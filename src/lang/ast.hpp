@@ -1,16 +1,15 @@
-module;
+#pragma once
 
+#include "../input/keysym.hpp"
+#include "../input/modifier.hpp"
 #include <format>
 #include <optional>
 #include <string>
 #include <variant>
 #include <vector>
 
-export module ast;
-import keysym;
-import modifier;
 
-export namespace ast {
+namespace ast {
 
 struct ModifierAtom {
     std::variant<BuiltinModifier, std::string> value;
@@ -66,7 +65,7 @@ struct Program {
 
 }  // namespace ast
 
-export template <>
+template <>
 struct std::formatter<ast::ModifierAtom> : std::formatter<std::string_view> {
     auto format(const ast::ModifierAtom& m, std::format_context& ctx) const {
         return std::visit(

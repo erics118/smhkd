@@ -19,9 +19,3 @@ InlayHints:
 
 Hover:
   ShowAKA: true
-
----
-If:
-  PathMatch: .*\.ixx
-CompileFlags:
-  Add: [-x, c++-module]

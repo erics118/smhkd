@@ -1,5 +1,7 @@
-module;
+#pragma once
 
+#include "chord.hpp"
+#include "modifier.hpp"
 #include <CoreGraphics/CGEventTypes.h>
 
 #include <compare>
@@ -7,11 +9,8 @@ module;
 #include <string>
 #include <vector>
 
-export module hotkey;
-import chord;
-import modifier;
 
-export struct Hotkey {
+struct Hotkey {
     bool passthrough{};
     bool repeat{};
     bool on_release{};
@@ -20,7 +19,7 @@ export struct Hotkey {
     std::strong_ordering operator<=>(const Hotkey& other) const = default;
 };
 
-export template <>
+template <>
 struct std::formatter<Hotkey> : std::formatter<std::string_view> {
     auto format(const Hotkey& h, std::format_context& ctx) const {
         std::string result;

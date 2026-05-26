@@ -1,18 +1,17 @@
-module;
+#pragma once
 
+#include "../input/chord.hpp"
+#include "../input/modifier.hpp"
+#include "../input/log.hpp"
 #include <Carbon/Carbon.h>
 #include <CoreFoundation/CoreFoundation.h>
 
 #include <print>
 #include <string>
 
-export module key_observer_handler;
 
-import chord;
-import modifier;
-import log;
 
-export class KeyObserverHandler {
+class KeyObserverHandler {
    private:
     CFRunLoopRef runLoop{};
     CFMachPortRef eventTap{};

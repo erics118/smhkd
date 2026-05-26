@@ -1,11 +1,10 @@
-module;
+#pragma once
 
 #include <format>
 #include <string>
 
-export module token;
 
-export enum class TokenType {
+enum class TokenType {
     DefineModifier,
     Modifier,
     Key,
@@ -29,7 +28,7 @@ export enum class TokenType {
     CloseBracket,
 };
 
-export template <>
+template <>
 struct std::formatter<TokenType> : std::formatter<std::string_view> {
     auto format(const TokenType& tt, std::format_context& ctx) const {
         std::string_view name;
@@ -60,14 +59,14 @@ struct std::formatter<TokenType> : std::formatter<std::string_view> {
     }
 };
 
-export struct Token {
+struct Token {
     TokenType type;
     std::string text;
     int row;
     int col;
 };
 
-export template <>
+template <>
 struct std::formatter<Token> : std::formatter<std::string_view> {
     auto format(const Token& t, std::format_context& ctx) const {
         return std::format_to(ctx.out(), "'{}' ({}, {}, {})", t.text, t.type, t.row, t.col);

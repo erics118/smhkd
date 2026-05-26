@@ -1,20 +1,19 @@
-module;
+#pragma once
 
+#include "ast.hpp"
+#include "token.hpp"
+#include "tokenizer.hpp"
+#include "../input/keysym.hpp"
+#include "../input/log.hpp"
+#include "../input/modifier.hpp"
 #include <format>
 #include <string>
 #include <utility>
 #include <vector>
 
-export module parser;
 
-import ast;
-import token;
-import tokenizer;
-import keysym;
-import log;
-import modifier;
 
-export class Parser {
+class Parser {
    private:
     Tokenizer tokenizer;
 

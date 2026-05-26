@@ -1,4 +1,4 @@
-module;
+#pragma once
 
 #include <CoreFoundation/CFBase.h>
 #include <CoreFoundation/CFString.h>
@@ -10,11 +10,9 @@ module;
 #include <string>
 #include <vector>
 
-export module utils;
+#include "input/log.hpp"
 
-import log;
-
-export [[nodiscard]] std::string cfStringToString(CFStringRef cfString) {
+[[nodiscard]] std::string cfStringToString(CFStringRef cfString) {
     if (!cfString) return "";
     CFIndex length = CFStringGetLength(cfString);
     CFIndex maxSize = CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;
@@ -24,18 +22,18 @@ export [[nodiscard]] std::string cfStringToString(CFStringRef cfString) {
     return result;
 }
 
-export template <>
+template <>
 struct std::formatter<CFStringRef> : std::formatter<std::string_view> {
     auto format(const CFStringRef& cfString, std::format_context& ctx) const {
         return std::format_to(ctx.out(), "{}", cfStringToString(cfString));
     }
 };
 
-export [[nodiscard]] bool file_exists(const std::string& filename) {
+[[nodiscard]] bool file_exists(const std::string& filename) {
     return std::filesystem::exists(filename) && std::filesystem::is_regular_file(filename);
 }
 
-export void validate_config_file(const std::string& config_file) {
+void validate_config_file(const std::string& config_file) {
     if (config_file.empty()) {
         error("config file path is empty");
     }
@@ -44,7 +42,7 @@ export void validate_config_file(const std::string& config_file) {
     }
 }
 
-export [[nodiscard]] std::optional<std::string> get_config_file(const std::string& name) {
+[[nodiscard]] std::optional<std::string> get_config_file(const std::string& name) {
     char* xdgHome = getenv("XDG_CONFIG_HOME");
     std::string path;
 
@@ -65,7 +63,7 @@ export [[nodiscard]] std::optional<std::string> get_config_file(const std::strin
     return {};
 }
 
-export void executeCommand(const std::string& command) {
+void executeCommand(const std::string& command) {
     pid_t cpid = fork();
 
     if (cpid < 0) {

@@ -1,5 +1,7 @@
-module;
+#pragma once
 
+#include "../utils.hpp"
+#include "../input/log.hpp"
 #include <CoreFoundation/CFString.h>
 #include <CoreFoundation/CFURL.h>
 #include <libproc.h>
@@ -17,9 +19,6 @@ module;
 #include <string_view>
 #include <vector>
 
-export module service;
-import utils;
-import log;
 
 constexpr std::string LAUNCHCTL_PATH = "/bin/launchctl";
 constexpr std::string_view PLIST_NAME = "com.erics118.smhkd";
@@ -58,20 +57,20 @@ constexpr std::string_view PLIST_TEMPLATE = R"(<?xml version="1.0" encoding="UTF
 </dict>
 </plist>)";
 
-export std::string get_home_directory();
-export std::string get_plist_path();
-export std::string get_plist_contents();
-export int launchctl_exec(const std::vector<std::string>& args, bool suppress_output = false);
-export [[nodiscard]] std::string get_service_target();
-export [[nodiscard]] std::string get_domain_target();
-export [[nodiscard]] bool is_service_bootstrapped();
-export void service_install();
-export void service_uninstall();
-export void service_start();
-export void service_restart();
-export void service_stop();
+std::string get_home_directory();
+std::string get_plist_path();
+std::string get_plist_contents();
+int launchctl_exec(const std::vector<std::string>& args, bool suppress_output = false);
+[[nodiscard]] std::string get_service_target();
+[[nodiscard]] std::string get_domain_target();
+[[nodiscard]] bool is_service_bootstrapped();
+void service_install();
+void service_uninstall();
+void service_start();
+void service_restart();
+void service_stop();
 
-export std::string get_home_directory() {
+std::string get_home_directory() {
     if (const char* homeDir = std::getenv("HOME")) {
         return homeDir;
     }
@@ -79,7 +78,7 @@ export std::string get_home_directory() {
     return "";
 }
 
-export std::string get_plist_path() {
+std::string get_plist_path() {
     auto home = get_home_directory();
     if (home.empty()) {
         error("failed to get plist path");
@@ -87,7 +86,7 @@ export std::string get_plist_path() {
     return std::format("{}/Library/LaunchAgents/{}.plist", home, PLIST_NAME);
 }
 
-export std::string get_plist_contents() {
+std::string get_plist_contents() {
     const char* user = getenv("USER");
     if (!user) {
         error("USER environment variable not set");
@@ -107,7 +106,7 @@ export std::string get_plist_contents() {
     return contents;
 }
 
-export int launchctl_exec(const std::vector<std::string>& args, bool suppress_output) {
+int launchctl_exec(const std::vector<std::string>& args, bool suppress_output) {
     std::vector<std::string> stringStorage;
     stringStorage.reserve(args.size() + 1);
     std::vector<char*> c_args;
@@ -140,21 +139,21 @@ export int launchctl_exec(const std::vector<std::string>& args, bool suppress_ou
     return WEXITSTATUS(status);
 }
 
-export [[nodiscard]] std::string get_domain_target() {
+[[nodiscard]] std::string get_domain_target() {
     static const std::string target = std::format("gui/{}", getuid());
     return target;
 }
-export [[nodiscard]] std::string get_service_target() {
+[[nodiscard]] std::string get_service_target() {
     static const std::string target = std::format("gui/{}/{}", getuid(), PLIST_NAME);
     return target;
 }
-export [[nodiscard]] bool is_service_bootstrapped() {
+[[nodiscard]] bool is_service_bootstrapped() {
     auto service_target = std::format("gui/{}/{}", getuid(), PLIST_NAME);
     auto result = launchctl_exec({"blame", service_target}, true);
     return result == 0;
 }
 
-export void service_install() {
+void service_install() {
     auto plist_path = get_plist_path();
     if (std::filesystem::exists(plist_path)) {
         error("service file '{}' is already installed", plist_path);
@@ -171,7 +170,7 @@ export void service_install() {
     }
 }
 
-export void service_uninstall() {
+void service_uninstall() {
     auto plist_path = get_plist_path();
     if (!std::filesystem::exists(plist_path)) {
         error("service file '{}' is not installed", plist_path);
@@ -183,7 +182,7 @@ export void service_uninstall() {
     }
 }
 
-export void service_start() {
+void service_start() {
     auto plist_path = get_plist_path();
     if (!std::filesystem::exists(plist_path)) {
         warn("service file '{}' does not exist, installing", plist_path);
@@ -199,7 +198,7 @@ export void service_start() {
     }
 }
 
-export void service_restart() {
+void service_restart() {
     auto plist_path = get_plist_path();
     if (!std::filesystem::exists(plist_path)) {
         error("service file '{}' is not installed", plist_path);
@@ -208,7 +207,7 @@ export void service_restart() {
     launchctl_exec({"kickstart", "-k", service_target});
 }
 
-export void service_stop() {
+void service_stop() {
     auto plist_path = get_plist_path();
     if (!std::filesystem::exists(plist_path)) {
         error("service file '{}' is not installed", plist_path);
