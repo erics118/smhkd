@@ -136,7 +136,7 @@ Token Tokenizer::getNextToken() {
         return getNextToken();
     }
 
-    if (std::ranges::contains(literal_keycode_str, text)) {
+    if (tryParseLiteralKey(text).has_value()) {
         return Token{TokenType::Literal, text, startRow, startCol};
     }
     if (text == "define_modifier") {

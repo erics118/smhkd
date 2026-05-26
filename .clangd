@@ -1,3 +1,7 @@
+CompileFlags:
+  Add: [-std=c++23]
+  CompilationDatabase: build
+
 Style:
   FullyQualifiedNamespaces:
     - std
@@ -15,3 +19,9 @@ InlayHints:
 
 Hover:
   ShowAKA: true
+
+---
+If:
+  PathMatch: .*\.ixx
+CompileFlags:
+  Add: [-x, c++-module]

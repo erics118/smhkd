@@ -10,9 +10,6 @@ module;
 
 export module modifier;
 
-export constexpr int l_offset = 1;
-export constexpr int r_offset = 2;
-
 export enum HotkeyFlag {
     Hotkey_Flag_Alt = (1 << 0),
     Hotkey_Flag_LAlt = (1 << 1),
@@ -35,64 +32,6 @@ export enum HotkeyFlag {
     Hotkey_Flag_NX = (1 << 13),
 };
 
-export constexpr std::array<int, 13> cgevent_flags = {
-    kCGEventFlagMaskAlternate,
-    NX_DEVICELALTKEYMASK,
-    NX_DEVICERALTKEYMASK,
-
-    kCGEventFlagMaskShift,
-    NX_DEVICELSHIFTKEYMASK,
-    NX_DEVICERSHIFTKEYMASK,
-
-    kCGEventFlagMaskCommand,
-    NX_DEVICELCMDKEYMASK,
-    NX_DEVICERCMDKEYMASK,
-
-    kCGEventFlagMaskControl,
-    NX_DEVICELCTLKEYMASK,
-    NX_DEVICERCTLKEYMASK,
-
-    kCGEventFlagMaskSecondaryFn,
-};
-
-export constexpr std::array<HotkeyFlag, 14> hotkey_flags = {
-    Hotkey_Flag_Alt,
-    Hotkey_Flag_LAlt,
-    Hotkey_Flag_RAlt,
-
-    Hotkey_Flag_Shift,
-    Hotkey_Flag_LShift,
-    Hotkey_Flag_RShift,
-
-    Hotkey_Flag_Cmd,
-    Hotkey_Flag_LCmd,
-    Hotkey_Flag_RCmd,
-
-    Hotkey_Flag_Control,
-    Hotkey_Flag_LControl,
-    Hotkey_Flag_RControl,
-
-    Hotkey_Flag_Fn,
-    Hotkey_Flag_NX,
-};
-
-export constexpr std::array<std::string, 14> hotkey_flag_names = {
-    "alt",
-    "lalt",
-    "ralt",
-    "shift",
-    "lshift",
-    "rshift",
-    "cmd",
-    "lcmd",
-    "rcmd",
-    "ctrl",
-    "lctrl",
-    "rctrl",
-    "fn",
-    "nx",
-};
-
 export enum class BuiltinModifier {
     Alt = 0,
     LAlt,
@@ -109,31 +48,62 @@ export enum class BuiltinModifier {
     Fn,
 };
 
+struct ModifierEntry {
+    const char* name;
+    HotkeyFlag flag;
+};
+
+// clang-format off
+constexpr std::array<ModifierEntry, 13> builtin_modifiers = {{
+    {"alt",    Hotkey_Flag_Alt},
+    {"lalt",   Hotkey_Flag_LAlt},
+    {"ralt",   Hotkey_Flag_RAlt},
+    {"shift",  Hotkey_Flag_Shift},
+    {"lshift", Hotkey_Flag_LShift},
+    {"rshift", Hotkey_Flag_RShift},
+    {"cmd",    Hotkey_Flag_Cmd},
+    {"lcmd",   Hotkey_Flag_LCmd},
+    {"rcmd",   Hotkey_Flag_RCmd},
+    {"ctrl",   Hotkey_Flag_Control},
+    {"lctrl",  Hotkey_Flag_LControl},
+    {"rctrl",  Hotkey_Flag_RControl},
+    {"fn",     Hotkey_Flag_Fn},
+}};
+
+struct LRModifierGroup {
+    HotkeyFlag generic;
+    HotkeyFlag left;
+    HotkeyFlag right;
+    int cgevent_generic;
+    int cgevent_left;
+    int cgevent_right;
+};
+
+constexpr std::array<LRModifierGroup, 4> lr_modifier_groups = {{
+    {Hotkey_Flag_Alt,     Hotkey_Flag_LAlt,     Hotkey_Flag_RAlt,     kCGEventFlagMaskAlternate, NX_DEVICELALTKEYMASK,   NX_DEVICERALTKEYMASK  },
+    {Hotkey_Flag_Shift,   Hotkey_Flag_LShift,   Hotkey_Flag_RShift,   kCGEventFlagMaskShift,     NX_DEVICELSHIFTKEYMASK, NX_DEVICERSHIFTKEYMASK},
+    {Hotkey_Flag_Cmd,     Hotkey_Flag_LCmd,     Hotkey_Flag_RCmd,     kCGEventFlagMaskCommand,   NX_DEVICELCMDKEYMASK,   NX_DEVICERCMDKEYMASK  },
+    {Hotkey_Flag_Control, Hotkey_Flag_LControl, Hotkey_Flag_RControl, kCGEventFlagMaskControl,   NX_DEVICELCTLKEYMASK,   NX_DEVICERCTLKEYMASK  },
+}};
+// clang-format on
+
 export int builtinModifierToFlags(BuiltinModifier m) {
-    return hotkey_flags[static_cast<size_t>(m)];
+    return builtin_modifiers[static_cast<size_t>(m)].flag;
 }
 
 export template <>
 struct std::formatter<BuiltinModifier> : std::formatter<std::string_view> {
     auto format(const BuiltinModifier& m, std::format_context& ctx) const {
-        std::string result = hotkey_flag_names[static_cast<size_t>(m)];
-        return std::format_to(ctx.out(), "{}", result);
+        return std::format_to(ctx.out(), "{}", builtin_modifiers[static_cast<size_t>(m)].name);
     }
 };
 
 export std::optional<BuiltinModifier> parseBuiltinModifier(const std::string& name) {
-    for (size_t i = 0; i < hotkey_flag_names.size(); i++) {
-        if (hotkey_flag_names[i] == name) return static_cast<BuiltinModifier>(i);
+    for (size_t i = 0; i < builtin_modifiers.size(); i++) {
+        if (builtin_modifiers[i].name == name) return static_cast<BuiltinModifier>(i);
     }
     return std::nullopt;
 }
-
-export constexpr int ALT_MOD_OFFSET = 0;
-export constexpr int SHIFT_MOD_OFFSET = 3;
-export constexpr int CMD_MOD_OFFSET = 6;
-export constexpr int CTRL_MOD_OFFSET = 9;
-export constexpr int FN_MOD_OFFSET = 12;
-export constexpr int NX_MOD_OFFSET = 13;
 
 export struct ModifierFlags {
     int flags;
@@ -148,75 +118,60 @@ export struct ModifierFlags {
 export template <>
 struct std::formatter<ModifierFlags> : std::formatter<std::string_view> {
     auto format(const ModifierFlags& m, std::format_context& ctx) const {
-        if (m.flags == 0) {
-            return std::format_to(ctx.out(), "");
-        }
+        if (m.flags == 0) return std::format_to(ctx.out(), "");
 
         std::vector<std::string> parts;
-
-        // Check each modifier flag in order
-        for (size_t i = 0; i < hotkey_flags.size(); ++i) {
-            if (m.has(hotkey_flags[i])) {
-                parts.push_back(hotkey_flag_names[i]);
-            }
+        for (const auto& entry : builtin_modifiers) {
+            if (m.has(entry.flag)) parts.push_back(entry.name);
         }
+        if (m.has(Hotkey_Flag_NX)) parts.push_back("nx");
 
-        if (parts.empty()) {
-            return std::format_to(ctx.out(), "");
-        }
+        if (parts.empty()) return std::format_to(ctx.out(), "");
 
         std::string result = parts[0];
-        for (size_t i = 1; i < parts.size(); ++i) {
-            result += " + " + parts[i];
-        }
-
+        for (size_t i = 1; i < parts.size(); ++i) result += " + " + parts[i];
         return std::format_to(ctx.out(), "{}", result);
     }
 };
 
-int eventLRModifierFlagsToHotkeyFlags(CGEventFlags eventflags, int mod) {
+int eventLRModifierFlagsToHotkeyFlags(CGEventFlags eventflags, const LRModifierGroup& group) {
     int flags{};
-    int mask = cgevent_flags[mod];
-    int lmask = cgevent_flags[mod + l_offset];
-    int rmask = cgevent_flags[mod + r_offset];
-    if ((eventflags & mask) == mask) {
-        bool left = (eventflags & lmask) == lmask;
-        bool right = (eventflags & rmask) == rmask;
-        if (left) flags |= hotkey_flags[mod + l_offset];
-        if (right) flags |= hotkey_flags[mod + r_offset];
-        if (!left && !right) flags |= hotkey_flags[mod];
+    if ((eventflags & group.cgevent_generic) == group.cgevent_generic) {
+        bool left = (eventflags & group.cgevent_left) == group.cgevent_left;
+        bool right = (eventflags & group.cgevent_right) == group.cgevent_right;
+        if (left) flags |= group.left;
+        if (right) flags |= group.right;
+        if (!left && !right) flags |= group.generic;
     }
     return flags;
 }
 
-bool compareLRModifier(const ModifierFlags& a, const ModifierFlags& b, int mod) {
-    if (a.has(hotkey_flags[mod])) {
-        return b.has(hotkey_flags[mod + l_offset]) || b.has(hotkey_flags[mod + r_offset]) || b.has(hotkey_flags[mod]);
+bool compareLRModifier(const ModifierFlags& a, const ModifierFlags& b, const LRModifierGroup& group) {
+    if (a.has(group.generic)) {
+        return b.has(group.left) || b.has(group.right) || b.has(group.generic);
     }
-    return a.has(hotkey_flags[mod + l_offset]) == b.has(hotkey_flags[mod + l_offset])
-        && a.has(hotkey_flags[mod + r_offset]) == b.has(hotkey_flags[mod + r_offset])
-        && a.has(hotkey_flags[mod]) == b.has(hotkey_flags[mod]);
+    return a.has(group.left) == b.has(group.left)
+        && a.has(group.right) == b.has(group.right)
+        && a.has(group.generic) == b.has(group.generic);
 }
 
 bool ModifierFlags::has(const uint32_t flag) const { return flags & flag; }
 
 export ModifierFlags eventModifierFlagsToHotkeyFlags(CGEventFlags flags) {
     int res{};
-    res |= eventLRModifierFlagsToHotkeyFlags(flags, ALT_MOD_OFFSET);
-    res |= eventLRModifierFlagsToHotkeyFlags(flags, SHIFT_MOD_OFFSET);
-    res |= eventLRModifierFlagsToHotkeyFlags(flags, CMD_MOD_OFFSET);
-    res |= eventLRModifierFlagsToHotkeyFlags(flags, CTRL_MOD_OFFSET);
-    if ((flags & cgevent_flags[FN_MOD_OFFSET]) == cgevent_flags[FN_MOD_OFFSET]) {
-        res |= hotkey_flags[FN_MOD_OFFSET];
+    for (const auto& group : lr_modifier_groups) {
+        res |= eventLRModifierFlagsToHotkeyFlags(flags, group);
+    }
+    if ((flags & kCGEventFlagMaskSecondaryFn) == kCGEventFlagMaskSecondaryFn) {
+        res |= Hotkey_Flag_Fn;
     }
     return ModifierFlags{res};
 }
 
 bool ModifierFlags::isActivatedBy(const ModifierFlags& other) const {
-    return compareLRModifier(*this, other, ALT_MOD_OFFSET)
-        && compareLRModifier(*this, other, SHIFT_MOD_OFFSET)
-        && compareLRModifier(*this, other, CMD_MOD_OFFSET)
-        && compareLRModifier(*this, other, CTRL_MOD_OFFSET)
-        && has(hotkey_flags[FN_MOD_OFFSET]) == other.has(hotkey_flags[FN_MOD_OFFSET])
-        && has(hotkey_flags[NX_MOD_OFFSET]) == other.has(hotkey_flags[NX_MOD_OFFSET]);
+    for (const auto& group : lr_modifier_groups) {
+        if (!compareLRModifier(*this, other, group)) return false;
+    }
+    return has(Hotkey_Flag_Fn) == other.has(Hotkey_Flag_Fn)
+        && has(Hotkey_Flag_NX) == other.has(Hotkey_Flag_NX);
 }

@@ -14,22 +14,20 @@ export module utils;
 
 import log;
 
+export [[nodiscard]] std::string cfStringToString(CFStringRef cfString) {
+    if (!cfString) return "";
+    CFIndex length = CFStringGetLength(cfString);
+    CFIndex maxSize = CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;
+    std::string result(static_cast<size_t>(maxSize), '\0');
+    if (!CFStringGetCString(cfString, result.data(), maxSize, kCFStringEncodingUTF8)) return "";
+    result.resize(strlen(result.c_str()));
+    return result;
+}
+
 export template <>
 struct std::formatter<CFStringRef> : std::formatter<std::string_view> {
     auto format(const CFStringRef& cfString, std::format_context& ctx) const {
-        if (!cfString) return std::format_to(ctx.out(), "");
-
-        CFIndex length = CFStringGetLength(cfString);
-        CFIndex maxSize = CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;
-        std::string result(maxSize, '\0');
-
-        if (!CFStringGetCString(cfString, result.data(), maxSize, kCFStringEncodingUTF8)) {
-            if (!cfString) return std::format_to(ctx.out(), "");
-        }
-
-        result.resize(strlen(result.c_str()));
-
-        return std::format_to(ctx.out(), "{}", result);
+        return std::format_to(ctx.out(), "{}", cfStringToString(cfString));
     }
 };
 

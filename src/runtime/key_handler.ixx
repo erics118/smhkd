@@ -6,7 +6,6 @@ module;
 #include <algorithm>
 #include <cctype>
 #include <chrono>
-#include <cstring>
 #include <fstream>
 #include <map>
 #include <optional>
@@ -204,6 +203,8 @@ bool KeyHandler::isBlacklistedProcess() const {
 
 std::string KeyHandler::getFrontProcessName() {
     ProcessSerialNumber psn{};
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     if (GetFrontProcess(&psn) != noErr) {
         return "";
     }
@@ -211,18 +212,11 @@ std::string KeyHandler::getFrontProcessName() {
     if (CopyProcessName(&psn, &cfName) != noErr || !cfName) {
         return "";
     }
+#pragma clang diagnostic pop
 
-    CFIndex length = CFStringGetLength(cfName);
-    CFIndex maxSize = CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;
-    std::string buffer(static_cast<size_t>(maxSize), '\0');
-    if (!CFStringGetCString(cfName, buffer.data(), maxSize, kCFStringEncodingUTF8)) {
-        CFRelease(cfName);
-        return "";
-    }
-    buffer.resize(strlen(buffer.c_str()));
+    std::string result = cfStringToString(cfName);
     CFRelease(cfName);
-
-    return buffer;
+    return result;
 }
 
 std::string KeyHandler::toLower(std::string s) {
