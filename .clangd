@@ -1,10 +1,5 @@
 CompileFlags:
-  Add: [-std=c++23]
   CompilationDatabase: build
-
-Style:
-  FullyQualifiedNamespaces:
-    - std
 
 Diagnostics:
   UnusedIncludes: Strict

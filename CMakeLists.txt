@@ -15,6 +15,19 @@ endif()
 
 add_executable(${PROJECT_NAME}
     src/cli/main.cpp
+    src/cli/cli.cpp
+    src/input/chord.cpp
+    src/input/keysym.cpp
+    src/input/locale.cpp
+    src/input/modifier.cpp
+    src/lang/interpreter.cpp
+    src/lang/parser.cpp
+    src/lang/tokenizer.cpp
+    src/runtime/key_handler.cpp
+    src/runtime/key_observer_handler.cpp
+    src/runtime/process.cpp
+    src/runtime/service.cpp
+    src/utils.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE

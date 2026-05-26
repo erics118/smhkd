@@ -12,15 +12,7 @@
 
 #include "input/log.hpp"
 
-[[nodiscard]] std::string cfStringToString(CFStringRef cfString) {
-    if (!cfString) return "";
-    CFIndex length = CFStringGetLength(cfString);
-    CFIndex maxSize = CFStringGetMaximumSizeForEncoding(length, kCFStringEncodingUTF8) + 1;
-    std::string result(static_cast<size_t>(maxSize), '\0');
-    if (!CFStringGetCString(cfString, result.data(), maxSize, kCFStringEncodingUTF8)) return "";
-    result.resize(strlen(result.c_str()));
-    return result;
-}
+[[nodiscard]] std::string cfStringToString(CFStringRef cfString);
 
 template <>
 struct std::formatter<CFStringRef> : std::formatter<std::string_view> {
@@ -29,61 +21,10 @@ struct std::formatter<CFStringRef> : std::formatter<std::string_view> {
     }
 };
 
-[[nodiscard]] bool file_exists(const std::string& filename) {
-    return std::filesystem::exists(filename) && std::filesystem::is_regular_file(filename);
-}
+[[nodiscard]] bool file_exists(const std::string& filename);
 
-void validate_config_file(const std::string& config_file) {
-    if (config_file.empty()) {
-        error("config file path is empty");
-    }
-    if (!file_exists(config_file)) {
-        error("config file not found: {}", config_file);
-    }
-}
+void validate_config_file(const std::string& config_file);
 
-[[nodiscard]] std::optional<std::string> get_config_file(const std::string& name) {
-    char* xdgHome = getenv("XDG_CONFIG_HOME");
-    std::string path;
+[[nodiscard]] std::optional<std::string> get_config_file(const std::string& name);
 
-    if (xdgHome && *xdgHome) {
-        path = std::format("{}/{}/{}rc", xdgHome, name, name);
-        if (file_exists(path)) return path;
-    }
-
-    char* home = getenv("HOME");
-    if (!home || !*home) return {};
-
-    path = std::format("{}/.config/{}/{}rc", home, name, name);
-    if (file_exists(path)) return path;
-
-    path = std::format("{}/.{}/{}rc", home, name, name);
-    if (file_exists(path)) return path;
-
-    return {};
-}
-
-void executeCommand(const std::string& command) {
-    pid_t cpid = fork();
-
-    if (cpid < 0) {
-        warn("failed to fork process for command execution");
-        return;
-    }
-
-    if (cpid == 0) {
-        setsid();
-
-        std::vector<std::string> stringStorage = {"/bin/zsh", "-c", command};
-        std::vector<char*> args;
-        args.reserve(stringStorage.size());
-        for (auto& str : stringStorage) {
-            args.push_back(str.data());
-        }
-        args.push_back(nullptr);
-
-        int status = execvp(args[0], args.data());
-        warn("failed to execute command '{}'", command);
-        _exit(status);
-    }
-}
+void executeCommand(const std::string& command);

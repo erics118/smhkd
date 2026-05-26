@@ -1,0 +1,181 @@
+#include "key_handler.hpp"
+
+bool KeyHandler::init() {
+    runLoop = CFRunLoopGetCurrent();
+    if (!runLoop) return false;
+    info("run loop initialized");
+    if (!setupEventTap()) return false;
+    debug("event tap initialized");
+    return true;
+}
+
+bool KeyHandler::setupEventTap() {
+    CGEventMask eventMask = CGEventMaskBit(kCGEventKeyDown) | CGEventMaskBit(kCGEventKeyUp);
+    CFMachPortRef tap = CGEventTapCreate(kCGSessionEventTap, kCGHeadInsertEventTap, kCGEventTapOptionDefault, eventMask, eventCallback, this);
+    if (!tap) error("failed to create event tap");
+    CFRunLoopSourceRef runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0);
+    CFRunLoopAddSource(runLoop, runLoopSource, kCFRunLoopCommonModes);
+    CGEventTapEnable(tap, true);
+    eventTap = tap;
+    CFRelease(runLoopSource);
+    return true;
+}
+
+CGEventRef KeyHandler::eventCallback(CGEventTapProxy /*proxy*/, CGEventType type, CGEventRef event, void* refcon) {
+    auto* keyHandler = static_cast<KeyHandler*>(refcon);
+    if (keyHandler->handleKeyEvent(event, type)) return nullptr;
+    return event;
+}
+
+void KeyHandler::clearSequence() {
+    currentChords.clear();
+    lastKeyPressTime = std::chrono::time_point<std::chrono::system_clock>::min();
+}
+
+bool KeyHandler::checkAndExecuteSequence(const Chord& current) {
+    auto now = std::chrono::system_clock::now();
+    if (lastKeyPressTime != std::chrono::time_point<std::chrono::system_clock>::min() && now - lastKeyPressTime > config.maxChordInterval) {
+        clearSequence();
+        return false;
+    }
+    lastKeyPressTime = now;
+    currentChords.push_back(current);
+
+    for (const auto& [hotkey, command] : hotkeys) {
+        if (hotkey.chords.size() == 1) continue;
+        if (currentChords.size() > hotkey.chords.size()) continue;
+
+        bool matches = true;
+        for (size_t i = 0; i < currentChords.size(); i++) {
+            if (!(hotkey.chords[i].isActivatedBy(currentChords[i]))) {
+                matches = false;
+                break;
+            }
+        }
+        if (!matches) continue;
+
+        if (currentChords.size() == hotkey.chords.size()) {
+            debug("Matched complete chord sequence ending with: {}", hotkey);
+            if (!command.empty()) {
+                debug("executing command: {}", command);
+                executeCommand(command);
+            }
+            clearSequence();
+            return true;
+        }
+        debug("Matched partial chord sequence: {}", current);
+        return true;
+    }
+    clearSequence();
+    return false;
+}
+
+bool KeyHandler::handleKeyEvent(CGEventRef event, CGEventType type) {
+    auto keyCode = static_cast<CGKeyCode>(CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode));
+    CGEventFlags flags = CGEventGetFlags(event);
+    bool isRepeat = CGEventGetIntegerValueField(event, kCGKeyboardEventAutorepeat) != 0;
+
+    Chord current{
+        .keysym = {.keycode = keyCode},
+        .modifiers = eventModifierFlagsToHotkeyFlags(flags),
+    };
+
+    auto exitChord = Chord{
+        .keysym = {.keycode = 8},
+        .modifiers = {.flags = Hotkey_Flag_RAlt},
+    };
+    if (exitChord.isActivatedBy(current)) {
+        debug("exit hotkey, ralt-c, detected, ending program");
+        service_stop();
+        std::exit(1);
+    }
+
+    if (!config.blacklist.empty() && isBlacklistedProcess()) {
+        clearSequence();
+        lastTriggeredChord = std::nullopt;
+        return false;
+    }
+
+    if (type == kCGEventKeyUp && lastTriggeredChord && lastTriggeredChord->keysym.keycode == keyCode) {
+        lastTriggeredChord = std::nullopt;
+    }
+
+    if (type == kCGEventKeyDown && !isRepeat) {
+        if (checkAndExecuteSequence(current)) return true;
+    }
+
+    for (const auto& [hotkey, command] : hotkeys) {
+        if (hotkey.chords.size() > 1) continue;
+        if (hotkey.chords[0].isActivatedBy(current)) {
+            bool event_type_matches = (!hotkey.on_release && type == kCGEventKeyDown) || (hotkey.on_release && type == kCGEventKeyUp);
+            bool repeat_matches = (isRepeat && hotkey.repeat) || !isRepeat;
+            if (event_type_matches && repeat_matches) {
+                debug("hotkey matched: {}", hotkey);
+                if (!command.empty()) {
+                    debug("executing command: {}", command);
+                    executeCommand(command);
+                    if (type == kCGEventKeyDown) {
+                        lastTriggeredChord = current;
+                    }
+                }
+                if (hotkey.passthrough) return false;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool KeyHandler::isBlacklistedProcess() const {
+    auto name = getFrontProcessName();
+    if (name.empty()) return false;
+    auto lowerName = toLower(std::move(name));
+    for (const auto& blocked : config.blacklist) {
+        if (toLower(blocked) == lowerName) {
+            return true;
+        }
+    }
+    return false;
+}
+
+std::string KeyHandler::getFrontProcessName() {
+    ProcessSerialNumber psn{};
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    if (GetFrontProcess(&psn) != noErr) {
+        return "";
+    }
+    CFStringRef cfName{};
+    if (CopyProcessName(&psn, &cfName) != noErr || !cfName) {
+        return "";
+    }
+#pragma clang diagnostic pop
+
+    std::string result = cfStringToString(cfName);
+    CFRelease(cfName);
+    return result;
+}
+
+std::string KeyHandler::toLower(std::string s) {
+    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    return s;
+}
+
+void KeyHandler::run() const {
+    if (!runLoop) return;
+    info("running key handler");
+    CFRunLoopRun();
+}
+
+void KeyHandler::loadConfig(const std::string& config_file) {
+    info("config file set to: {}", config_file);
+    std::ifstream file(config_file);
+    std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+    Parser parser(contents);
+    ast::Program program = parser.parseProgram();
+    Interpreter interpreter;
+    auto result = interpreter.interpret(program);
+    this->hotkeys = std::move(result.hotkeys);
+    this->config = result.config;
+}

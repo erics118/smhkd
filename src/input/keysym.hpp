@@ -108,39 +108,14 @@ struct std::formatter<LiteralKey> : std::formatter<std::string_view> {
 };
 // clang-format on
 
-uint32_t literalKeyToKeycode(LiteralKey k) {
-    return literal_keys[static_cast<size_t>(k)].keycode;
-}
+uint32_t literalKeyToKeycode(LiteralKey k);
 
-std::optional<LiteralKey> tryParseLiteralKey(const std::string& name) {
-    for (size_t i = 0; i < literal_keys.size(); i++) {
-        if (literal_keys[i].name == name) return static_cast<LiteralKey>(i);
-    }
-    return std::nullopt;
-}
+std::optional<LiteralKey> tryParseLiteralKey(const std::string& name);
 
-int getImplicitFlags(LiteralKey k) {
-    // Indices 5–34 (delete through f20) need fn: forward-delete, navigation, and function keys.
-    // Indices 35+ (media keys) need nx.
-    constexpr size_t FIRST_FN_KEY_INDEX = 5;
-    constexpr size_t FIRST_NX_KEY_INDEX = 35;
-
-    auto i = static_cast<size_t>(k);
-    if (i >= FIRST_FN_KEY_INDEX && i < FIRST_NX_KEY_INDEX) return Hotkey_Flag_Fn;
-    if (i >= FIRST_NX_KEY_INDEX) return Hotkey_Flag_NX;
-    return 0;
-}
+int getImplicitFlags(LiteralKey k);
 
 // convert a single character to a keycode
-uint32_t getKeycode(char key) {
-    // check the locale-dependent keycode map first
-    if (const auto it = keycodeMap.find(std::string{key}); it != keycodeMap.end()) {
-        return it->second;
-    }
-
-    // fallback to use char value directly
-    return static_cast<uint32_t>(static_cast<unsigned char>(key));
-}
+uint32_t getKeycode(char key);
 
 template <>
 struct std::formatter<Keysym> : std::formatter<std::string_view> {

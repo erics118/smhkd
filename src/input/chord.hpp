@@ -33,7 +33,3 @@ struct std::formatter<Chord> : std::formatter<std::string_view> {
         return std::format_to(ctx.out(), "{} + {}", modStr, keyStr);
     }
 };
-
-bool Chord::isActivatedBy(const Chord& eventInput) const {
-    return modifiers.isActivatedBy(eventInput.modifiers) && this->keysym == eventInput.keysym;
-}
