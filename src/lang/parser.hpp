@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <string>
 
 #include "ast.hpp"
@@ -16,8 +17,10 @@ class Parser {
 
    private:
     Token consume(TokenType expected);
-    ast::DefineModifierStmt parseDefineModifierStmt();
-    ast::ConfigPropertyStmt parseConfigPropertyStmt();
-    ast::KeySyntax parseKeyBraceExpansionSyntax();
-    ast::HotkeyStmt parseHotkeyStmt();
+    std::optional<ast::DefineModifierStmt> parseDefineModifierStmt();
+    std::optional<ast::ConfigPropertyStmt> parseConfigPropertyStmt();
+    std::optional<ast::KeySyntax> parseKeyBraceExpansionSyntax();
+    [[nodiscard]] std::optional<ast::KeySyntax> parseSingleKeySyntax(const Token& token) const;
+    bool parseHotkeyToken(ast::HotkeySyntax& syntax, bool& foundColon);
+    std::optional<ast::HotkeyStmt> parseHotkeyStmt();
 };
