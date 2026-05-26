@@ -3,7 +3,6 @@
 #include <format>
 #include <string>
 
-
 enum class TokenType {
     DefineModifier,
     Modifier,

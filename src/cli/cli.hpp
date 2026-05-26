@@ -1,6 +1,5 @@
 #pragma once
 
-#include "../input/log.hpp"
 #include <format>
 #include <optional>
 #include <string>
@@ -8,6 +7,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "../common/log.hpp"
 
 struct ArgsConfig {
     std::unordered_set<std::string> short_args;

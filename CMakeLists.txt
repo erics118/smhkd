@@ -16,6 +16,9 @@ endif()
 add_executable(${PROJECT_NAME}
     src/cli/main.cpp
     src/cli/cli.cpp
+    src/common/cf_string.cpp
+    src/common/command.cpp
+    src/common/config_path.cpp
     src/input/chord.cpp
     src/input/keysym.cpp
     src/input/locale.cpp
@@ -27,7 +30,6 @@ add_executable(${PROJECT_NAME}
     src/runtime/key_observer_handler.cpp
     src/runtime/process.cpp
     src/runtime/service.cpp
-    src/utils.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE

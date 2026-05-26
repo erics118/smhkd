@@ -1,5 +1,7 @@
 #include "interpreter.hpp"
 
+#include <algorithm>
+
 int Interpreter::resolveModifierFlags(const std::string& name) {
     if (auto it = cache.find(name); it != cache.end()) return it->second;
     if (auto bi = parseBuiltinModifier(name)) return cache[name] = builtinModifierToFlags(*bi);

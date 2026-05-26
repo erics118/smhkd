@@ -1,28 +1,18 @@
 #pragma once
 
-#include "../input/hotkey.hpp"
-#include "../input/chord.hpp"
-#include "../input/modifier.hpp"
-#include "../input/log.hpp"
-#include "../utils.hpp"
-#include "service.hpp"
-#include "../lang/parser.hpp"
-#include "../lang/interpreter.hpp"
-#include "../lang/ast.hpp"
 #include <Carbon/Carbon.h>
 #include <CoreFoundation/CoreFoundation.h>
 
-#include <algorithm>
 #include <cctype>
 #include <chrono>
-#include <fstream>
 #include <map>
 #include <optional>
 #include <string>
-#include <utility>
 #include <vector>
 
-
+#include "../input/chord.hpp"
+#include "../input/hotkey.hpp"
+#include "../lang/interpreter.hpp"
 
 struct KeyHandler {
     std::string configFileName;

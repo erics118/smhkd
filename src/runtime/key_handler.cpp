@@ -1,5 +1,11 @@
 #include "key_handler.hpp"
 
+#include <fstream>
+
+#include "../common/command.hpp"
+#include "../lang/parser.hpp"
+#include "../runtime/service.hpp"
+
 bool KeyHandler::init() {
     runLoop = CFRunLoopGetCurrent();
     if (!runLoop) return false;

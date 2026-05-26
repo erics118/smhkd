@@ -1,7 +1,5 @@
 #pragma once
 
-#include "../utils.hpp"
-#include "../input/log.hpp"
 #include <CoreFoundation/CFString.h>
 #include <CoreFoundation/CFURL.h>
 #include <libproc.h>
@@ -10,15 +8,10 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-#include <array>
 #include <cerrno>
-#include <filesystem>
-#include <format>
-#include <fstream>
 #include <string>
 #include <string_view>
 #include <vector>
-
 
 constexpr std::string LAUNCHCTL_PATH = "/bin/launchctl";
 constexpr std::string_view PLIST_NAME = "com.erics118.smhkd";

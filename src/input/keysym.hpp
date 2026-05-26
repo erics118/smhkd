@@ -1,20 +1,15 @@
 #pragma once
 
-#include "modifier.hpp"
-#include "locale.hpp"
 #include <Carbon/Carbon.h>
 #include <IOKit/hidsystem/ev_keymap.h>
 
-#include <algorithm>
 #include <array>
 #include <compare>
 #include <format>
 #include <optional>
-#include <print>
 #include <string>
-#include <unordered_map>
 
-
+#include "locale.hpp"
 
 struct Keysym {
     uint32_t keycode;

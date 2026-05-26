@@ -1,13 +1,13 @@
 #pragma once
 
-#include "../input/keysym.hpp"
-#include "../input/modifier.hpp"
 #include <format>
 #include <optional>
 #include <string>
 #include <variant>
 #include <vector>
 
+#include "../input/keysym.hpp"
+#include "../input/modifier.hpp"
 
 namespace ast {
 

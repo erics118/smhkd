@@ -1,5 +1,9 @@
 #include "process.hpp"
 
+#include <format>
+
+#include "../common/log.hpp"
+
 pid_t read_pid_file() {
     const auto* user = std::getenv("USER");
     if (!user) {
@@ -9,8 +13,7 @@ pid_t read_pid_file() {
     auto pid_file = std::format(PIDFILE_FMT, user);
     int handle = open(pid_file.c_str(), O_RDWR);
     if (handle == -1) {
-        error("could not open pid file '{}'", pid_file);
-        std::exit(1);
+        error_errno("could not open pid file '{}'", pid_file);
     }
     if (flock(handle, LOCK_EX | LOCK_NB) == 0) {
         close(handle);
@@ -20,8 +23,7 @@ pid_t read_pid_file() {
     pid_t pid = 0;
     if (read(handle, &pid, sizeof(pid_t)) == -1) {
         close(handle);
-        error("could not read pid file '{}'", pid_file);
-        std::exit(1);
+        error_errno("could not read pid file '{}'", pid_file);
     }
     close(handle);
     return pid;
@@ -37,17 +39,16 @@ void create_pid_file() {
     pid_t pid = getpid();
     int handle = open(pid_file.c_str(), O_CREAT | O_RDWR, 0644);
     if (handle == -1) {
-        error("could not create pid file '{}'", pid_file);
-        std::exit(1);
+        error_errno("could not create pid file '{}'", pid_file);
     }
     struct flock lockfd = {.l_start = 0, .l_len = 0, .l_pid = pid, .l_type = F_WRLCK, .l_whence = SEEK_SET};
     if (fcntl(handle, F_SETLK, &lockfd) == -1) {
         close(handle);
-        error("could not lock pid file '{}'", pid_file);
+        error_errno("could not lock pid file '{}'", pid_file);
     }
     if (write(handle, &pid, sizeof(pid_t)) == -1) {
         close(handle);
-        error("could not write pid {} to file '{}'", pid, pid_file);
+        error_errno("could not write pid {} to file '{}'", pid, pid_file);
     }
     info("created pid file: {}", pid_file);
 }

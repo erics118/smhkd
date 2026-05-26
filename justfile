@@ -27,7 +27,7 @@ release:
     just sign
 
 format:
-    treefmt
+    find src -name '*.cpp' -o -name '*.hpp' | xargs {{llvm-prefix}}/bin/clang-format -i
 
 clean:
     rm -rf ./build;

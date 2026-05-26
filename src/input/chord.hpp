@@ -1,15 +1,13 @@
 #pragma once
 
-#include "../lang/token.hpp"
-#include "keysym.hpp"
-#include "modifier.hpp"
 #include <CoreGraphics/CGEventTypes.h>
 #include <IOKit/hidsystem/ev_keymap.h>
 
 #include <compare>
 #include <format>
 
-
+#include "keysym.hpp"
+#include "modifier.hpp"
 
 struct Chord {
     Keysym keysym;

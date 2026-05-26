@@ -1,17 +1,10 @@
 #pragma once
 
+#include <string>
+
 #include "ast.hpp"
 #include "token.hpp"
 #include "tokenizer.hpp"
-#include "../input/keysym.hpp"
-#include "../input/log.hpp"
-#include "../input/modifier.hpp"
-#include <format>
-#include <string>
-#include <utility>
-#include <vector>
-
-
 
 class Parser {
    private:

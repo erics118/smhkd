@@ -1,5 +1,7 @@
 #include "tokenizer.hpp"
 
+#include "../input/keysym.hpp"
+
 const Token& Tokenizer::peek() {
     if (!peeked) {
         nextToken_ = getNextToken();

@@ -1,5 +1,7 @@
 #include "parser.hpp"
 
+#include "../common/log.hpp"
+
 ast::Program Parser::parseProgram() {
     ast::Program program;
     while (tokenizer.hasMoreTokens()) {

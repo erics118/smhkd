@@ -1,5 +1,10 @@
 #include "service.hpp"
 
+#include <filesystem>
+#include <fstream>
+
+#include "../common/log.hpp"
+
 std::string get_home_directory() {
     if (const char* homeDir = std::getenv("HOME")) {
         return homeDir;
@@ -27,7 +32,7 @@ std::string get_plist_contents() {
     }
     std::array<char, 4096> exe_path{};
     if (proc_pidpath(getpid(), exe_path.data(), exe_path.size()) <= 0) {
-        error("failed to get executable path");
+        error_errno("failed to get executable path");
     }
     auto contents = std::format(PLIST_TEMPLATE, PLIST_NAME, exe_path.data(), path_env, user, user);
     if (contents.empty()) {
@@ -110,7 +115,7 @@ void service_uninstall() {
     std::error_code ec;
     std::filesystem::remove(plist_path, ec);
     if (ec) {
-        error("failed to remove service file '{}'", plist_path);
+        error_error_code(std::format("failed to remove service file '{}'", plist_path), ec);
     }
 }
 

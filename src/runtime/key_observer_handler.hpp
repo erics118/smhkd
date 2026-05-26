@@ -1,15 +1,10 @@
 #pragma once
 
-#include "../input/chord.hpp"
-#include "../input/modifier.hpp"
-#include "../input/log.hpp"
 #include <Carbon/Carbon.h>
 #include <CoreFoundation/CoreFoundation.h>
 
-#include <print>
-#include <string>
-
-
+#include "../input/chord.hpp"
+#include "../input/modifier.hpp"
 
 class KeyObserverHandler {
    private:

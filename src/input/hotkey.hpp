@@ -1,7 +1,5 @@
 #pragma once
 
-#include "chord.hpp"
-#include "modifier.hpp"
 #include <CoreGraphics/CGEventTypes.h>
 
 #include <compare>
@@ -9,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include "chord.hpp"
 
 struct Hotkey {
     bool passthrough{};

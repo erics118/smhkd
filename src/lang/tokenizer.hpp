@@ -1,10 +1,8 @@
 #pragma once
 
-#include "token.hpp"
-#include "../input/keysym.hpp"
-#include <algorithm>
 #include <string>
 
+#include "token.hpp"
 
 class Tokenizer {
    private:

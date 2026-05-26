@@ -1,22 +1,15 @@
 #pragma once
 
-#include "ast.hpp"
-#include "../input/chord.hpp"
-#include "../input/hotkey.hpp"
-#include "../input/locale.hpp"
-#include "../input/keysym.hpp"
-#include "../input/modifier.hpp"
-#include "../input/log.hpp"
-#include <algorithm>
 #include <chrono>
 #include <map>
-#include <ranges>
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
-#include <variant>
 #include <vector>
 
+#include "../common/log.hpp"
+#include "../input/chord.hpp"
+#include "../input/hotkey.hpp"
+#include "ast.hpp"
 
 struct ConfigProperties {
     // max time between chord presses

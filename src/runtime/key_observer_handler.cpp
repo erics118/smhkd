@@ -1,5 +1,7 @@
 #include "key_observer_handler.hpp"
 
+#include "../common/log.hpp"
+
 bool KeyObserverHandler::setupEventTap() {
     CGEventMask eventMask = CGEventMaskBit(kCGEventKeyDown) | CGEventMaskBit(kCGEventKeyUp) | CGEventMaskBit(kCGEventFlagsChanged);
     CFMachPortRef tap = CGEventTapCreate(kCGSessionEventTap, kCGHeadInsertEventTap, kCGEventTapOptionDefault, eventMask, eventCallback, this);

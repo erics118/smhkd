@@ -1,5 +1,7 @@
 #include "keysym.hpp"
 
+#include "../input/modifier.hpp"
+
 uint32_t literalKeyToKeycode(LiteralKey k) {
     return literal_keys[static_cast<size_t>(k)].keycode;
 }

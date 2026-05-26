@@ -1,5 +1,7 @@
 #include "locale.hpp"
 
+#include <array>
+
 std::unordered_map<std::string, Keycode> keycodeMap;
 
 bool initializeKeycodeMap() {
@@ -47,7 +49,7 @@ bool initializeKeycodeMap() {
             CFStringRef keyCfString = CFStringCreateWithCharacters(nullptr, chars, len);
             if (!keyCfString) continue;
 
-            std::string keyString = std::format("{}", keyCfString);
+            std::string keyString = cfStringToString(keyCfString);
             CFRelease(keyCfString);
 
             if (!keyString.empty()) {

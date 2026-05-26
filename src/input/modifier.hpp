@@ -8,7 +8,6 @@
 #include <string>
 #include <vector>
 
-
 enum HotkeyFlag {
     Hotkey_Flag_Alt = (1 << 0),
     Hotkey_Flag_LAlt = (1 << 1),

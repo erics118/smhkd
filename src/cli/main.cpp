@@ -8,16 +8,16 @@
 #define SMHKD_VERSION "unknown"
 #endif
 
-#include "../utils.hpp"
-#include "cli.hpp"
-#include "../runtime/process.hpp"
-#include "../runtime/service.hpp"
+#include "../common/config_path.hpp"
+#include "../common/log.hpp"
+#include "../input/locale.hpp"
+#include "../lang/ast.hpp"
 #include "../lang/parser.hpp"
 #include "../runtime/key_handler.hpp"
 #include "../runtime/key_observer_handler.hpp"
-#include "../input/log.hpp"
-#include "../lang/ast.hpp"
-#include "../input/locale.hpp"
+#include "../runtime/process.hpp"
+#include "../runtime/service.hpp"
+#include "cli.hpp"
 
 KeyHandler* service = nullptr;
 std::string config_file;
