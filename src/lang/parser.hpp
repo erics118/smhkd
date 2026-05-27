@@ -20,11 +20,12 @@ struct ChordParseOptions {
 
 class Parser {
    private:
+    std::string contents_;
     Tokenizer tokenizer;
     std::vector<ParseError> errors_;
 
    public:
-    explicit Parser(const std::string& contents) : tokenizer(contents) {}
+    explicit Parser(std::string contents) : contents_(std::move(contents)), tokenizer(contents_) {}
     ast::Program parseProgram();
     std::optional<ast::ChordSyntax> parseChord(const ChordParseOptions& options = {});
     std::optional<std::vector<ast::ChordSyntax>> parseChordSequence(const ChordParseOptions& options = {});
