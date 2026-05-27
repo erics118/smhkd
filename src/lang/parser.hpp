@@ -36,7 +36,6 @@ class Parser {
     [[nodiscard]] static bool isFlagToken(TokenType type);
     [[nodiscard]] static bool startsChord(const Token& tk);
 
-    [[nodiscard]] bool startsConfigAssignment();
     std::optional<Token> expect(TokenType expected, std::string_view context);
 
     void addError(const Token& token, std::string message);

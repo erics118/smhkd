@@ -56,16 +56,13 @@ TEST_CASE("hotkey flags and multi-chord sequence preserve parser structure") {
     CHECK(key_char(*stmt.syntax.chords[1].key).value == 'b');
 }
 
-TEST_CASE("unknown config assignment at line start parses as ConfigPropertyStmt") {
+TEST_CASE("unknown config assignment is rejected by the parser") {
     Parser p{"unknown_setting = 7"};
     auto program = p.parseProgram();
 
-    CHECK(p.errors().empty());
-    REQUIRE(program.statements.size() == 1);
-    auto& stmt = std::get<ast::ConfigPropertyStmt>(program.statements[0]);
-    CHECK(stmt.name == "unknown_setting");
-    REQUIRE(stmt.intValue.has_value());
-    CHECK(*stmt.intValue == 7);
+    REQUIRE(program.statements.empty());
+    REQUIRE(p.errors().size() == 1);
+    CHECK(p.errors()[0].message.contains("chord is missing a key"));
 }
 
 TEST_CASE("multi-digit integer in key position emits error and recovers") {
@@ -126,8 +123,8 @@ TEST_CASE("scalar config reports trailing tokens after value") {
     CHECK(p.errors()[0].message.contains("nope"));
 }
 
-TEST_CASE("blacklist parses string and identifier entries") {
-    Parser p{R"(blacklist = ["Terminal", iTerm2, 42])"};
+TEST_CASE("blacklist parses quoted string entries") {
+    Parser p{R"(blacklist = ["Terminal", "iTerm2", "42"])"};
     auto program = p.parseProgram();
 
     CHECK(p.errors().empty());
@@ -152,12 +149,18 @@ TEST_CASE("blacklist rejects invalid entries") {
     Parser p{R"(blacklist = ["Terminal", {])"};
     auto program = p.parseProgram();
 
-    REQUIRE(program.statements.size() == 1);
-    auto& stmt = std::get<ast::ConfigPropertyStmt>(program.statements[0]);
-    REQUIRE(stmt.listValues.size() == 1);
-    CHECK(stmt.listValues[0] == "Terminal");
+    REQUIRE(program.statements.empty());
     REQUIRE(p.errors().size() == 1);
     CHECK(p.errors()[0].message.contains("in blacklist"));
+}
+
+TEST_CASE("blacklist rejects unquoted entries") {
+    Parser p{R"(blacklist = ["Terminal", iTerm2])"};
+    auto program = p.parseProgram();
+
+    REQUIRE(program.statements.empty());
+    REQUIRE(p.errors().size() == 1);
+    CHECK(p.errors()[0].message.contains("quoted string"));
 }
 
 TEST_CASE("blacklist reports unexpected eof when closing bracket is missing") {
@@ -236,6 +239,19 @@ TEST_CASE("brace expansion is rejected in remap target") {
     REQUIRE(program.statements.empty());
     REQUIRE(p.errors().size() == 1);
     CHECK(p.errors()[0].message.contains("brace expansion is not allowed here"));
+}
+
+TEST_CASE("remap target can start on the line after pipe") {
+    Parser p{"cmd + a |\nshift + b"};
+    auto program = p.parseProgram();
+
+    CHECK(p.errors().empty());
+    REQUIRE(program.statements.size() == 1);
+    auto& stmt = std::get<ast::RemapStmt>(program.statements[0]);
+    REQUIRE(stmt.target.modifiers.size() == 1);
+    CHECK(builtin_modifier(stmt.target.modifiers[0]) == BuiltinModifier::Shift);
+    REQUIRE(stmt.target.key.has_value());
+    CHECK(key_char(*stmt.target.key).value == 'b');
 }
 
 TEST_CASE("empty 0x literal triggers blank-hex error") {
@@ -473,7 +489,7 @@ TEST_CASE("remap rejects missing target chord") {
 
     REQUIRE(program.statements.empty());
     REQUIRE(p.errors().size() == 1);
-    CHECK(p.errors()[0].message.contains("chord is missing a key"));
+    CHECK(p.errors()[0].message.contains("after '|'"));
 }
 
 TEST_CASE("remap reports trailing tokens after target chord") {

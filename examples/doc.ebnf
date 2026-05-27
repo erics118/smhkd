@@ -1,0 +1,160 @@
+(* lexical rules ************************)
+(* whitespace and comments are stripped between tokens *)
+comment
+    = '#' , ? any characters until end of line ?;
+
+(* literals ************************************************************************************)
+letter
+    = ? a single letter, a-z ?;
+
+digit
+    = ? a single digit, 0-9 ?;
+
+number
+    = digit , { digit };
+
+key
+    = letter
+    | digit;
+
+identifier
+    = ? a string of letters, numbers, and underscores. cannot start with a number ?;
+
+keycode
+    = ? hex code corresponding to macOS virtual keycode, 0x00-0xFF ?;
+
+literal
+    = ? predefined keyword, enter, space, escape, etc ?;
+
+(* config *********************************************************************)
+integer_config_property_name
+    = 'max_chord_interval' (* max time between chords *)
+    | 'hold_modifier_threshold' (* min time for a keysym to be held to be considered as a held_mod *)
+    | 'simultaneous_threshold' (* max time between keysyms to be considered as a simultaneous_keysym *);
+
+list_config_property_name
+    = 'blacklist' (* ignore input events when these processes are frontmost *);
+
+string_literal
+    = '"' , ? any character except newline, double quotes must be escaped as \" ? , '"';
+
+string_list
+    = '[' , string_literal , { ',' , string_literal } , ']';
+
+config_property
+    = ( integer_config_property_name , '=' , number )
+    | ( list_config_property_name , '=' , string_list );
+
+(* keysyms *******************************************************************)
+mouse
+    = 'mouse1'
+    | 'mouse2'
+    | 'mouse3'
+    | 'mouse4'
+    | 'mouse5';
+
+(* a simple keysym *)
+simple_keysym
+    = key
+    | keycode
+    | literal
+    | mouse;
+
+(* two or more simple keysyms pressed at the same time *)
+simultaneous_keysym
+    = '[' , simple_keysym , { ',' , simple_keysym } , ']';
+
+(* a keysym with brace expansion, syntactic sugar for easily binding multiple keysyms *)
+brace_expansion_keysym
+    = '{' , simple_keysym , { ',' , simple_keysym } , '}';
+
+keysym
+    = simple_keysym
+    | brace_expansion_keysym
+    | simultaneous_keysym;
+
+(* modifiers ==================================================================================== *)
+base_mod
+    = 'cmd'
+    | 'lcmd'
+    | 'rcmd'
+    | 'alt'
+    | 'lalt'
+    | 'ralt'
+    | 'shift'
+    | 'lshift'
+    | 'rshift'
+    | 'ctrl'
+    | 'lctrl'
+    | 'rctrl'
+    | 'fn';
+
+(* custom modifier for easily binding multiple modifiers *)
+custom_mod
+    = 'define_modifier' , identifier , '=' , modifiers;
+
+(* hold down a simple keysym to act as a modifier *)
+held_mod
+    = '(' , simple_keysym , ')';
+
+(* a simple modifier, ie a normal system-level modifier *)
+simple_modifier
+    = base_mod
+    | held_mod;
+
+simple_modifiers
+    = simple_modifier , { '+' , simple_modifier };
+
+(* a modifier, which can be a simple modifier or a held modifier *)
+modifier
+    = simple_modifier
+    | held_mod;
+
+modifiers
+    = modifier , { '+' , modifier };
+
+(* flags **********************************************************)
+(* allows event to pass through to other applications *)
+passthrough
+    = '@';
+
+(* enables repeat based on macos settings, cannot be combined with ^ *)
+repeat
+    = '&';
+
+(* make the chord activate on release rather than press *)
+on_release
+    = '^';
+
+(* flags can be combined with other flags, but only in certain ways *)
+flags
+    = passthrough
+    | repeat
+    | on_release
+    | passthrough , repeat
+    | repeat , passthrough;
+
+(* command *****************************************************)
+command
+    = ? any shell command on a single line. supports brace expansions ?;
+
+(* chords **************************************************)
+(* a chord is a zero or more modifiers plus a keysym *)
+chord
+    = [ modifiers , '+' ] , keysym;
+
+(* chord but only with  *)
+simple_chord
+    = [ simple_modifiers , '+' ] , simple_keysym;
+
+(* a list of chords, separated by semicolons, with optional flags *)
+chords
+    = chord , { ';' , chord } , [ flags ];
+
+(* hotkey is a list of chords followed by a command. there can be a newline after ':' for readability *)
+hotkey
+    = chords , ':' , ? optional whitespace/comments ? , command;
+
+(* a remap is a mapping of chords to a simple_chord *)
+remap
+    = chords , '|' , ? optional whitespace/comments ? , simple_chord;

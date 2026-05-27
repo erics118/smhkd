@@ -14,7 +14,7 @@ ast::Program Parser::parseProgram() {
                 program.statements.emplace_back(std::move(*stmt));
                 parsed = true;
             }
-        } else if (tk.type == TokenType::ConfigProperty || startsConfigAssignment()) {
+        } else if (tk.type == TokenType::ConfigProperty) {
             if (auto stmt = parseConfigPropertyStmt()) {
                 program.statements.emplace_back(std::move(*stmt));
                 parsed = true;
@@ -31,16 +31,6 @@ ast::Program Parser::parseProgram() {
         }
     }
     return program;
-}
-
-bool Parser::startsConfigAssignment() {
-    const Token first = tokenizer.peek();
-    if (first.type != TokenType::Modifier && first.type != TokenType::Key) {
-        return false;
-    }
-
-    const Token second = tokenizer.peek(1);
-    return second.row == first.row && second.type == TokenType::Equals;
 }
 
 void Parser::addError(const Token& token, std::string message) {
@@ -151,9 +141,15 @@ std::optional<ast::ConfigPropertyStmt> Parser::parseBlacklistConfigStmt(const To
     if (!expect(TokenType::OpenBracket, "after blacklist config")) {
         return std::nullopt;
     }
+
+    bool expectValue = true;
     while (true) {
         const Token& tk = tokenizer.peek();
         if (tk.type == TokenType::CloseBracket) {
+            if (expectValue && !stmt.listValues.empty()) {
+                addUnexpectedTokenError(tk, "in blacklist", "quoted string");
+                return std::nullopt;
+            }
             tokenizer.next();
             break;
         }
@@ -161,19 +157,25 @@ std::optional<ast::ConfigPropertyStmt> Parser::parseBlacklistConfigStmt(const To
             addUnexpectedEofError(tk, "while parsing blacklist");
             break;
         }
-        if (tk.type == TokenType::Comma) {
-            tokenizer.next();
-            continue;
-        }
-        if (tk.type == TokenType::String || tk.type == TokenType::Modifier || tk.type == TokenType::Key || tk.type == TokenType::Integer) {
+        if (expectValue) {
+            if (tk.type != TokenType::String) {
+                addUnexpectedTokenError(tk, "in blacklist", "quoted string");
+                return std::nullopt;
+            }
             Token valueToken = tokenizer.next();
             if (!valueToken.text.empty()) {
                 stmt.listValues.push_back(valueToken.text);
             }
+            expectValue = false;
             continue;
         }
-        addUnexpectedTokenError(tk, "in blacklist", "quoted string or identifier");
-        tokenizer.next();
+        if (tk.type == TokenType::Comma) {
+            tokenizer.next();
+            expectValue = true;
+            continue;
+        }
+        addUnexpectedTokenError(tk, "in blacklist", "',' or ']'");
+        return std::nullopt;
     }
     if (stmt.listValues.empty()) {
         addError(cpToken, "blacklist config provided but no process names were parsed");
@@ -508,13 +510,17 @@ std::optional<ast::HotkeyStmt> Parser::parseHotkeyStmt(ast::HotkeySyntax syntax)
 std::optional<ast::RemapStmt> Parser::parseRemapStmt(ast::HotkeySyntax syntax) {
     ast::RemapStmt stmt;
     stmt.source = std::move(syntax);
-    const int row = tokenizer.peek().row;
     tokenizer.next();
-    auto target = parseChordSyntax(row, ChordParseOptions{.allowBraceExpansion = false});
+    const Token start = tokenizer.peek();
+    if (start.type == TokenType::EndOfFile) {
+        addUnexpectedEofError(start, "after '|'", "remap target chord");
+        return std::nullopt;
+    }
+    auto target = parseChordSyntax(start.row, ChordParseOptions{.allowBraceExpansion = false});
     if (!target) {
         return std::nullopt;
     }
     stmt.target = std::move(*target);
-    dropTrailingTokens(row, "after remap target");
+    dropTrailingTokens(start.row, "after remap target");
     return stmt;
 }

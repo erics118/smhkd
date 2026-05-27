@@ -8,6 +8,7 @@
 #include "input/keysym.hpp"
 #include "input/locale.hpp"
 #include "input/modifier.hpp"
+#include "lang/config_loader.hpp"
 #include "lang/interpreter.hpp"
 #include "lang/parser.hpp"
 
@@ -137,12 +138,11 @@ TEST_CASE("config values apply to the correct field") {
     CHECK(r.config.simultaneousThreshold == std::chrono::milliseconds(75));
 }
 
-TEST_CASE("unknown config property is reported by name") {
-    auto r = interpret_source("nonexistent_property = 1");
-    REQUIRE(!r.errors.empty());
-    const auto& msg = r.errors[0].message;
-    CHECK(msg.contains("unknown config property"));
-    CHECK(msg.contains("nonexistent_property"));
+TEST_CASE("unknown config-like assignment is rejected during parsing") {
+    auto r = ConfigLoader{}.loadFromContents("nonexistent_property = 1");
+    REQUIRE(!r.parseErrors.empty());
+    const auto& msg = r.parseErrors[0].message;
+    CHECK(msg.contains("chord is missing a key"));
 }
 
 TEST_CASE("unknown modifier reports the offending name") {
