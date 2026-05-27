@@ -26,8 +26,10 @@ Checks: >
   -readability-convert-member-functions-to-static,
   -google-readability-todo,
   -readability-function-cognitive-complexity,
-  *-const-correctness
+  *-const-correctness,
+  -misc-use-anonymous-namespace,
+  -cppcoreguidelines-avoid-do-while
 
 CheckOptions:
   - key: misc-unused-parameters.StrictMode
-    value: 'false'
+    value: "false"

@@ -29,6 +29,11 @@ release:
 format:
     find src -name '*.cpp' -o -name '*.hpp' | xargs {{llvm-prefix}}/bin/clang-format -i
 
+test: build
+    ASAN_OPTIONS=detect_leaks=1:abort_on_error=1 \
+    LSAN_OPTIONS=suppressions={{justfile_directory()}}/.lsan-suppressions:print_suppressions=0 \
+    ./build/smhkd_tests
+
 clean:
     rm -rf ./build;
 
