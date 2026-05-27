@@ -5,7 +5,6 @@
 #include <iostream>
 #include <print>
 #include <string>
-#include <system_error>
 
 enum class level : std::uint8_t {
     debug,
@@ -14,19 +13,18 @@ enum class level : std::uint8_t {
     error,
 };
 
-inline bool verbose_logging_enabled = false;
-
-inline void set_verbose_logging(bool enabled) {
-    verbose_logging_enabled = enabled;
+inline bool& verbose_logging_flag() {
+    static bool enabled = false;
+    return enabled;
 }
 
-[[nodiscard]] inline bool is_verbose_logging_enabled() {
-    return verbose_logging_enabled;
+inline void set_verbose_logging(bool enabled) {
+    verbose_logging_flag() = enabled;
 }
 
 template <typename T>
 void print(const level ll, const T& msg) {
-    if (ll == level::debug && !is_verbose_logging_enabled()) return;
+    if (ll == level::debug && !verbose_logging_flag()) return;
     std::string type{};
     switch (ll) {
         case level::debug: type = "\u001b[36mdebug\u001b[0m"; break;

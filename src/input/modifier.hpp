@@ -6,7 +6,6 @@
 #include <format>
 #include <optional>
 #include <string>
-#include <vector>
 
 enum HotkeyFlag {
     Hotkey_Flag_Alt = (1 << 0),

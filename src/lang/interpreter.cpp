@@ -8,31 +8,49 @@ void Interpreter::addError(std::string message) {
     errors_.push_back(InterpreterError{.message = std::move(message)});
 }
 
+// NOLINTNEXTLINE(misc-no-recursion)
 std::optional<int> Interpreter::resolveModifierFlags(const std::string& name) {
-    if (auto it = cache.find(name); it != cache.end()) return it->second;
-    if (auto bi = parseBuiltinModifier(name)) {
-        const int flags = builtinModifierToFlags(*bi);
-        cache[name] = flags;
-        return flags;
-    }
-    if (auto it = defines.find(name); it != defines.end()) {
+    std::vector<std::string> active;
+
+    // NOLINTNEXTLINE(misc-no-recursion)
+    const auto resolve = [&](const auto& self, const std::string& currentName) -> std::optional<int> {
+        if (auto it = cache.find(currentName); it != cache.end()) return it->second;
+        if (auto bi = parseBuiltinModifier(currentName)) {
+            const int flags = builtinModifierToFlags(*bi);
+            cache[currentName] = flags;
+            return flags;
+        }
+        if (std::ranges::find(active, currentName) != active.end()) {
+            addError(std::format("cyclic modifier reference involving '{}'", currentName));
+            return std::nullopt;
+        }
+
+        auto it = defines.find(currentName);
+        if (it == defines.end()) {
+            addError(std::format("unknown modifier '{}'", currentName));
+            return std::nullopt;
+        }
+
+        active.push_back(currentName);
         int flags = 0;
         for (const auto& part : it->second) {
             std::optional<int> partFlags =
                 std::holds_alternative<BuiltinModifier>(part.value)
                     ? std::optional<int>(builtinModifierToFlags(std::get<BuiltinModifier>(part.value)))
-                    : resolveModifierFlags(std::get<std::string>(part.value));
+                    : self(self, std::get<std::string>(part.value));
             if (!partFlags) {
-                addError(std::format("invalid modifier reference in custom modifier definition '{}'", name));
+                addError(std::format("invalid modifier reference in custom modifier definition '{}'", currentName));
+                active.pop_back();
                 return std::nullopt;
             }
             flags |= *partFlags;
         }
-        cache[name] = flags;
+        active.pop_back();
+        cache[currentName] = flags;
         return flags;
-    }
-    addError(std::format("unknown modifier '{}'", name));
-    return std::nullopt;
+    };
+
+    return resolve(resolve, name);
 }
 
 void Interpreter::setChordKeyFromAtom(Chord& chord, const ast::KeyAtom& atom) {
@@ -113,9 +131,9 @@ bool Interpreter::setHotkeyKeys(Hotkey& hk, const ast::HotkeySyntax& syn, std::o
 }
 
 std::string Interpreter::trim(std::string_view s) {
-    auto start = std::ranges::find_if_not(s, [](unsigned char c) { return std::isspace(c); });
+    const auto* start = std::ranges::find_if_not(s, [](unsigned char c) { return std::isspace(c); });
     if (start == s.end()) return "";
-    auto end = std::find_if_not(s.rbegin(), std::make_reverse_iterator(start), [](unsigned char c) { return std::isspace(c); }).base();
+    const auto* end = std::find_if_not(s.rbegin(), std::make_reverse_iterator(start), [](unsigned char c) { return std::isspace(c); }).base();
     return {start, end};
 }
 
@@ -162,9 +180,10 @@ std::vector<std::string> Interpreter::parseCommandBraceExpansion(const std::stri
         }
     }
 
-    std::string prefix = unescapeDoubleBraces(std::string_view(command.data(), braceStart));
-    std::string suffix = unescapeDoubleBraces(std::string_view(command.data() + braceEnd + 1));
-    std::string braceContent = unescapeDoubleBraces(std::string_view(command.data() + braceStart + 1, braceEnd - braceStart - 1));
+    const std::string_view commandView{command};
+    std::string prefix = unescapeDoubleBraces(commandView.substr(0, braceStart));
+    std::string suffix = unescapeDoubleBraces(commandView.substr(braceEnd + 1));
+    std::string braceContent = unescapeDoubleBraces(commandView.substr(braceStart + 1, braceEnd - braceStart - 1));
 
     std::vector<std::string> items;
     for (size_t start = 0; start < braceContent.size();) {
@@ -178,7 +197,10 @@ std::vector<std::string> Interpreter::parseCommandBraceExpansion(const std::stri
     if (items.empty()) return {};
     std::vector<std::string> result;
     result.reserve(items.size());
-    for (const auto& item : items) result.push_back(prefix + item + suffix);
+    for (const auto& item : items) {
+        // NOLINTNEXTLINE(performance-inefficient-string-concatenation)
+        result.push_back(prefix + item + suffix);
+    }
     return result;
 }
 
