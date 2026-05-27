@@ -152,6 +152,16 @@ std::vector<std::string> Interpreter::parseCommandBraceExpansion(const std::stri
     }
     if (braceEnd == std::string::npos) return {};
 
+    // a second unescaped '{' in the suffix would silently be ignored, so flag it
+    for (size_t i = braceEnd + 1; i < command.size(); i++) {
+        if (command[i] == '{' && (i + 1 >= command.size() || command[i + 1] != '{')) {
+            addError(std::format(
+                "command brace expansion supports only one '{{...}}' group; found another at position {}. escape literal braces as '{{{{' / '}}}}'.",
+                i));
+            return {};
+        }
+    }
+
     std::string prefix = unescapeDoubleBraces(std::string_view(command.data(), braceStart));
     std::string suffix = unescapeDoubleBraces(std::string_view(command.data() + braceEnd + 1));
     std::string braceContent = unescapeDoubleBraces(std::string_view(command.data() + braceStart + 1, braceEnd - braceStart - 1));
@@ -172,116 +182,131 @@ std::vector<std::string> Interpreter::parseCommandBraceExpansion(const std::stri
     return result;
 }
 
+void Interpreter::applyDefine(const ast::DefineModifierStmt& node) {
+    defines[node.name] = node.parts;
+}
+
+void Interpreter::applyConfig(const ast::ConfigPropertyStmt& node, ConfigProperties& config) {
+    if (node.name == "blacklist") {
+        if (!node.listValues.empty()) {
+            config.blacklist = node.listValues;
+        } else {
+            addError("blacklist config provided without any process names; ignoring");
+        }
+        return;
+    }
+
+    if (!node.intValue) {
+        addError(std::format(
+            "config property '{}' requires an integer value. Skipping this property",
+            node.name));
+        return;
+    }
+
+    auto ms = std::chrono::milliseconds(*node.intValue);
+    if (node.name == "max_chord_interval") config.maxChordInterval = ms;
+    else if (node.name == "hold_modifier_threshold") config.holdModifierThreshold = ms;
+    else if (node.name == "simultaneous_threshold") config.simultaneousThreshold = ms;
+    else {
+        addError(std::format(
+            "unknown config property: '{}'. Valid properties are: max_chord_interval, hold_modifier_threshold, simultaneous_threshold, blacklist",
+            node.name));
+    }
+}
+
+void Interpreter::applyRemap(const ast::RemapStmt& node, std::vector<RemapBinding>& remaps) {
+    if (node.source.passthrough || node.source.repeat || node.source.onRelease) {
+        addError("remaps do not support '@', '&', or '^' flags");
+        return;
+    }
+    auto source = buildBaseHotkey(node.source);
+    if (!source) {
+        return;
+    }
+    if (source->chords.size() != 1) {
+        addError("remaps currently support single-chord sources only");
+        return;
+    }
+    if (node.source.chords[0].key && node.source.chords[0].key->isBraceExpansion) {
+        addError("remaps do not support brace expansion in the source key");
+        return;
+    }
+    if (!setHotkeyKeys(*source, node.source, -1, 0)) {
+        return;
+    }
+    auto target = buildChord(node.target);
+    if (!target) {
+        return;
+    }
+    if (target->modifiers.has(Hotkey_Flag_NX)) {
+        addError("remaps do not support media-key targets yet");
+        return;
+    }
+    remaps.emplace_back(std::move(*source), *target);
+}
+
+void Interpreter::applyHotkey(const ast::HotkeyStmt& h, std::map<Hotkey, std::string>& hotkeys) {
+    const auto& syn = h.syntax;
+    auto base = buildBaseHotkey(syn);
+    if (!base) {
+        return;
+    }
+
+    int braceChordIndex = -1;
+    for (size_t i = 0; i < syn.chords.size(); i++) {
+        if (syn.chords[i].key && syn.chords[i].key->isBraceExpansion) {
+            braceChordIndex = static_cast<int>(i);
+            break;
+        }
+    }
+
+    std::vector<std::string> commandExpansions = parseCommandBraceExpansion(h.command);
+    size_t expansionCount = braceChordIndex >= 0 ? syn.chords[braceChordIndex].key->items.size() : 1;
+
+    if (!commandExpansions.empty() && commandExpansions.size() != expansionCount) {
+        addError(std::format(
+            "brace expansion mismatch: found {} key items in brace expansion but found {} command expansions. Skipping this hotkey.",
+            expansionCount,
+            commandExpansions.size()));
+        return;
+    }
+
+    for (size_t i = 0; i < expansionCount; i++) {
+        Hotkey hk = *base;
+        if (!setHotkeyKeys(hk, syn, braceChordIndex, i)) {
+            continue;
+        }
+        std::string command = commandExpansions.empty() ? h.command : commandExpansions[i];
+        debug("adding command: {} : {}", hk, command);
+        hotkeys[hk] = command;
+    }
+}
+
 InterpreterResult Interpreter::interpret(const ast::Program& program) {
     InterpreterResult result{};
     defines.clear();
     cache.clear();
     errors_.clear();
 
+    // first pass: defines, config, and remaps
     for (const auto& stmt : program.statements) {
         std::visit([&](const auto& node) {
             using T = std::decay_t<decltype(node)>;
             if constexpr (std::is_same_v<T, ast::DefineModifierStmt>) {
-                defines[node.name] = node.parts;
+                applyDefine(node);
             } else if constexpr (std::is_same_v<T, ast::ConfigPropertyStmt>) {
-                if (node.name == "blacklist") {
-                    if (!node.listValues.empty()) {
-                        result.config.blacklist = node.listValues;
-                    } else {
-                        addError("blacklist config provided without any process names; ignoring");
-                    }
-                    return;
-                }
-
-                if (!node.intValue) {
-                    addError(std::format(
-                        "config property '{}' requires an integer value. Skipping this property",
-                        node.name));
-                    return;
-                }
-
-                auto ms = std::chrono::milliseconds(*node.intValue);
-                if (node.name == "max_chord_interval") result.config.maxChordInterval = ms;
-                else if (node.name == "hold_modifier_threshold")
-                    result.config.holdModifierThreshold = ms;
-                else if (node.name == "simultaneous_threshold")
-                    result.config.simultaneousThreshold = ms;
-                else {
-                    addError(std::format(
-                        "unknown config property: '{}'. Valid properties are: max_chord_interval, hold_modifier_threshold, simultaneous_threshold, blacklist",
-                        node.name));
-                }
+                applyConfig(node, result.config);
             } else if constexpr (std::is_same_v<T, ast::RemapStmt>) {
-                if (node.source.passthrough || node.source.repeat || node.source.onRelease) {
-                    addError("remaps do not support '@', '&', or '^' flags");
-                    return;
-                }
-                auto source = buildBaseHotkey(node.source);
-                if (!source) {
-                    return;
-                }
-                if (source->chords.size() != 1) {
-                    addError("remaps currently support single-chord sources only");
-                    return;
-                }
-                if (node.source.chords[0].key && node.source.chords[0].key->isBraceExpansion) {
-                    addError("remaps do not support brace expansion in the source key");
-                    return;
-                }
-                if (!setHotkeyKeys(*source, node.source, -1, 0)) {
-                    return;
-                }
-                auto target = buildChord(node.target);
-                if (!target) {
-                    return;
-                }
-                if (target->modifiers.has(Hotkey_Flag_NX)) {
-                    addError("remaps do not support media-key targets yet");
-                    return;
-                }
-                result.remaps.emplace_back(std::move(*source), std::move(*target));
+                applyRemap(node, result.remaps);
             }
         },
             stmt);
     }
 
+    // second pass: hotkeys (need all defines resolved first)
     for (const auto& stmt : program.statements) {
         if (!std::holds_alternative<ast::HotkeyStmt>(stmt)) continue;
-        const auto& h = std::get<ast::HotkeyStmt>(stmt);
-        const auto& syn = h.syntax;
-        auto base = buildBaseHotkey(syn);
-        if (!base) {
-            continue;
-        }
-
-        int braceChordIndex = -1;
-        for (int i = 0; i < syn.chords.size(); i++) {
-            if (syn.chords[i].key && syn.chords[i].key->isBraceExpansion) {
-                braceChordIndex = i;
-                break;
-            }
-        }
-
-        std::vector<std::string> commandExpansions = parseCommandBraceExpansion(h.command);
-        size_t expansionCount = braceChordIndex >= 0 ? syn.chords[braceChordIndex].key->items.size() : 1;
-
-        if (!commandExpansions.empty() && commandExpansions.size() != expansionCount) {
-            addError(std::format(
-                "brace expansion mismatch: found {} key items in brace expansion but found {} command expansions. Skipping this hotkey.",
-                expansionCount,
-                commandExpansions.size()));
-            continue;
-        }
-
-        for (size_t i = 0; i < expansionCount; i++) {
-            Hotkey hk = *base;
-            if (!setHotkeyKeys(hk, syn, braceChordIndex, i)) {
-                continue;
-            }
-            std::string command = commandExpansions.empty() ? h.command : commandExpansions[i];
-            debug("adding command: {} : {}", hk, command);
-            result.hotkeys[hk] = command;
-        }
+        applyHotkey(std::get<ast::HotkeyStmt>(stmt), result.hotkeys);
     }
     result.errors = errors_;
     return result;

@@ -35,8 +35,10 @@ class Parser {
     void addError(const Token& token, std::string message);
     std::optional<ast::DefineModifierStmt> parseDefineModifierStmt();
     std::optional<ast::ConfigPropertyStmt> parseConfigPropertyStmt();
+    std::optional<ast::ConfigPropertyStmt> parseBlacklistConfigStmt(const Token& cpToken);
+    std::optional<ast::ConfigPropertyStmt> parseScalarConfigStmt(const Token& cpToken);
     std::optional<ast::KeySyntax> parseKeyBraceExpansionSyntax();
-    [[nodiscard]] std::optional<ast::KeySyntax> parseSingleKeySyntax(const Token& tk) const;
+    [[nodiscard]] std::optional<ast::KeySyntax> parseSingleKeySyntax(const Token& tk);
     [[nodiscard]] static bool startsChord(const Token& tk);
     std::optional<ast::ChordSyntax> parseChordSyntax(int row, const ChordParseOptions& options);
     std::optional<ast::ChordSyntax> parseRemapTargetChord(int row);

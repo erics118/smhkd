@@ -7,17 +7,31 @@ ast::Program Parser::parseProgram() {
         if (tk.type == TokenType::EndOfFile) {
             break;
         }
+        const int startRow = tk.row;
+        const int startCol = tk.col;
+        bool parsed = false;
         if (tk.type == TokenType::DefineModifier) {
             if (auto stmt = parseDefineModifierStmt()) {
                 program.statements.emplace_back(std::move(*stmt));
+                parsed = true;
             }
         } else if (tk.type == TokenType::ConfigProperty) {
             if (auto stmt = parseConfigPropertyStmt()) {
                 program.statements.emplace_back(std::move(*stmt));
+                parsed = true;
             }
         } else {
             if (auto stmt = parseBindingStmt()) {
                 program.statements.emplace_back(std::move(*stmt));
+                parsed = true;
+            }
+        }
+        // if a previous function failed without consuming any token, drop
+        // a token to guarantee moving forward
+        if (!parsed) {
+            const Token& after = tokenizer.peek();
+            if (after.type != TokenType::EndOfFile && after.row == startRow && after.col == startCol) {
+                tokenizer.next();
             }
         }
     }
@@ -86,66 +100,76 @@ std::optional<ast::DefineModifierStmt> Parser::parseDefineModifierStmt() {
 
 std::optional<ast::ConfigPropertyStmt> Parser::parseConfigPropertyStmt() {
     Token cpToken = consume(TokenType::ConfigProperty);
+    if (cpToken.text == "blacklist") {
+        return parseBlacklistConfigStmt(cpToken);
+    }
+    return parseScalarConfigStmt(cpToken);
+}
+
+std::optional<ast::ConfigPropertyStmt> Parser::parseBlacklistConfigStmt(const Token& cpToken) {
     ast::ConfigPropertyStmt stmt;
     stmt.name = cpToken.text;
 
-    if (cpToken.text == "blacklist") {
-        if (tokenizer.peek().type != TokenType::Equals) {
-            addError(tokenizer.peek(), std::format(
-                                           "expected '=' after blacklist config but got {} ('{}')",
-                                           tokenizer.peek().type,
-                                           tokenizer.peek().text));
-            return std::nullopt;
-        }
-        consume(TokenType::Equals);
-        if (tokenizer.peek().type != TokenType::OpenBracket) {
-            addError(tokenizer.peek(), std::format(
-                                           "expected '[' after blacklist config but got {} ('{}')",
-                                           tokenizer.peek().type,
-                                           tokenizer.peek().text));
-            return std::nullopt;
-        }
-        consume(TokenType::OpenBracket);
-        while (tokenizer.hasMoreTokens()) {
-            const Token& tk = tokenizer.peek();
-            if (tk.type == TokenType::CloseBracket) {
-                consume(TokenType::CloseBracket);
-                break;
-            }
-            if (tk.type == TokenType::EndOfFile) {
-                addError(tk, "unexpected end of file while parsing blacklist");
-                break;
-            }
-            if (tk.type == TokenType::Comma) {
-                consume(TokenType::Comma);
-                continue;
-            }
-            if (tk.type == TokenType::String || tk.type == TokenType::Modifier || tk.type == TokenType::Key) {
-                Token valueToken = tokenizer.next();
-                if (!valueToken.text.empty()) {
-                    stmt.listValues.push_back(valueToken.text);
-                }
-                continue;
-            }
-            addError(tk, std::format(
-                             "unexpected token {} ('{}') in blacklist. Expected quoted string or identifier",
-                             tk.type,
-                             tk.text));
-            tokenizer.next();
-        }
-        if (stmt.listValues.empty()) {
-            addError(cpToken, "blacklist config provided but no process names were parsed");
-            return std::nullopt;
-        }
-        return stmt;
+    if (tokenizer.peek().type != TokenType::Equals) {
+        addError(tokenizer.peek(), std::format(
+                                       "expected '=' after blacklist config but got {} ('{}')",
+                                       tokenizer.peek().type,
+                                       tokenizer.peek().text));
+        return std::nullopt;
     }
+    consume(TokenType::Equals);
+    if (tokenizer.peek().type != TokenType::OpenBracket) {
+        addError(tokenizer.peek(), std::format(
+                                       "expected '[' after blacklist config but got {} ('{}')",
+                                       tokenizer.peek().type,
+                                       tokenizer.peek().text));
+        return std::nullopt;
+    }
+    consume(TokenType::OpenBracket);
+    while (tokenizer.hasMoreTokens()) {
+        const Token& tk = tokenizer.peek();
+        if (tk.type == TokenType::CloseBracket) {
+            consume(TokenType::CloseBracket);
+            break;
+        }
+        if (tk.type == TokenType::EndOfFile) {
+            addError(tk, "unexpected end of file while parsing blacklist");
+            break;
+        }
+        if (tk.type == TokenType::Comma) {
+            consume(TokenType::Comma);
+            continue;
+        }
+        if (tk.type == TokenType::String || tk.type == TokenType::Modifier || tk.type == TokenType::Key || tk.type == TokenType::Integer) {
+            Token valueToken = tokenizer.next();
+            if (!valueToken.text.empty()) {
+                stmt.listValues.push_back(valueToken.text);
+            }
+            continue;
+        }
+        addError(tk, std::format(
+                         "unexpected token {} ('{}') in blacklist. Expected quoted string or identifier",
+                         tk.type,
+                         tk.text));
+        tokenizer.next();
+    }
+    if (stmt.listValues.empty()) {
+        addError(cpToken, "blacklist config provided but no process names were parsed");
+        return std::nullopt;
+    }
+    return stmt;
+}
+
+std::optional<ast::ConfigPropertyStmt> Parser::parseScalarConfigStmt(const Token& cpToken) {
+    ast::ConfigPropertyStmt stmt;
+    stmt.name = cpToken.text;
 
     const Token eqToken = consume(TokenType::Equals);
     if (eqToken.type != TokenType::Equals) {
         return std::nullopt;
     }
     Token intToken = tokenizer.next();
-    if (intToken.type != TokenType::Modifier && intToken.type != TokenType::Key) {
+    if (intToken.type != TokenType::Integer) {
         addError(intToken, std::format(
                                "expected integer after '=' for config property '{}' but got {} ('{}')",
                                cpToken.text,
@@ -153,11 +177,12 @@ std::optional<ast::ConfigPropertyStmt> Parser::parseConfigPropertyStmt() {
                                intToken.text));
         return std::nullopt;
     }
+    // tokenizer guarantees all-digit text; only out-of-range can throw
     try {
         stmt.intValue = std::stoi(intToken.text);
-    } catch (...) {
+    } catch (const std::out_of_range&) {
         addError(intToken, std::format(
-                               "value '{}' for config property '{}' is not a valid integer",
+                               "value '{}' for config property '{}' is out of range",
                                intToken.text,
                                cpToken.text));
         return std::nullopt;
@@ -217,8 +242,9 @@ std::optional<ast::KeySyntax> Parser::parseKeyBraceExpansionSyntax() {
     }
 }
 
-std::optional<ast::KeySyntax> Parser::parseSingleKeySyntax(const Token& tk) const {
-    if (tk.type != TokenType::Literal && tk.type != TokenType::Key && tk.type != TokenType::KeyHex) {
+std::optional<ast::KeySyntax> Parser::parseSingleKeySyntax(const Token& tk) {
+    if (tk.type != TokenType::Literal && tk.type != TokenType::Key
+        && tk.type != TokenType::KeyHex && tk.type != TokenType::Integer) {
         return std::nullopt;
     }
 
@@ -229,6 +255,16 @@ std::optional<ast::KeySyntax> Parser::parseSingleKeySyntax(const Token& tk) cons
         if (auto lit = tryParseLiteralKey(tk.text)) atom.value = *lit;
         else atom.value = ast::KeyChar{tk.text.empty() ? '\0' : tk.text.at(0), false};
     } else if (tk.type == TokenType::Key) {
+        atom.value = ast::KeyChar{tk.text.at(0), false};
+    } else if (tk.type == TokenType::Integer) {
+        // single-digit Integer doubles as a Key
+        // multi-digit integers are not valid keys
+        if (tk.text.size() != 1) {
+            addError(tk, std::format(
+                             "'{}' is not a valid key. Use a single digit, a named literal, or 0xNN for a raw keycode",
+                             tk.text));
+            return std::nullopt;
+        }
         atom.value = ast::KeyChar{tk.text.at(0), false};
     } else {
         try {
@@ -244,7 +280,8 @@ std::optional<ast::KeySyntax> Parser::parseSingleKeySyntax(const Token& tk) cons
 
 bool Parser::startsChord(const Token& tk) {
     return tk.type == TokenType::Modifier || tk.type == TokenType::OpenBrace
-        || tk.type == TokenType::Literal || tk.type == TokenType::Key || tk.type == TokenType::KeyHex;
+        || tk.type == TokenType::Literal || tk.type == TokenType::Key || tk.type == TokenType::KeyHex
+        || tk.type == TokenType::Integer;
 }
 
 std::optional<ast::ChordSyntax> Parser::parseChordSyntax(int row, const ChordParseOptions& options) {
@@ -291,6 +328,14 @@ std::optional<ast::ChordSyntax> Parser::parseChordSyntax(int row, const ChordPar
             chord.key = std::move(*keySyntax);
             consume(tk.type);
             break;
+        }
+        // parseSingleKeySyntax returned nullopt: either the token isn't a key
+        // candidate (then we just stop) or it is one but was rejected with an
+        // error added (e.g. multi-digit Integer) — consume to make progress.
+        if (tk.type == TokenType::Literal || tk.type == TokenType::Key
+            || tk.type == TokenType::KeyHex || tk.type == TokenType::Integer) {
+            tokenizer.next();
+            return std::nullopt;
         }
         break;
     }

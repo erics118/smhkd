@@ -1,5 +1,8 @@
 #include "tokenizer.hpp"
 
+#include <algorithm>
+#include <cctype>
+
 #include "../input/keysym.hpp"
 
 const Token& Tokenizer::peek() {
@@ -113,6 +116,9 @@ Token Tokenizer::getNextToken() {
         }
         if (text == "max_chord_interval" || text == "hold_modifier_threshold" || text == "simultaneous_threshold" || text == "blacklist") {
             return Token{TokenType::ConfigProperty, text, startRow, startCol};
+        }
+        if (std::ranges::all_of(text, [](unsigned char ch) { return std::isdigit(ch) != 0; })) {
+            return Token{TokenType::Integer, text, startRow, startCol};
         }
         if (text.size() == 1) {
             return Token{TokenType::Key, text, startRow, startCol};

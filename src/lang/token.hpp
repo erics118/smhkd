@@ -8,6 +8,7 @@ enum class TokenType {
     Modifier,
     Key,
     KeyHex,
+    Integer,
     Plus,
     Pipe,
     Equals,
@@ -37,6 +38,7 @@ struct std::formatter<TokenType> : std::formatter<std::string_view> {
             case TokenType::Modifier: name = "Modifier"; break;
             case TokenType::Key: name = "Key"; break;
             case TokenType::KeyHex: name = "KeyHex"; break;
+            case TokenType::Integer: name = "Integer"; break;
             case TokenType::Plus: name = "Plus"; break;
             case TokenType::Pipe: name = "Pipe"; break;
             case TokenType::Equals: name = "Equals"; break;

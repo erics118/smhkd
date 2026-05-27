@@ -73,4 +73,10 @@ class Interpreter {
     static std::string trim(std::string_view s);
     static std::string unescapeDoubleBraces(std::string_view s);
     std::vector<std::string> parseCommandBraceExpansion(const std::string& command);
+
+    // statement application
+    void applyDefine(const ast::DefineModifierStmt& node);
+    void applyConfig(const ast::ConfigPropertyStmt& node, ConfigProperties& config);
+    void applyRemap(const ast::RemapStmt& node, std::vector<RemapBinding>& remaps);
+    void applyHotkey(const ast::HotkeyStmt& h, std::map<Hotkey, std::string>& hotkeys);
 };
