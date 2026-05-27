@@ -190,7 +190,7 @@ TEST_CASE("remap produces source hotkey and target chord with correct flags/keyc
 }
 
 TEST_CASE("remap with flags (@/&/^) is rejected") {
-    auto r = interpret_source("@ cmd + a | shift + b");
+    auto r = interpret_source("cmd + a @ | shift + b");
     REQUIRE(!r.errors.empty());
     CHECK(r.errors[0].message.contains("remaps do not support"));
     CHECK(r.remaps.empty());
@@ -207,9 +207,9 @@ TEST_CASE("blacklist preserves order and exact strings") {
 
 TEST_CASE("passthrough/repeat/release flags are propagated to Hotkey") {
     auto r = interpret_source(
-        "@ cmd + a : passthrough\n"
-        "& cmd + b : repeat\n"
-        "^ cmd + c : release");
+        "cmd + a @ : passthrough\n"
+        "cmd + b & : repeat\n"
+        "cmd + c ^ : release");
     REQUIRE(r.errors.empty());
     REQUIRE(r.hotkeys.size() == 3);
 
@@ -237,6 +237,19 @@ TEST_CASE("passthrough/repeat/release flags are propagated to Hotkey") {
     CHECK(saw_passthrough);
     CHECK(saw_repeat);
     CHECK(saw_release);
+}
+
+TEST_CASE("flags apply only after the final chord in a sequence") {
+    auto r = interpret_source("cmd + a ; cmd + b ^ & : noop");
+    REQUIRE(r.errors.empty());
+    REQUIRE(r.hotkeys.size() == 1);
+    const auto& hk = r.hotkeys.begin()->first;
+    REQUIRE(hk.chords.size() == 2);
+    CHECK(hk.repeat);
+    CHECK(hk.on_release);
+    CHECK_FALSE(hk.passthrough);
+    CHECK(hk.chords[0].modifiers.flags == Hotkey_Flag_Cmd);
+    CHECK(hk.chords[1].modifiers.flags == Hotkey_Flag_Cmd);
 }
 
 TEST_CASE("hex keycode maps directly into the chord") {

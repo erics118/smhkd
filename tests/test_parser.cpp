@@ -37,7 +37,7 @@ TEST_CASE("simple hotkey parses full AST content") {
 }
 
 TEST_CASE("hotkey flags and multi-chord sequence preserve parser structure") {
-    Parser p{"@ & ^ cmd + a ; shift + b : echo hi"};
+    Parser p{"cmd + a ; shift + b ^ & @ : echo hi"};
     auto program = p.parseProgram();
 
     CHECK(p.errors().empty());
@@ -56,6 +56,18 @@ TEST_CASE("hotkey flags and multi-chord sequence preserve parser structure") {
     REQUIRE(stmt.syntax.chords[1].key.has_value());
     CHECK(key_char(*stmt.syntax.chords[0].key).value == 'a');
     CHECK(key_char(*stmt.syntax.chords[1].key).value == 'b');
+}
+
+TEST_CASE("unknown config assignment at line start parses as ConfigPropertyStmt") {
+    Parser p{"unknown_setting = 7"};
+    auto program = p.parseProgram();
+
+    CHECK(p.errors().empty());
+    REQUIRE(program.statements.size() == 1);
+    auto& stmt = std::get<ast::ConfigPropertyStmt>(program.statements[0]);
+    CHECK(stmt.name == "unknown_setting");
+    REQUIRE(stmt.intValue.has_value());
+    CHECK(*stmt.intValue == 7);
 }
 
 TEST_CASE("multi-digit integer in key position emits error and recovers") {
@@ -138,6 +150,30 @@ TEST_CASE("blacklist without values fails") {
     CHECK(p.errors()[0].message.contains("no process names were parsed"));
 }
 
+TEST_CASE("blacklist rejects invalid entries") {
+    Parser p{R"(blacklist = ["Terminal", {])"};
+    auto program = p.parseProgram();
+
+    REQUIRE(program.statements.size() == 1);
+    auto& stmt = std::get<ast::ConfigPropertyStmt>(program.statements[0]);
+    REQUIRE(stmt.listValues.size() == 1);
+    CHECK(stmt.listValues[0] == "Terminal");
+    REQUIRE(p.errors().size() == 1);
+    CHECK(p.errors()[0].message.contains("in blacklist"));
+}
+
+TEST_CASE("blacklist reports unexpected eof when closing bracket is missing") {
+    Parser p{R"(blacklist = ["Terminal")"};
+    auto program = p.parseProgram();
+
+    REQUIRE(program.statements.size() == 1);
+    auto& stmt = std::get<ast::ConfigPropertyStmt>(program.statements[0]);
+    REQUIRE(stmt.listValues.size() == 1);
+    CHECK(stmt.listValues[0] == "Terminal");
+    REQUIRE(p.errors().size() == 1);
+    CHECK(p.errors()[0].message.contains("while parsing blacklist"));
+}
+
 TEST_CASE("blacklist reports trailing tokens after closing bracket") {
     Parser p{R"(blacklist = ["Terminal"] extra)"};
     auto program = p.parseProgram();
@@ -186,6 +222,15 @@ TEST_CASE("brace expansion requires commas between items") {
     CHECK(p.errors()[0].message.contains("',' or '}'"));
 }
 
+TEST_CASE("brace expansion rejects invalid tokens inside braces") {
+    Parser p{"cmd + {-} : echo hi"};
+    auto program = p.parseProgram();
+
+    REQUIRE(program.statements.empty());
+    REQUIRE(p.errors().size() == 1);
+    CHECK(p.errors()[0].message.contains("in brace expansion"));
+}
+
 TEST_CASE("brace expansion is rejected in remap target") {
     Parser p{"cmd + a | {b, c}"};
     auto program = p.parseProgram();
@@ -216,6 +261,82 @@ TEST_CASE("malformed line produces only one error (recovery)") {
     p.parseProgram();
 
     CHECK(p.errors().size() == 1);
+}
+
+TEST_CASE("parseChord returns chord and reports trailing tokens on same line") {
+    Parser p{"cmd + a extra"};
+    auto chord = p.parseChord();
+
+    REQUIRE(chord.has_value());
+    REQUIRE(chord->modifiers.size() == 1);
+    CHECK(builtin_modifier(chord->modifiers[0]) == BuiltinModifier::Cmd);
+    REQUIRE(chord->key.has_value());
+    CHECK(key_char(*chord->key).value == 'a');
+    REQUIRE(p.errors().size() == 1);
+    CHECK(p.errors()[0].message.contains("after chord"));
+    CHECK(p.errors()[0].message.contains("extra"));
+}
+
+TEST_CASE("parseChord on eof reports unexpected eof") {
+    Parser p{""};
+    auto chord = p.parseChord();
+
+    CHECK_FALSE(chord.has_value());
+    REQUIRE(p.errors().size() == 1);
+    CHECK(p.errors()[0].message.contains("while parsing chord"));
+}
+
+TEST_CASE("parseChordSequence parses multiple chords") {
+    Parser p{"cmd + a ; shift + b"};
+    auto chords = p.parseChordSequence();
+
+    REQUIRE(chords.has_value());
+    REQUIRE(chords->size() == 2);
+    REQUIRE((*chords)[0].key.has_value());
+    REQUIRE((*chords)[1].key.has_value());
+    CHECK(key_char(*(*chords)[0].key).value == 'a');
+    CHECK(key_char(*(*chords)[1].key).value == 'b');
+    REQUIRE((*chords)[0].modifiers.size() == 1);
+    REQUIRE((*chords)[1].modifiers.size() == 1);
+    CHECK(builtin_modifier((*chords)[0].modifiers[0]) == BuiltinModifier::Cmd);
+    CHECK(builtin_modifier((*chords)[1].modifiers[0]) == BuiltinModifier::Shift);
+    CHECK(p.errors().empty());
+}
+
+TEST_CASE("parseChordSequence rejects empty input") {
+    Parser p{""};
+    auto chords = p.parseChordSequence();
+
+    CHECK_FALSE(chords.has_value());
+    REQUIRE(p.errors().size() == 1);
+    CHECK(p.errors()[0].message.contains("while parsing chord sequence"));
+}
+
+TEST_CASE("parseChordSequence rejects colon before first chord") {
+    Parser p{": echo hi"};
+    auto chords = p.parseChordSequence();
+
+    CHECK_FALSE(chords.has_value());
+    REQUIRE(p.errors().size() == 1);
+    CHECK(p.errors()[0].message.contains("chord before ':' or '|'"));
+}
+
+TEST_CASE("parseChordSequence rejects pipe before first chord") {
+    Parser p{"| shift + b"};
+    auto chords = p.parseChordSequence();
+
+    CHECK_FALSE(chords.has_value());
+    REQUIRE(p.errors().size() == 1);
+    CHECK(p.errors()[0].message.contains("chord before ':' or '|'"));
+}
+
+TEST_CASE("parseChordSequence rejects semicolon before first chord") {
+    Parser p{"; shift + b"};
+    auto chords = p.parseChordSequence();
+
+    CHECK_FALSE(chords.has_value());
+    REQUIRE(p.errors().size() == 1);
+    CHECK(p.errors()[0].message.contains("chord before ';'"));
 }
 
 TEST_CASE("invalid leading character in config line is reported directly") {
@@ -263,6 +384,24 @@ TEST_CASE("define_modifier parses builtin and custom parts") {
     CHECK(std::get<std::string>(stmt.parts[2].value) == "meh");
 }
 
+TEST_CASE("define_modifier rejects invalid custom modifier name") {
+    Parser p{"define_modifier 10 = cmd"};
+    auto program = p.parseProgram();
+
+    REQUIRE(program.statements.empty());
+    REQUIRE(p.errors().size() == 1);
+    CHECK(p.errors()[0].message.contains("after 'define_modifier'"));
+}
+
+TEST_CASE("define_modifier requires equals after custom name") {
+    Parser p{"define_modifier hyper cmd"};
+    auto program = p.parseProgram();
+
+    REQUIRE(program.statements.empty());
+    REQUIRE(p.errors().size() == 1);
+    CHECK(p.errors()[0].message.contains("expected Equals"));
+}
+
 TEST_CASE("define_modifier without expansions fails") {
     Parser p{"define_modifier hyper ="};
     auto program = p.parseProgram();
@@ -270,6 +409,43 @@ TEST_CASE("define_modifier without expansions fails") {
     REQUIRE(program.statements.empty());
     REQUIRE(p.errors().size() == 1);
     CHECK(p.errors()[0].message.contains("no expansions found"));
+}
+
+TEST_CASE("hotkey requires a non-empty command after colon") {
+    Parser p{"a :"};
+    auto program = p.parseProgram();
+
+    REQUIRE(program.statements.empty());
+    REQUIRE(p.errors().size() == 1);
+    CHECK(p.errors()[0].message.contains("expected Command after ':'"));
+}
+
+TEST_CASE("hotkey reports eof after flags with no chord") {
+    Parser p{"cmd + a ^ & @"};
+    auto program = p.parseProgram();
+
+    REQUIRE(program.statements.empty());
+    REQUIRE(p.errors().size() == 1);
+    CHECK(p.errors()[0].message.contains("after chord sequence"));
+}
+
+TEST_CASE("leading flags before the first chord are rejected") {
+    Parser p{"@ cmd + a : echo hi"};
+    auto program = p.parseProgram();
+
+    REQUIRE(program.statements.empty());
+    REQUIRE(p.errors().size() == 1);
+    CHECK(p.errors()[0].message.contains("while parsing chord sequence"));
+}
+
+TEST_CASE("flags between chords are rejected") {
+    Parser p{"cmd + a ^ ; cmd + b : echo hi"};
+    auto program = p.parseProgram();
+
+    REQUIRE(program.statements.empty());
+    REQUIRE(p.errors().size() == 1);
+    CHECK(p.errors()[0].message.contains("while parsing hotkey"));
+    CHECK(p.errors()[0].message.contains("':' or '|'"));
 }
 
 TEST_CASE("remap with pipe parses full source and target") {
@@ -291,4 +467,24 @@ TEST_CASE("remap with pipe parses full source and target") {
     CHECK(builtin_modifier(stmt.target.modifiers[0]) == BuiltinModifier::Shift);
     REQUIRE(stmt.target.key.has_value());
     CHECK(key_char(*stmt.target.key).value == 'b');
+}
+
+TEST_CASE("remap rejects missing target chord") {
+    Parser p{"cmd + a |"};
+    auto program = p.parseProgram();
+
+    REQUIRE(program.statements.empty());
+    REQUIRE(p.errors().size() == 1);
+    CHECK(p.errors()[0].message.contains("chord is missing a key"));
+}
+
+TEST_CASE("remap reports trailing tokens after target chord") {
+    Parser p{"cmd + a | shift + b extra"};
+    auto program = p.parseProgram();
+
+    REQUIRE(program.statements.size() == 1);
+    CHECK(std::holds_alternative<ast::RemapStmt>(program.statements[0]));
+    REQUIRE(p.errors().size() == 1);
+    CHECK(p.errors()[0].message.contains("after remap target"));
+    CHECK(p.errors()[0].message.contains("extra"));
 }

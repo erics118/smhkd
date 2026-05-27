@@ -304,6 +304,10 @@ bool Parser::isKeyToken(TokenType type) {
         || type == TokenType::KeyHex || type == TokenType::Integer;
 }
 
+bool Parser::isFlagToken(TokenType type) {
+    return type == TokenType::At || type == TokenType::Ampersand || type == TokenType::Caret;
+}
+
 bool Parser::startsChord(const Token& tk) {
     return tk.type == TokenType::Modifier || tk.type == TokenType::OpenBrace
         || isKeyToken(tk.type);
@@ -400,7 +404,8 @@ std::optional<ast::ChordSyntax> Parser::parseSequenceElement(const ChordParseOpt
 
 std::optional<bool> Parser::consumeSequenceSeparator(int row) {
     const Token separator = tokenizer.peek();
-    if (separator.type == TokenType::EndOfFile || separator.type == TokenType::Colon || separator.type == TokenType::Pipe) {
+    if (separator.type == TokenType::EndOfFile || separator.type == TokenType::Colon || separator.type == TokenType::Pipe
+        || isFlagToken(separator.type)) {
         return false;
     }
     if (separator.row != row) {
@@ -415,7 +420,7 @@ std::optional<bool> Parser::consumeSequenceSeparator(int row) {
 }
 
 std::optional<ast::ChordSyntax> Parser::parseChord(const ChordParseOptions& options) {
-    const Token& tk = tokenizer.peek();
+    const Token tk = tokenizer.peek();
     if (tk.type == TokenType::EndOfFile) {
         addUnexpectedEofError(tk, "while parsing chord");
         return std::nullopt;
@@ -443,6 +448,12 @@ std::optional<std::vector<ast::ChordSyntax>> Parser::parseChordSequence(const Ch
 
 std::optional<ast::Stmt> Parser::parseBindingStmt() {
     ast::HotkeySyntax syntax;
+    auto chords = parseChordSequence(ChordParseOptions{.allowBraceExpansion = true});
+    if (!chords) {
+        return std::nullopt;
+    }
+    syntax.chords = std::move(*chords);
+
     while (true) {
         const Token& c = tokenizer.peek();
         if (c.type == TokenType::At) {
@@ -454,20 +465,10 @@ std::optional<ast::Stmt> Parser::parseBindingStmt() {
         } else if (c.type == TokenType::Caret) {
             syntax.onRelease = true;
             tokenizer.next();
-        } else if (c.type == TokenType::EndOfFile) {
-            addUnexpectedEofError(c, "while parsing hotkey",
-                "':' followed by a command or '|' followed by a remap target");
-            return std::nullopt;
         } else {
             break;
         }
     }
-
-    auto chords = parseChordSequence(ChordParseOptions{.allowBraceExpansion = true});
-    if (!chords) {
-        return std::nullopt;
-    }
-    syntax.chords = std::move(*chords);
 
     const Token& delimiter = tokenizer.peek();
     if (delimiter.type == TokenType::EndOfFile) {

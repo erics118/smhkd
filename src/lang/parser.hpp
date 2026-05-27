@@ -48,6 +48,7 @@ class Parser {
     std::optional<ast::KeySyntax> parseKeyBraceExpansion();
     [[nodiscard]] std::optional<ast::KeySyntax> parseSingleKeySyntax(const Token& tk);
     [[nodiscard]] static bool isKeyToken(TokenType type);
+    [[nodiscard]] static bool isFlagToken(TokenType type);
     [[nodiscard]] static bool startsChord(const Token& tk);
     std::optional<ast::ChordSyntax> parseChordSyntax(int row, const ChordParseOptions& options);
     std::optional<ast::ChordSyntax> parseSequenceElement(const ChordParseOptions& options);
