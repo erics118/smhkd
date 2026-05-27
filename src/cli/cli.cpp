@@ -10,7 +10,10 @@ Args parse_args(const std::vector<std::string>& argv, const ArgsConfig& config) 
             a = a.substr(2);
             if (config.long_args.contains(a)) {
                 res[a] = "true";
-            } else if (i + 1 != argv.size() && config.long_args.contains(a + ':')) {
+            } else if (config.long_args.contains(a + ':')) {
+                if (i + 1 == argv.size()) {
+                    error("missing value for long argument: {}", a);
+                }
                 res[a] = argv.at(++i);
             } else {
                 error("unknown long argument: {}", a);
@@ -28,11 +31,16 @@ Args parse_args(const std::vector<std::string>& argv, const ArgsConfig& config) 
             char last_char = a.back();
             if (config.short_args.contains(std::string{last_char})) {
                 res[std::string{last_char}] = "true";
-            } else if (i + 1 != argv.size() && config.short_args.contains(std::string{last_char} + ':')) {
+            } else if (config.short_args.contains(std::string{last_char} + ':')) {
+                if (i + 1 == argv.size()) {
+                    error("missing value for short argument: {}", std::string{last_char});
+                }
                 res[std::string{last_char}] = argv.at(++i);
             } else {
                 error("unknown short argument: {}", std::string{last_char});
             }
+        } else {
+            error("unexpected positional argument: {}", a);
         }
     }
     return Args{res};

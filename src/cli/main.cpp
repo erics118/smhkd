@@ -20,11 +20,12 @@ namespace {
 
 std::string parse_arguments(std::span<char* const> argv) {
     ArgsConfig config{
-        .short_args = {"c:", "r", "o"},
+        .short_args = {"c:", "r", "o", "v"},
         .long_args = {
             "config:",
             "reload",
             "observe",
+            "verbose",
             "install-service",
             "uninstall-service",
             "start-service",
@@ -36,44 +37,47 @@ std::string parse_arguments(std::span<char* const> argv) {
     };
 
     std::vector<std::string> argVector;
-    argVector.reserve(argv.size());
-    for (const auto* arg : argv) {
+    const auto userArgs = argv.subspan(std::min<size_t>(1, argv.size()));
+    argVector.reserve(userArgs.size());
+    for (const auto* arg : userArgs) {
         argVector.emplace_back(arg);
     }
     Args args = parse_args(argVector, config);
+    set_verbose_logging(args.contains('v') || args.contains("verbose"));
 
     if (args.get("version")) {
         std::print("smhkd-v{}\n", SMHKD_VERSION);
         exit(0);
     }
 
+    if (auto keySpec = args.get('k', "key")) {
+        const Chord chord = parse_cli_keypress(*keySpec);
+        HotkeyEngine::synthesizeKeyPress(chord);
+        exit(0);
+    }
+
     if (args.get("install-service")) {
         service_install();
-        info("service installed");
         exit(0);
     }
 
     if (args.get("uninstall-service")) {
         service_uninstall();
-        info("service uninstalled");
         exit(0);
     }
 
     if (args.get("start-service")) {
         service_start();
-        info("service started");
         exit(0);
     }
 
     if (args.get("stop-service")) {
         service_stop();
-        info("service stopped");
         exit(0);
     }
 
     if (args.get("restart-service")) {
         service_restart();
-        info("service restarted");
         exit(0);
     }
 

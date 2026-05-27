@@ -14,11 +14,19 @@ enum class level : std::uint8_t {
     error,
 };
 
+inline bool verbose_logging_enabled = false;
+
+inline void set_verbose_logging(bool enabled) {
+    verbose_logging_enabled = enabled;
+}
+
+[[nodiscard]] inline bool is_verbose_logging_enabled() {
+    return verbose_logging_enabled;
+}
+
 template <typename T>
 void print(const level ll, const T& msg) {
-#ifdef NDEBUG
-    if (ll <= level::debug) return;
-#endif
+    if (ll == level::debug && !is_verbose_logging_enabled()) return;
     std::string type{};
     switch (ll) {
         case level::debug: type = "\u001b[36mdebug\u001b[0m"; break;
@@ -85,7 +93,7 @@ void warn(const std::format_string<Args...> fmt, Args&&... args) {
 
 template <typename T>
 void warn_errno(const T& msg, int errnum = errno) {
-    print_errno(level::warn, std::string(msg), errnum);
+    print_errno(level::warn, std::string{msg}, errnum);
 }
 
 template <typename... Args>
@@ -110,7 +118,7 @@ void error(const std::format_string<Args...> fmt, Args&&... args) {
 
 template <typename T>
 [[noreturn]] void error_errno(const T& msg, int errnum = errno) {
-    print_errno(level::error, std::string(msg), errnum);
+    print_errno(level::error, std::string{msg}, errnum);
     std::unreachable();
 }
 

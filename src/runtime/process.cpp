@@ -50,7 +50,7 @@ void create_pid_file() {
         close(handle);
         error_errno("could not write pid {} to file '{}'", pid, pid_file);
     }
-    info("created pid file: {}", pid_file);
+    debug("created pid file: {}", pid_file);
 }
 
 bool check_privileges() {

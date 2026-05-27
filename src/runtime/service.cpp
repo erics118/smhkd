@@ -5,6 +5,17 @@
 
 #include "../common/log.hpp"
 
+namespace {
+
+void require_launchctl_success(const std::vector<std::string>& args, std::string_view action, bool suppress_output = false) {
+    const int status = launchctl_exec(args, suppress_output);
+    if (status != 0) {
+        error("launchctl {} failed with exit code {}", action, status);
+    }
+}
+
+}  // namespace
+
 std::string get_home_directory() {
     if (const char* homeDir = std::getenv("HOME")) {
         return homeDir;
@@ -105,6 +116,7 @@ void service_install() {
     if (!file) {
         error("failed to write to '{}'", plist_path);
     }
+    info("service installed");
 }
 
 void service_uninstall() {
@@ -117,21 +129,36 @@ void service_uninstall() {
     if (ec) {
         error_error_code(std::format("failed to remove service file '{}'", plist_path), ec);
     }
+    info("service uninstalled");
 }
 
 void service_start() {
     auto plist_path = get_plist_path();
+    bool installed_during_start = false;
     if (!std::filesystem::exists(plist_path)) {
         warn("service file '{}' does not exist, installing", plist_path);
         service_install();
+        installed_during_start = true;
     }
     auto service_target = get_service_target();
     auto domain_target = get_domain_target();
+    const bool wasBootstrapped = is_service_bootstrapped();
+    if (wasBootstrapped) {
+        info("service already started");
+        return;
+    }
+
+    require_launchctl_success({"enable", service_target}, "enable", true);
+    require_launchctl_success({"bootstrap", domain_target, plist_path}, "bootstrap", true);
+
     if (!is_service_bootstrapped()) {
-        launchctl_exec({"enable", service_target}, true);
-        launchctl_exec({"bootstrap", domain_target, plist_path}, true);
+        error("service did not appear in launchctl after start");
+    }
+
+    if (installed_during_start) {
+        info("service installed and started");
     } else {
-        launchctl_exec({"kickstart", service_target}, true);
+        info("service started");
     }
 }
 
@@ -141,7 +168,8 @@ void service_restart() {
         error("service file '{}' is not installed", plist_path);
     }
     auto service_target = std::format("gui/{}/{}", getuid(), PLIST_NAME);
-    launchctl_exec({"kickstart", "-k", service_target});
+    require_launchctl_success({"kickstart", "-k", service_target}, "restart");
+    info("service restarted");
 }
 
 void service_stop() {
@@ -152,9 +180,12 @@ void service_stop() {
     auto service_target = get_service_target();
     auto domain_target = get_domain_target();
     if (!is_service_bootstrapped()) {
-        launchctl_exec({"kill", "SIGTERM", service_target}, true);
-    } else {
-        launchctl_exec({"bootout", domain_target, plist_path}, true);
-        launchctl_exec({"disable", service_target}, true);
+        warn("service is not loaded");
+        return;
     }
+
+    require_launchctl_success({"bootout", domain_target, plist_path}, "bootout", true);
+    require_launchctl_success({"disable", service_target}, "disable", true);
+
+    info("service stopped");
 }
