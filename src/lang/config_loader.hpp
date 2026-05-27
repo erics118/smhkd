@@ -13,6 +13,7 @@
 struct ConfigLoadResult {
     ast::Program program;
     std::map<Hotkey, std::string> hotkeys;
+    std::vector<RemapBinding> remaps;
     ConfigProperties config;
     std::vector<ParseError> parseErrors;
     std::vector<InterpreterError> interpreterErrors;

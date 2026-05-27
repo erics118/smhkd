@@ -2,12 +2,16 @@
 
 #include <algorithm>
 #include <cctype>
+#include <chrono>
+#include <thread>
 
 #include "../common/command.hpp"
 #include "../common/log.hpp"
+#include "../input/modifier.hpp"
 
-void HotkeyEngine::applyConfig(std::map<Hotkey, std::string> hotkeys, ConfigProperties config) {
+void HotkeyEngine::applyConfig(std::map<Hotkey, std::string> hotkeys, std::vector<RemapBinding> remaps, ConfigProperties config) {
     hotkeys_ = std::move(hotkeys);
+    remaps_ = std::move(remaps);
     config_ = std::move(config);
     reset();
 }
@@ -24,6 +28,10 @@ bool HotkeyEngine::handleEvent(const Chord& current, CGEventType type, bool isRe
     }
 
     if (type == kCGEventKeyDown && !isRepeat && checkAndExecuteSequence(current)) {
+        return true;
+    }
+
+    if (checkAndApplyRemap(current, type)) {
         return true;
     }
 
@@ -47,6 +55,30 @@ bool HotkeyEngine::handleEvent(const Chord& current, CGEventType type, bool isRe
         return !hotkey.passthrough;
     }
     return false;
+}
+
+bool HotkeyEngine::checkAndApplyRemap(const Chord& current, CGEventType type) {
+    if (type != kCGEventKeyDown && type != kCGEventKeyUp) {
+        return false;
+    }
+
+    for (const auto& remap : remaps_) {
+        if (remap.source.chords.size() != 1) {
+            continue;
+        }
+        if (!remap.source.chords[0].isActivatedBy(current)) {
+            continue;
+        }
+        postRemappedKeyEvent(remap.target, type == kCGEventKeyDown);
+        return true;
+    }
+    return false;
+}
+
+void HotkeyEngine::synthesizeKeyPress(const Chord& target) {
+    postRemappedKeyEvent(target, true);
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    postRemappedKeyEvent(target, false);
 }
 
 void HotkeyEngine::reset() {
@@ -115,4 +147,16 @@ std::string HotkeyEngine::toLower(std::string_view s) {
         return static_cast<char>(std::tolower(c));
     });
     return lowered;
+}
+
+void HotkeyEngine::postRemappedKeyEvent(const Chord& target, bool keyDown) {
+    CGEventRef event = CGEventCreateKeyboardEvent(nullptr, static_cast<CGKeyCode>(target.keysym.keycode), keyDown);
+    if (!event) {
+        warn("failed to create synthetic key event for remap");
+        return;
+    }
+    CGEventSetFlags(event, hotkeyFlagsToEventFlags(target.modifiers));
+    CGEventSetIntegerValueField(event, kCGEventSourceUserData, SYNTHETIC_REMAP_TAG);
+    CGEventPost(kCGSessionEventTap, event);
+    CFRelease(event);
 }

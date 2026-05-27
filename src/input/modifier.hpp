@@ -135,3 +135,5 @@ int eventLRModifierFlagsToHotkeyFlags(CGEventFlags eventflags, const LRModifierG
 bool compareLRModifier(const ModifierFlags& a, const ModifierFlags& b, const LRModifierGroup& group);
 
 ModifierFlags eventModifierFlagsToHotkeyFlags(CGEventFlags flags);
+
+CGEventFlags hotkeyFlagsToEventFlags(ModifierFlags flags);

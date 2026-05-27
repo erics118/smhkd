@@ -57,7 +57,12 @@ struct HotkeyStmt {
     std::string command;
 };
 
-using Stmt = std::variant<DefineModifierStmt, ConfigPropertyStmt, HotkeyStmt>;
+struct RemapStmt {
+    HotkeySyntax source;
+    ChordSyntax target;
+};
+
+using Stmt = std::variant<DefineModifierStmt, ConfigPropertyStmt, HotkeyStmt, RemapStmt>;
 
 struct Program {
     std::vector<Stmt> statements;
@@ -182,6 +187,13 @@ template <>
 struct std::formatter<ast::HotkeyStmt> : std::formatter<std::string_view> {
     auto format(const ast::HotkeyStmt& stmt, std::format_context& ctx) const {
         return std::format_to(ctx.out(), "hotkey: {} \"{}\"", stmt.syntax, stmt.command);
+    }
+};
+
+template <>
+struct std::formatter<ast::RemapStmt> : std::formatter<std::string_view> {
+    auto format(const ast::RemapStmt& stmt, std::format_context& ctx) const {
+        return std::format_to(ctx.out(), "remap: {} | {}", stmt.source, stmt.target);
     }
 };
 

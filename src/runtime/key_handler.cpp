@@ -8,7 +8,7 @@
 bool KeyHandler::init() {
     runLoop = CFRunLoopGetCurrent();
     if (!runLoop) return false;
-    info("run loop initialized");
+    debug("run loop initialized");
     if (!setupEventTap()) return false;
     debug("event tap initialized");
     return true;
@@ -33,6 +33,10 @@ CGEventRef KeyHandler::eventCallback(CGEventTapProxy /*proxy*/, CGEventType type
 }
 
 bool KeyHandler::handleKeyEvent(CGEventRef event, CGEventType type) {
+    if (CGEventGetIntegerValueField(event, kCGEventSourceUserData) == HotkeyEngine::SYNTHETIC_REMAP_TAG) {
+        return false;
+    }
+
     auto keyCode = static_cast<CGKeyCode>(CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode));
     CGEventFlags flags = CGEventGetFlags(event);
     bool isRepeat = CGEventGetIntegerValueField(event, kCGKeyboardEventAutorepeat) != 0;
@@ -47,7 +51,7 @@ bool KeyHandler::handleKeyEvent(CGEventRef event, CGEventType type) {
         .modifiers = {.flags = Hotkey_Flag_RAlt},
     };
     if (exitChord.isActivatedBy(current)) {
-        debug("exit hotkey, ralt-c, detected, ending program");
+        info("exit hotkey, ralt-c, detected, ending program");
         service_stop();
         std::exit(1);
     }
@@ -91,5 +95,5 @@ void KeyHandler::loadConfig(const std::string& config_file) {
     for (const auto& interpreter_error : result.interpreterErrors) {
         warn("config error: {}", interpreter_error.message);
     }
-    engine.applyConfig(std::move(result.hotkeys), std::move(result.config));
+    engine.applyConfig(std::move(result.hotkeys), std::move(result.remaps), std::move(result.config));
 }

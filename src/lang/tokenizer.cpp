@@ -41,6 +41,10 @@ Token Tokenizer::getNextToken() {
             advance();
             return Token{TokenType::Plus, "+", startRow, startCol};
         }
+        if (c == '|') {
+            advance();
+            return Token{TokenType::Pipe, "|", startRow, startCol};
+        }
         if (c == '=') {
             advance();
             return Token{TokenType::Equals, "=", startRow, startCol};

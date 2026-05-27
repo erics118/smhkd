@@ -14,6 +14,10 @@ struct ParseError {
     std::string message;
 };
 
+struct ChordParseOptions {
+    bool allowBraceExpansion{false};
+};
+
 class Parser {
    private:
     Tokenizer tokenizer;
@@ -22,6 +26,8 @@ class Parser {
    public:
     explicit Parser(const std::string& contents) : tokenizer(contents) {}
     ast::Program parseProgram();
+    std::optional<ast::ChordSyntax> parseChord(const ChordParseOptions& options = {});
+    std::optional<std::vector<ast::ChordSyntax>> parseChordSequence(const ChordParseOptions& options = {});
     [[nodiscard]] const std::vector<ParseError>& errors() const { return errors_; }
 
    private:
@@ -31,6 +37,10 @@ class Parser {
     std::optional<ast::ConfigPropertyStmt> parseConfigPropertyStmt();
     std::optional<ast::KeySyntax> parseKeyBraceExpansionSyntax();
     [[nodiscard]] std::optional<ast::KeySyntax> parseSingleKeySyntax(const Token& tk) const;
-    bool parseHotkeyToken(ast::HotkeySyntax& syntax, bool& foundColon);
-    std::optional<ast::HotkeyStmt> parseHotkeyStmt();
+    [[nodiscard]] static bool startsChord(const Token& tk);
+    std::optional<ast::ChordSyntax> parseChordSyntax(int row, const ChordParseOptions& options);
+    std::optional<ast::ChordSyntax> parseRemapTargetChord(int row);
+    std::optional<ast::Stmt> parseBindingStmt();
+    std::optional<ast::HotkeyStmt> parseHotkeyStmt(ast::HotkeySyntax syntax);
+    std::optional<ast::RemapStmt> parseRemapStmt(ast::HotkeySyntax syntax);
 };

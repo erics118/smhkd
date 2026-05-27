@@ -45,6 +45,25 @@ ModifierFlags eventModifierFlagsToHotkeyFlags(CGEventFlags flags) {
     return ModifierFlags{res};
 }
 
+CGEventFlags hotkeyFlagsToEventFlags(ModifierFlags flags) {
+    CGEventFlags eventFlags = 0;
+    for (const auto& group : lr_modifier_groups) {
+        if (flags.has(group.left) || flags.has(group.right) || flags.has(group.generic)) {
+            eventFlags |= static_cast<CGEventFlags>(group.cgevent_generic);
+        }
+        if (flags.has(group.left)) {
+            eventFlags |= static_cast<CGEventFlags>(group.cgevent_left);
+        }
+        if (flags.has(group.right)) {
+            eventFlags |= static_cast<CGEventFlags>(group.cgevent_right);
+        }
+    }
+    if (flags.has(Hotkey_Flag_Fn)) {
+        eventFlags |= kCGEventFlagMaskSecondaryFn;
+    }
+    return eventFlags;
+}
+
 bool ModifierFlags::isActivatedBy(const ModifierFlags& other) const {
     for (const auto& group : lr_modifier_groups) {
         if (!compareLRModifier(*this, other, group)) return false;

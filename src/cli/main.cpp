@@ -1,6 +1,8 @@
 #include <print>
 #include <span>
 #include <string>
+#include <string_view>
+#include <vector>
 
 #ifndef SMHKD_VERSION
 #define SMHKD_VERSION "unknown"
@@ -8,8 +10,12 @@
 
 #include "../common/config_path.hpp"
 #include "../common/log.hpp"
+#include "../input/chord.hpp"
 #include "../input/locale.hpp"
 #include "../lang/config_loader.hpp"
+#include "../lang/interpreter.hpp"
+#include "../lang/parser.hpp"
+#include "../runtime/hotkey_engine.hpp"
 #include "../runtime/key_observer_handler.hpp"
 #include "../runtime/process.hpp"
 #include "../runtime/service.hpp"
@@ -18,11 +24,37 @@
 
 namespace {
 
+Chord parse_cli_keypress(std::string_view spec) {
+    if (spec.empty()) {
+        error("empty key spec");
+    }
+
+    Parser parser{std::string{spec}};
+    auto chordSyntax = parser.parseChord();
+    for (const auto& parse_error : parser.errors()) {
+        error("invalid key spec at line {}, column {}: {}", parse_error.row, parse_error.col, parse_error.message);
+    }
+    if (!chordSyntax) {
+        error("invalid key spec");
+    }
+
+    Interpreter interpreter;
+    auto chord = interpreter.interpretChordSyntax(*chordSyntax);
+    for (const auto& interpreter_error : interpreter.errors()) {
+        error("invalid key spec: {}", interpreter_error.message);
+    }
+    if (!chord) {
+        error("invalid key spec");
+    }
+    return *chord;
+}
+
 std::string parse_arguments(std::span<char* const> argv) {
     ArgsConfig config{
-        .short_args = {"c:", "r", "o", "v"},
+        .short_args = {"c:", "k:", "r", "o", "v"},
         .long_args = {
             "config:",
+            "key:",
             "reload",
             "observe",
             "verbose",

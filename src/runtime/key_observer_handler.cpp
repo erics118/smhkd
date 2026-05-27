@@ -1,6 +1,67 @@
 #include "key_observer_handler.hpp"
 
+#include <array>
+#include <optional>
+#include <string_view>
+
 #include "../common/log.hpp"
+
+namespace {
+
+struct ObservedModifierKey {
+    uint32_t keycode;
+    HotkeyFlag flag;
+    std::string_view name;
+};
+
+constexpr std::array OBSERVED_MODIFIER_KEYS = {
+    ObservedModifierKey{kVK_Shift, Hotkey_Flag_LShift, "lshift"},
+    ObservedModifierKey{kVK_RightShift, Hotkey_Flag_RShift, "rshift"},
+    ObservedModifierKey{kVK_Command, Hotkey_Flag_LCmd, "lcmd"},
+    ObservedModifierKey{kVK_RightCommand, Hotkey_Flag_RCmd, "rcmd"},
+    ObservedModifierKey{kVK_Option, Hotkey_Flag_LAlt, "lalt"},
+    ObservedModifierKey{kVK_RightOption, Hotkey_Flag_RAlt, "ralt"},
+    ObservedModifierKey{kVK_Control, Hotkey_Flag_LControl, "lctrl"},
+    ObservedModifierKey{kVK_RightControl, Hotkey_Flag_RControl, "rctrl"},
+    ObservedModifierKey{kVK_Function, Hotkey_Flag_Fn, "fn"},
+};
+
+std::optional<ObservedModifierKey> lookupObservedModifierKey(uint32_t keycode) {
+    for (const auto& entry : OBSERVED_MODIFIER_KEYS) {
+        if (entry.keycode == keycode) {
+            return entry;
+        }
+    }
+    return std::nullopt;
+}
+
+std::string describeObservedKey(const Chord& current, CGEventType type) {
+    if (type == kCGEventFlagsChanged) {
+        if (auto modifier = lookupObservedModifierKey(current.keysym.keycode)) {
+            return std::string{modifier->name};
+        }
+    }
+    return std::format("{}", current.keysym);
+}
+
+std::string describeObservedModifierTransition(const Chord& current, CGEventType type) {
+    if (type != kCGEventFlagsChanged) {
+        return "none";
+    }
+    if (auto modifier = lookupObservedModifierKey(current.keysym.keycode)) {
+        return current.modifiers.has(modifier->flag) ? "pressed" : "released";
+    }
+    return "none";
+}
+
+std::string describeObservedChord(const Chord& current, CGEventType type) {
+    if (type == kCGEventFlagsChanged && lookupObservedModifierKey(current.keysym.keycode)) {
+        return std::format("{}", current.modifiers);
+    }
+    return std::format("{}", current);
+}
+
+}  // namespace
 
 bool KeyObserverHandler::setupEventTap() {
     CGEventMask eventMask = CGEventMaskBit(kCGEventKeyDown) | CGEventMaskBit(kCGEventKeyUp) | CGEventMaskBit(kCGEventFlagsChanged);
@@ -45,10 +106,19 @@ bool KeyObserverHandler::handleKeyEvent(CGEventRef event, CGEventType type) {
         default: eventType = "unknown"; break;
     }
 
-    std::print("\033[s\033[J\rkeycode: {:#02x}\nflags: {:032b}\nevent type: {}\033[u",
+    const std::string key = describeObservedKey(current, type);
+    const std::string transition = describeObservedModifierTransition(current, type);
+    const std::string chord = describeObservedChord(current, type);
+
+    std::print("\033[s\033[J\rkeycode: {:#02x}\nkey: {}\nmodifiers: {}\nchord: {}\nflags: {:032b}\nevent type: {}\nmodifier action: {}",
         current.keysym.keycode,
+        key,
+        current.modifiers,
+        chord,
         current.modifiers.flags,
-        eventType);
+        eventType,
+        transition);
+    std::print("\033[u");
 
     return true;
 }

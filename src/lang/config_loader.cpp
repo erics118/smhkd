@@ -14,6 +14,7 @@ ConfigLoadResult ConfigLoader::loadFromContents(std::string_view contents) {
     Interpreter interpreter;
     auto interpreterResult = interpreter.interpret(result.program);
     result.hotkeys = std::move(interpreterResult.hotkeys);
+    result.remaps = std::move(interpreterResult.remaps);
     result.config = interpreterResult.config;
     result.interpreterErrors = std::move(interpreterResult.errors);
 

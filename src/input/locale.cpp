@@ -78,7 +78,7 @@ bool initializeKeycodeMap() {
 }
 
 std::optional<Keycode> lookupKeycode(std::string_view key) {
-    if (const auto it = keycodeMap().find(std::string(key)); it != keycodeMap().end()) {
+    if (const auto it = keycodeMap().find(std::string{key}); it != keycodeMap().end()) {
         return it->second;
     }
     return std::nullopt;

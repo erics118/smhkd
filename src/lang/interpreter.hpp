@@ -30,8 +30,17 @@ struct InterpreterError {
     std::string message;
 };
 
+struct RemapBinding {
+    Hotkey source;
+    Chord target;
+
+    RemapBinding(Hotkey source, Chord target)
+        : source(std::move(source)), target(target) {}
+};
+
 struct InterpreterResult {
     std::map<Hotkey, std::string> hotkeys;
+    std::vector<RemapBinding> remaps;
     ConfigProperties config;
     std::vector<InterpreterError> errors;
 };
@@ -40,6 +49,8 @@ class Interpreter {
    public:
     Interpreter() = default;
     [[nodiscard]] InterpreterResult interpret(const ast::Program& program);
+    std::optional<Chord> interpretChordSyntax(const ast::ChordSyntax& syntax);
+    [[nodiscard]] const std::vector<InterpreterError>& errors() const { return errors_; }
 
    private:
     std::unordered_map<std::string, std::vector<ast::ModifierAtom>> defines;
@@ -54,6 +65,7 @@ class Interpreter {
     // hotkey building
     void setChordKeyFromAtom(Chord& chord, const ast::KeyAtom& atom);
     std::optional<Hotkey> buildBaseHotkey(const ast::HotkeySyntax& syn);
+    std::optional<Chord> buildChord(const ast::ChordSyntax& syntax);
     bool setHotkeyKeys(Hotkey& hk, const ast::HotkeySyntax& syn, int braceChordIndex, size_t braceItemIndex);
 
     // command parsing

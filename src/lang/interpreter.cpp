@@ -75,6 +75,34 @@ std::optional<Hotkey> Interpreter::buildBaseHotkey(const ast::HotkeySyntax& syn)
     return base;
 }
 
+std::optional<Chord> Interpreter::buildChord(const ast::ChordSyntax& syntax) {
+    Chord chord{.modifiers = {.flags = 0}};
+    for (const auto& modName : syntax.modifiers) {
+        int flags = 0;
+        if (std::holds_alternative<BuiltinModifier>(modName.value)) {
+            flags = builtinModifierToFlags(std::get<BuiltinModifier>(modName.value));
+        } else {
+            auto resolvedFlags = resolveModifierFlags(std::get<std::string>(modName.value));
+            if (!resolvedFlags) {
+                return std::nullopt;
+            }
+            flags = *resolvedFlags;
+        }
+        chord.modifiers.flags |= flags;
+    }
+
+    if (!syntax.key.has_value() || syntax.key->items.empty()) {
+        addError("remap target is missing a keysym");
+        return std::nullopt;
+    }
+    if (syntax.key->isBraceExpansion || syntax.key->items.size() != 1) {
+        addError("remap target must contain exactly one key");
+        return std::nullopt;
+    }
+    setChordKeyFromAtom(chord, syntax.key->items.front());
+    return chord;
+}
+
 bool Interpreter::setHotkeyKeys(Hotkey& hk, const ast::HotkeySyntax& syn, int braceChordIndex, size_t braceItemIndex) {
     for (size_t i = 0; i < syn.chords.size(); i++) {
         const auto& key = syn.chords[i].key;
@@ -95,7 +123,7 @@ std::string Interpreter::trim(std::string_view s) {
     auto start = std::ranges::find_if_not(s, [](unsigned char c) { return std::isspace(c); });
     if (start == s.end()) return "";
     auto end = std::find_if_not(s.rbegin(), std::make_reverse_iterator(start), [](unsigned char c) { return std::isspace(c); }).base();
-    return std::string(start, end);
+    return {start, end};
 }
 
 std::string Interpreter::unescapeDoubleBraces(std::string_view s) {
@@ -190,6 +218,35 @@ InterpreterResult Interpreter::interpret(const ast::Program& program) {
                         "unknown config property: '{}'. Valid properties are: max_chord_interval, hold_modifier_threshold, simultaneous_threshold, blacklist",
                         node.name));
                 }
+            } else if constexpr (std::is_same_v<T, ast::RemapStmt>) {
+                if (node.source.passthrough || node.source.repeat || node.source.onRelease) {
+                    addError("remaps do not support '@', '&', or '^' flags");
+                    return;
+                }
+                auto source = buildBaseHotkey(node.source);
+                if (!source) {
+                    return;
+                }
+                if (source->chords.size() != 1) {
+                    addError("remaps currently support single-chord sources only");
+                    return;
+                }
+                if (node.source.chords[0].key && node.source.chords[0].key->isBraceExpansion) {
+                    addError("remaps do not support brace expansion in the source key");
+                    return;
+                }
+                if (!setHotkeyKeys(*source, node.source, -1, 0)) {
+                    return;
+                }
+                auto target = buildChord(node.target);
+                if (!target) {
+                    return;
+                }
+                if (target->modifiers.has(Hotkey_Flag_NX)) {
+                    addError("remaps do not support media-key targets yet");
+                    return;
+                }
+                result.remaps.emplace_back(std::move(*source), std::move(*target));
             }
         },
             stmt);
@@ -235,4 +292,11 @@ InterpreterResult Interpreter::interpret(const ast::Program& program) {
     }
     result.errors = errors_;
     return result;
+}
+
+std::optional<Chord> Interpreter::interpretChordSyntax(const ast::ChordSyntax& syntax) {
+    defines.clear();
+    cache.clear();
+    errors_.clear();
+    return buildChord(syntax);
 }
