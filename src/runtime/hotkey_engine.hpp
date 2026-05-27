@@ -24,7 +24,7 @@ class HotkeyEngine {
     ConfigProperties config_;
     std::optional<Chord> lastTriggeredChord_;
     std::vector<Chord> currentChords_;
-    std::chrono::time_point<std::chrono::system_clock> lastKeyPressTime_{};
+    std::chrono::time_point<std::chrono::system_clock> lastKeyPressTime_;
 
     void clearSequence();
     [[nodiscard]] bool checkAndExecuteSequence(const Chord& current);

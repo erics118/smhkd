@@ -68,17 +68,7 @@ struct Program {
 template <>
 struct std::formatter<ast::ModifierAtom> : std::formatter<std::string_view> {
     auto format(const ast::ModifierAtom& m, std::format_context& ctx) const {
-        return std::visit(
-            [&](const auto& v) {
-                using T = std::decay_t<decltype(v)>;
-                if constexpr (std::is_same_v<T, BuiltinModifier>) {
-                    return std::format_to(ctx.out(), "{}", v);
-                } else {
-                    // For custom modifier strings, output directly (matching original logic)
-                    return std::format_to(ctx.out(), "{}", v);
-                }
-            },
-            m.value);
+        return std::visit([&](const auto& v) { return std::format_to(ctx.out(), "{}", v); }, m.value);
     }
 };
 
@@ -136,9 +126,8 @@ struct std::formatter<ast::ChordSyntax> : std::formatter<std::string_view> {
         }
         if (cs.key) {
             return std::format_to(out, "{}", *cs.key);
-        } else {
-            return std::format_to(out, "<missing-key>");
         }
+        return std::format_to(out, "<missing-key>");
     }
 };
 
@@ -176,16 +165,16 @@ struct std::formatter<ast::ConfigPropertyStmt> : std::formatter<std::string_view
         auto out = std::format_to(ctx.out(), "config: {} = ", stmt.name);
         if (stmt.intValue) {
             return std::format_to(out, "{}", *stmt.intValue);
-        } else if (!stmt.listValues.empty()) {
+        }
+        if (!stmt.listValues.empty()) {
             out = std::format_to(out, "[");
             for (size_t i = 0; i < stmt.listValues.size(); i++) {
                 if (i > 0) out = std::format_to(out, ", ");
                 out = std::format_to(out, "\"{}\"", stmt.listValues[i]);
             }
             return std::format_to(out, "]");
-        } else {
-            return std::format_to(out, "<unset>");
         }
+        return std::format_to(out, "<unset>");
     }
 };
 

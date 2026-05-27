@@ -20,7 +20,7 @@ std::unordered_map<std::string, Keycode> buildKeycodeMap() {
         kVK_ANSI_4, kVK_ANSI_5, kVK_ANSI_6, kVK_ANSI_7, kVK_ANSI_8,
         kVK_ANSI_9};
 
-    UniChar chars[255];
+    std::array<UniChar, 255> chars{};
     UniCharCount len{};
     UInt32 state{};
 
@@ -33,7 +33,8 @@ std::unordered_map<std::string, Keycode> buildKeycodeMap() {
         kTISPropertyUnicodeKeyLayoutData));
     if (!uchr) return {};
 
-    const auto* keyboardLayout = reinterpret_cast<const UCKeyboardLayout*>(CFDataGetBytePtr(uchr));
+    const auto* keyboardLayout =
+        reinterpret_cast<const UCKeyboardLayout*>(CFDataGetBytePtr(uchr));  // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
     if (!keyboardLayout) return {};
 
     for (uint32_t keycode : layoutDependentKeycodes) {
@@ -44,12 +45,13 @@ std::unordered_map<std::string, Keycode> buildKeycodeMap() {
                 LMGetKbdType(),
                 kUCKeyTranslateNoDeadKeysMask,
                 &state,
-                std::size(chars),
+                chars.size(),
                 &len,
-                chars)
+                chars.data())
                 == noErr
             && len > 0) {
-            CFStringRef keyCfString = CFStringCreateWithCharacters(nullptr, chars, len);
+            CFStringRef keyCfString =
+                CFStringCreateWithCharacters(nullptr, chars.data(), static_cast<CFIndex>(len));
             if (!keyCfString) continue;
 
             std::string keyString = cfStringToString(keyCfString);

@@ -2,6 +2,7 @@
 
 #include <CoreFoundation/CoreFoundation.h>
 
+#include <array>
 #include <memory>
 #include <string>
 
@@ -11,6 +12,10 @@ class Application {
    public:
     explicit Application(std::string configFile);
     ~Application();
+    Application(const Application&) = delete;
+    Application& operator=(const Application&) = delete;
+    Application(Application&&) = delete;
+    Application& operator=(Application&&) = delete;
 
     void run();
 
@@ -22,7 +27,7 @@ class Application {
     std::string configFile_;
     std::unique_ptr<KeyHandler> keyHandler_;
     ReloadContext reloadContext_{};
-    int reloadSignalPipe_[2] = {-1, -1};
+    std::array<int, 2> reloadSignalPipe_ = {-1, -1};
 
     static Application* instance_;
 

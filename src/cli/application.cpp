@@ -3,6 +3,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include <array>
 #include <csignal>
 
 #include "../common/log.hpp"
@@ -58,23 +59,23 @@ void Application::installSignalHandlers() const {
 }
 
 void Application::setupReloadSignalSource(CFRunLoopRef runLoop) {
-    if (pipe(reloadSignalPipe_) == -1) {
+    if (pipe(reloadSignalPipe_.data()) == -1) {
         error_errno("failed to create reload signal pipe");
     }
 
     for (int fd : reloadSignalPipe_) {
-        const int flags = fcntl(fd, F_GETFL);
+        const int flags = fcntl(fd, F_GETFL);  // NOLINT(cppcoreguidelines-pro-type-vararg)
         if (flags == -1) {
             error_errno("failed to read reload signal pipe flags");
         }
-        if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+        if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {  // NOLINT(cppcoreguidelines-pro-type-vararg)
             error_errno("failed to set reload signal pipe non-blocking");
         }
     }
 
     CFFileDescriptorContext fdContext{};
     fdContext.info = &reloadContext_;
-    auto reloadFd = CFFileDescriptorCreate(
+    auto* reloadFd = CFFileDescriptorCreate(
         kCFAllocatorDefault,
         reloadSignalPipe_[0],
         false,
@@ -97,8 +98,8 @@ void Application::setupReloadSignalSource(CFRunLoopRef runLoop) {
 }
 
 void Application::handleReloadSignal(CFFileDescriptorRef fd) {
-    char buffer[64];
-    while (read(reloadSignalPipe_[0], buffer, sizeof(buffer)) > 0) {
+    std::array<char, 64> buffer{};
+    while (read(reloadSignalPipe_[0], buffer.data(), buffer.size()) > 0) {
     }
 
     debug("SIGUSR1 received, reloading config");

@@ -1,4 +1,5 @@
 #include <print>
+#include <span>
 #include <string>
 
 #ifndef SMHKD_VERSION
@@ -15,7 +16,9 @@
 #include "application.hpp"
 #include "cli.hpp"
 
-std::string parse_arguments(int argc, char* argv[]) {
+namespace {
+
+std::string parse_arguments(std::span<char* const> argv) {
     ArgsConfig config{
         .short_args = {"c:", "r", "o"},
         .long_args = {
@@ -32,7 +35,12 @@ std::string parse_arguments(int argc, char* argv[]) {
         },
     };
 
-    Args args = parse_args(std::vector<std::string>(argv, argv + argc), config);
+    std::vector<std::string> argVector;
+    argVector.reserve(argv.size());
+    for (const auto* arg : argv) {
+        argVector.emplace_back(arg);
+    }
+    Args args = parse_args(argVector, config);
 
     if (args.get("version")) {
         std::print("smhkd-v{}\n", SMHKD_VERSION);
@@ -105,6 +113,8 @@ std::string parse_arguments(int argc, char* argv[]) {
     return config_file;
 }
 
+}  // namespace
+
 int main(int argc, char* argv[]) {
     if (getuid() == 0 || geteuid() == 0) {
         error("running as root is not allowed");
@@ -114,7 +124,7 @@ int main(int argc, char* argv[]) {
         error("failed to initialize keycode map");
     }
 
-    const std::string config_file = parse_arguments(argc, argv);
+    const std::string config_file = parse_arguments(std::span<char* const>(argv, static_cast<size_t>(argc)));
 
     create_pid_file();
 

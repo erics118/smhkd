@@ -11,7 +11,7 @@ pid_t read_pid_file() {
         std::exit(1);
     }
     auto pid_file = std::format(PIDFILE_FMT, user);
-    int handle = open(pid_file.c_str(), O_RDWR);
+    int handle = open(pid_file.c_str(), O_RDWR);  // NOLINT(cppcoreguidelines-pro-type-vararg)
     if (handle == -1) {
         error_errno("could not open pid file '{}'", pid_file);
     }
@@ -37,12 +37,12 @@ void create_pid_file() {
     }
     auto pid_file = std::format(PIDFILE_FMT, user);
     pid_t pid = getpid();
-    int handle = open(pid_file.c_str(), O_CREAT | O_RDWR, 0644);
+    int handle = open(pid_file.c_str(), O_CREAT | O_RDWR, 0644);  // NOLINT(cppcoreguidelines-pro-type-vararg)
     if (handle == -1) {
         error_errno("could not create pid file '{}'", pid_file);
     }
     struct flock lockfd = {.l_start = 0, .l_len = 0, .l_pid = pid, .l_type = F_WRLCK, .l_whence = SEEK_SET};
-    if (fcntl(handle, F_SETLK, &lockfd) == -1) {
+    if (fcntl(handle, F_SETLK, &lockfd) == -1) {  // NOLINT(cppcoreguidelines-pro-type-vararg)
         close(handle);
         error_errno("could not lock pid file '{}'", pid_file);
     }
@@ -54,12 +54,12 @@ void create_pid_file() {
 }
 
 bool check_privileges() {
-    std::array<CFStringRef, 1> keys = {kAXTrustedCheckOptionPrompt};
-    std::array<CFTypeRef, 1> values = {kCFBooleanTrue};
+    std::array<const void*, 1> keys = {kAXTrustedCheckOptionPrompt};
+    std::array<const void*, 1> values = {kCFBooleanTrue};
     CFDictionaryRef options = CFDictionaryCreate(
         kCFAllocatorDefault,
-        reinterpret_cast<const void**>(keys.data()),
-        reinterpret_cast<const void**>(values.data()),
+        keys.data(),
+        values.data(),
         keys.size(),
         &kCFCopyStringDictionaryKeyCallBacks,
         &kCFTypeDictionaryValueCallBacks);

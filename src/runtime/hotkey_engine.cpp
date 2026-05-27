@@ -111,7 +111,7 @@ bool HotkeyEngine::isBlacklistedProcess(std::string_view frontProcessName) const
 
 std::string HotkeyEngine::toLower(std::string_view s) {
     std::string lowered(s);
-    std::transform(lowered.begin(), lowered.end(), lowered.begin(), [](unsigned char c) {
+    std::ranges::transform(lowered, lowered.begin(), [](unsigned char c) {
         return static_cast<char>(std::tolower(c));
     });
     return lowered;

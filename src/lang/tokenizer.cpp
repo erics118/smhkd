@@ -24,94 +24,97 @@ bool Tokenizer::hasMoreTokens(int offset) {
 }
 
 Token Tokenizer::getNextToken() {
-    skipWhitespaceAndComments();
-    if (position >= contents.size()) {
-        return Token{TokenType::EndOfFile, "", row, col};
-    }
-    if (nextTokenIsCommand) {
-        nextTokenIsCommand = false;
-        return readCommandToken();
-    }
-    char c = peekChar();
-    int startRow = row;
-    int startCol = col;
+    while (true) {
+        skipWhitespaceAndComments();
+        if (position >= contents.size()) {
+            return Token{TokenType::EndOfFile, "", row, col};
+        }
+        if (nextTokenIsCommand) {
+            nextTokenIsCommand = false;
+            return readCommandToken();
+        }
+        char c = peekChar();
+        int startRow = row;
+        int startCol = col;
 
-    if (c == '+') {
-        advance();
-        return Token{TokenType::Plus, "+", startRow, startCol};
-    }
-    if (c == '=') {
-        advance();
-        return Token{TokenType::Equals, "=", startRow, startCol};
-    }
-    if (c == ':') {
-        advance();
-        nextTokenIsCommand = true;
-        return Token{TokenType::Colon, ":", startRow, startCol};
-    }
-    if (c == '^') {
-        advance();
-        return Token{TokenType::Caret, "^", startRow, startCol};
-    }
-    if (c == '@') {
-        advance();
-        return Token{TokenType::At, "@", startRow, startCol};
-    }
-    if (c == '&') {
-        advance();
-        return Token{TokenType::Ampersand, "&", startRow, startCol};
-    }
-    if (c == '{') {
-        advance();
-        return Token{TokenType::OpenBrace, "{", startRow, startCol};
-    }
-    if (c == '}') {
-        advance();
-        return Token{TokenType::CloseBrace, "}", startRow, startCol};
-    }
-    if (c == ',') {
-        advance();
-        return Token{TokenType::Comma, ",", startRow, startCol};
-    }
-    if (c == ';') {
-        advance();
-        return Token{TokenType::Semicolon, ";", startRow, startCol};
-    }
-    if (c == '0' && peekChar(1) == 'x') {
-        std::string hex = readHex();
-        return Token{TokenType::KeyHex, hex, startRow, startCol};
-    }
-    if (c == '[') {
-        advance();
-        return Token{TokenType::OpenBracket, "[", startRow, startCol};
-    }
-    if (c == ']') {
-        advance();
-        return Token{TokenType::CloseBracket, "]", startRow, startCol};
-    }
-    if (c == '"') {
-        std::string value = readQuotedString();
-        return Token{TokenType::String, value, startRow, startCol};
-    }
+        if (c == '+') {
+            advance();
+            return Token{TokenType::Plus, "+", startRow, startCol};
+        }
+        if (c == '=') {
+            advance();
+            return Token{TokenType::Equals, "=", startRow, startCol};
+        }
+        if (c == ':') {
+            advance();
+            nextTokenIsCommand = true;
+            return Token{TokenType::Colon, ":", startRow, startCol};
+        }
+        if (c == '^') {
+            advance();
+            return Token{TokenType::Caret, "^", startRow, startCol};
+        }
+        if (c == '@') {
+            advance();
+            return Token{TokenType::At, "@", startRow, startCol};
+        }
+        if (c == '&') {
+            advance();
+            return Token{TokenType::Ampersand, "&", startRow, startCol};
+        }
+        if (c == '{') {
+            advance();
+            return Token{TokenType::OpenBrace, "{", startRow, startCol};
+        }
+        if (c == '}') {
+            advance();
+            return Token{TokenType::CloseBrace, "}", startRow, startCol};
+        }
+        if (c == ',') {
+            advance();
+            return Token{TokenType::Comma, ",", startRow, startCol};
+        }
+        if (c == ';') {
+            advance();
+            return Token{TokenType::Semicolon, ";", startRow, startCol};
+        }
+        if (c == '0' && peekChar(1) == 'x') {
+            std::string hex = readHex();
+            return Token{TokenType::KeyHex, hex, startRow, startCol};
+        }
+        if (c == '[') {
+            advance();
+            return Token{TokenType::OpenBracket, "[", startRow, startCol};
+        }
+        if (c == ']') {
+            advance();
+            return Token{TokenType::CloseBracket, "]", startRow, startCol};
+        }
+        if (c == '"') {
+            std::string value = readQuotedString();
+            return Token{TokenType::String, value, startRow, startCol};
+        }
 
-    const std::string text = readIdentifier();
-    if (text.empty()) {
-        return getNextToken();
-    }
+        const std::string text = readIdentifier();
+        if (text.empty()) {
+            advance();
+            continue;
+        }
 
-    if (tryParseLiteralKey(text).has_value()) {
-        return Token{TokenType::Literal, text, startRow, startCol};
+        if (tryParseLiteralKey(text).has_value()) {
+            return Token{TokenType::Literal, text, startRow, startCol};
+        }
+        if (text == "define_modifier") {
+            return Token{TokenType::DefineModifier, text, startRow, startCol};
+        }
+        if (text == "max_chord_interval" || text == "hold_modifier_threshold" || text == "simultaneous_threshold" || text == "blacklist") {
+            return Token{TokenType::ConfigProperty, text, startRow, startCol};
+        }
+        if (text.size() == 1) {
+            return Token{TokenType::Key, text, startRow, startCol};
+        }
+        return Token{TokenType::Modifier, text, startRow, startCol};
     }
-    if (text == "define_modifier") {
-        return Token{TokenType::DefineModifier, text, startRow, startCol};
-    }
-    if (text == "max_chord_interval" || text == "hold_modifier_threshold" || text == "simultaneous_threshold" || text == "blacklist") {
-        return Token{TokenType::ConfigProperty, text, startRow, startCol};
-    }
-    if (text.size() == 1) {
-        return Token{TokenType::Key, text, startRow, startCol};
-    }
-    return Token{TokenType::Modifier, text, startRow, startCol};
 }
 
 std::string Tokenizer::readHex() {
