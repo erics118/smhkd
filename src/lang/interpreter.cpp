@@ -52,44 +52,37 @@ void Interpreter::setChordKeyFromAtom(Chord& chord, const ast::KeyAtom& atom) {
         atom.value);
 }
 
-std::optional<Hotkey> Interpreter::buildBaseHotkey(const ast::HotkeySyntax& syn) {
-    Hotkey base{.passthrough = syn.passthrough, .repeat = syn.repeat, .on_release = syn.onRelease};
-    base.chords.reserve(syn.chords.size());
-    for (const auto& chordSyn : syn.chords) {
-        Chord c{.modifiers = {.flags = 0}};
-        for (const auto& modName : chordSyn.modifiers) {
-            int flags = 0;
-            if (std::holds_alternative<BuiltinModifier>(modName.value)) {
-                flags = builtinModifierToFlags(std::get<BuiltinModifier>(modName.value));
-            } else {
-                auto resolvedFlags = resolveModifierFlags(std::get<std::string>(modName.value));
-                if (!resolvedFlags) {
-                    return std::nullopt;
-                }
-                flags = *resolvedFlags;
-            }
-            c.modifiers.flags |= flags;
-        }
-        base.chords.push_back(c);
-    }
-    return base;
-}
-
-std::optional<Chord> Interpreter::buildChord(const ast::ChordSyntax& syntax) {
-    Chord chord{.modifiers = {.flags = 0}};
-    for (const auto& modName : syntax.modifiers) {
-        int flags = 0;
+std::optional<int> Interpreter::resolveModifierAtoms(const std::vector<ast::ModifierAtom>& atoms) {
+    int flags = 0;
+    for (const auto& modName : atoms) {
         if (std::holds_alternative<BuiltinModifier>(modName.value)) {
-            flags = builtinModifierToFlags(std::get<BuiltinModifier>(modName.value));
+            flags |= builtinModifierToFlags(std::get<BuiltinModifier>(modName.value));
         } else {
             auto resolvedFlags = resolveModifierFlags(std::get<std::string>(modName.value));
             if (!resolvedFlags) {
                 return std::nullopt;
             }
-            flags = *resolvedFlags;
+            flags |= *resolvedFlags;
         }
-        chord.modifiers.flags |= flags;
     }
+    return flags;
+}
+
+std::optional<Hotkey> Interpreter::buildBaseHotkey(const ast::HotkeySyntax& syn) {
+    Hotkey base{.passthrough = syn.passthrough, .repeat = syn.repeat, .on_release = syn.onRelease};
+    base.chords.reserve(syn.chords.size());
+    for (const auto& chordSyn : syn.chords) {
+        auto flags = resolveModifierAtoms(chordSyn.modifiers);
+        if (!flags) return std::nullopt;
+        base.chords.push_back(Chord{.modifiers = {.flags = *flags}});
+    }
+    return base;
+}
+
+std::optional<Chord> Interpreter::buildChord(const ast::ChordSyntax& syntax) {
+    auto flags = resolveModifierAtoms(syntax.modifiers);
+    if (!flags) return std::nullopt;
+    Chord chord{.modifiers = {.flags = *flags}};
 
     if (!syntax.key.has_value() || syntax.key->items.empty()) {
         addError("remap target is missing a keysym");

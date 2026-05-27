@@ -61,6 +61,7 @@ class Interpreter {
 
     // modifier resolution
     std::optional<int> resolveModifierFlags(const std::string& name);
+    std::optional<int> resolveModifierAtoms(const std::vector<ast::ModifierAtom>& atoms);
 
     // hotkey building
     void setChordKeyFromAtom(Chord& chord, const ast::KeyAtom& atom);

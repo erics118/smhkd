@@ -96,8 +96,7 @@ std::string get_service_target() {
 }
 
 bool is_service_bootstrapped() {
-    auto service_target = std::format("gui/{}/{}", getuid(), PLIST_NAME);
-    auto result = launchctl_exec({"blame", service_target}, true);
+    auto result = launchctl_exec({"blame", get_service_target()}, true);
     return result == 0;
 }
 
@@ -167,8 +166,7 @@ void service_restart() {
     if (!std::filesystem::exists(plist_path)) {
         error("service file '{}' is not installed", plist_path);
     }
-    auto service_target = std::format("gui/{}/{}", getuid(), PLIST_NAME);
-    require_launchctl_success({"kickstart", "-k", service_target}, "restart");
+    require_launchctl_success({"kickstart", "-k", get_service_target()}, "restart");
     info("service restarted");
 }
 

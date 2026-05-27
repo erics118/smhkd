@@ -35,27 +35,22 @@ std::optional<ObservedModifierKey> lookupObservedModifierKey(uint32_t keycode) {
     return std::nullopt;
 }
 
-std::string describeObservedKey(const Chord& current, CGEventType type) {
-    if (type == kCGEventFlagsChanged) {
-        if (auto modifier = lookupObservedModifierKey(current.keysym.keycode)) {
-            return std::string{modifier->name};
-        }
+std::string describeObservedKey(const Chord& current, CGEventType type, const std::optional<ObservedModifierKey>& modifier) {
+    if (type == kCGEventFlagsChanged && modifier) {
+        return std::string{modifier->name};
     }
     return std::format("{}", current.keysym);
 }
 
-std::string describeObservedModifierTransition(const Chord& current, CGEventType type) {
-    if (type != kCGEventFlagsChanged) {
+std::string describeObservedModifierTransition(const Chord& current, CGEventType type, const std::optional<ObservedModifierKey>& modifier) {
+    if (type != kCGEventFlagsChanged || !modifier) {
         return "none";
     }
-    if (auto modifier = lookupObservedModifierKey(current.keysym.keycode)) {
-        return current.modifiers.has(modifier->flag) ? "pressed" : "released";
-    }
-    return "none";
+    return current.modifiers.has(modifier->flag) ? "pressed" : "released";
 }
 
-std::string describeObservedChord(const Chord& current, CGEventType type) {
-    if (type == kCGEventFlagsChanged && lookupObservedModifierKey(current.keysym.keycode)) {
+std::string describeObservedChord(const Chord& current, CGEventType type, const std::optional<ObservedModifierKey>& modifier) {
+    if (type == kCGEventFlagsChanged && modifier) {
         return std::format("{}", current.modifiers);
     }
     return std::format("{}", current);
@@ -106,9 +101,10 @@ bool KeyObserverHandler::handleKeyEvent(CGEventRef event, CGEventType type) {
         default: eventType = "unknown"; break;
     }
 
-    const std::string key = describeObservedKey(current, type);
-    const std::string transition = describeObservedModifierTransition(current, type);
-    const std::string chord = describeObservedChord(current, type);
+    const auto modifier = lookupObservedModifierKey(current.keysym.keycode);
+    const std::string key = describeObservedKey(current, type, modifier);
+    const std::string transition = describeObservedModifierTransition(current, type, modifier);
+    const std::string chord = describeObservedChord(current, type, modifier);
 
     std::print("\033[s\033[J\rkeycode: {:#02x}\nkey: {}\nmodifiers: {}\nchord: {}\nflags: {:032b}\nevent type: {}\nmodifier action: {}",
         current.keysym.keycode,
