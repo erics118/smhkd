@@ -11,7 +11,7 @@ void executeCommand(const std::string& command) {
     pid_t cpid = fork();
 
     if (cpid < 0) {
-        warn_errno("failed to fork process for command execution");
+        warn("failed to fork process for command execution");
         return;
     }
 
@@ -27,7 +27,7 @@ void executeCommand(const std::string& command) {
         args.push_back(nullptr);
 
         int status = execvp(args[0], args.data());
-        warn_errno("failed to execute command '{}'", command);
+        warn("failed to execute command '{}'", command);
         _exit(status);
     }
 }

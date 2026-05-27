@@ -12,11 +12,11 @@ Args parse_args(const std::vector<std::string>& argv, const ArgsConfig& config) 
                 res[a] = "true";
             } else if (config.long_args.contains(a + ':')) {
                 if (i + 1 == argv.size()) {
-                    error("missing value for long argument: {}", a);
+                    fatal("missing value for long argument: {}", a);
                 }
                 res[a] = argv.at(++i);
             } else {
-                error("unknown long argument: {}", a);
+                fatal("unknown long argument: {}", a);
             }
         } else if (a.starts_with("-")) {
             a = a.substr(1);
@@ -25,7 +25,7 @@ Args parse_args(const std::vector<std::string>& argv, const ArgsConfig& config) 
                 if (config.short_args.contains(std::string{ch})) {
                     res[std::string{ch}] = "true";
                 } else {
-                    error("unknown short argument: {}", std::string{ch});
+                    fatal("unknown short argument: {}", std::string{ch});
                 }
             }
             char last_char = a.back();
@@ -33,14 +33,14 @@ Args parse_args(const std::vector<std::string>& argv, const ArgsConfig& config) 
                 res[std::string{last_char}] = "true";
             } else if (config.short_args.contains(std::string{last_char} + ':')) {
                 if (i + 1 == argv.size()) {
-                    error("missing value for short argument: {}", std::string{last_char});
+                    fatal("missing value for short argument: {}", std::string{last_char});
                 }
                 res[std::string{last_char}] = argv.at(++i);
             } else {
-                error("unknown short argument: {}", std::string{last_char});
+                fatal("unknown short argument: {}", std::string{last_char});
             }
         } else {
-            error("unexpected positional argument: {}", a);
+            fatal("unexpected positional argument: {}", a);
         }
     }
     return Args{res};

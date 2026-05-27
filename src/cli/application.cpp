@@ -26,7 +26,7 @@ Application::~Application() {
 void Application::run() {
     keyHandler_ = std::make_unique<KeyHandler>(configFile_);
     if (!keyHandler_->init()) {
-        error("failed to initialize key handler");
+        fatal("failed to initialize key handler");
     }
 
     reloadContext_.handler = keyHandler_.get();
@@ -60,16 +60,16 @@ void Application::installSignalHandlers() const {
 
 void Application::setupReloadSignalSource(CFRunLoopRef runLoop) {
     if (pipe(reloadSignalPipe_.data()) == -1) {
-        error_errno("failed to create reload signal pipe");
+        fatal("failed to create reload signal pipe");
     }
 
     for (int fd : reloadSignalPipe_) {
         const int flags = fcntl(fd, F_GETFL);  // NOLINT(cppcoreguidelines-pro-type-vararg)
         if (flags == -1) {
-            error_errno("failed to read reload signal pipe flags");
+            fatal("failed to read reload signal pipe flags");
         }
         if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {  // NOLINT(cppcoreguidelines-pro-type-vararg)
-            error_errno("failed to set reload signal pipe non-blocking");
+            fatal("failed to set reload signal pipe non-blocking");
         }
     }
 
@@ -82,14 +82,14 @@ void Application::setupReloadSignalSource(CFRunLoopRef runLoop) {
         reloadSignalCallback,
         &fdContext);
     if (!reloadFd) {
-        error("failed to create reload signal file descriptor");
+        fatal("failed to create reload signal file descriptor");
     }
 
     CFFileDescriptorEnableCallBacks(reloadFd, kCFFileDescriptorReadCallBack);
     CFRunLoopSourceRef source = CFFileDescriptorCreateRunLoopSource(kCFAllocatorDefault, reloadFd, 0);
     if (!source) {
         CFRelease(reloadFd);
-        error("failed to create reload signal run loop source");
+        fatal("failed to create reload signal run loop source");
     }
 
     CFRunLoopAddSource(runLoop, source, kCFRunLoopCommonModes);

@@ -200,7 +200,7 @@ struct std::formatter<ast::RemapStmt> : std::formatter<std::string_view> {
 template <>
 struct std::formatter<ast::Program> : std::formatter<std::string_view> {
     auto format(const ast::Program& program, std::format_context& ctx) const {
-        auto out = std::format_to(ctx.out(), "Program{{\n");
+        auto out = std::format_to(ctx.out(), "Program {{\n");
         for (const auto& s : program.statements) {
             out = std::format_to(out, "  ");
             out = std::visit([&](const auto& node) { return std::format_to(out, "{}\n", node); }, s);

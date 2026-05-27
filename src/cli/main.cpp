@@ -26,7 +26,7 @@ namespace {
 
 Chord parse_cli_keypress(std::string_view spec) {
     if (spec.empty()) {
-        error("empty key spec");
+        fatal("empty key spec");
     }
 
     Parser parser{std::string{spec}};
@@ -35,7 +35,7 @@ Chord parse_cli_keypress(std::string_view spec) {
         error("invalid key spec at line {}, column {}: {}", parse_error.row, parse_error.col, parse_error.message);
     }
     if (!chordSyntax) {
-        error("invalid key spec");
+        fatal("invalid key spec");
     }
 
     Interpreter interpreter;
@@ -44,7 +44,7 @@ Chord parse_cli_keypress(std::string_view spec) {
         error("invalid key spec: {}", interpreter_error.message);
     }
     if (!chord) {
-        error("invalid key spec");
+        fatal("invalid key spec");
     }
     return *chord;
 }
@@ -115,7 +115,9 @@ std::string parse_arguments(std::span<char* const> argv) {
 
     if (args.get('o', "observe")) {
         KeyObserverHandler observer;
-        observer.init();
+        if (!observer.init()) {
+            fatal("failed to initialize observer");
+        }
         observer.run();
         exit(0);
     }
@@ -153,11 +155,11 @@ std::string parse_arguments(std::span<char* const> argv) {
 
 int main(int argc, char* argv[]) {
     if (getuid() == 0 || geteuid() == 0) {
-        error("running as root is not allowed");
+        fatal("running as root is not allowed");
     }
 
     if (!initializeKeycodeMap()) {
-        error("failed to initialize keycode map");
+        fatal("failed to initialize keycode map");
     }
 
     const std::string config_file = parse_arguments(std::span<char* const>(argv, static_cast<size_t>(argc)));
@@ -165,7 +167,7 @@ int main(int argc, char* argv[]) {
     create_pid_file();
 
     if (!check_privileges()) {
-        error("must run with accessibility access");
+        fatal("must run with accessibility access");
     }
 
     Application app(config_file);

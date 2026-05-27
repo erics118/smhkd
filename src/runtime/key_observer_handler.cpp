@@ -127,7 +127,7 @@ bool KeyObserverHandler::handleKeyEvent(CGEventRef event, CGEventType type) {
 bool KeyObserverHandler::init() {
     runLoop = CFRunLoopGetCurrent();
     if (!runLoop) {
-        error("Failed to get current run loop");
+        error("failed to get current run loop");
         return false;
     }
     if (!setupEventTap()) {

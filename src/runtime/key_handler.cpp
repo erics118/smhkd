@@ -17,7 +17,7 @@ bool KeyHandler::init() {
 bool KeyHandler::setupEventTap() {
     CGEventMask eventMask = CGEventMaskBit(kCGEventKeyDown) | CGEventMaskBit(kCGEventKeyUp);
     CFMachPortRef tap = CGEventTapCreate(kCGSessionEventTap, kCGHeadInsertEventTap, kCGEventTapOptionDefault, eventMask, eventCallback, this);
-    if (!tap) error("failed to create event tap");
+    if (!tap) fatal("failed to create event tap");
     CFRunLoopSourceRef runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0);
     CFRunLoopAddSource(runLoop, runLoopSource, kCFRunLoopCommonModes);
     CGEventTapEnable(tap, true);

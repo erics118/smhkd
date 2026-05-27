@@ -16,10 +16,10 @@ namespace {
 
 void validate_config_file(const std::string& config_file) {
     if (config_file.empty()) {
-        error("config file path is empty");
+        fatal("config file path is empty");
     }
     if (!file_exists(config_file)) {
-        error("config file not found: {}", config_file);
+        fatal("config file not found: {}", config_file);
     }
 }
 
