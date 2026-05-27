@@ -8,7 +8,6 @@ ast::Program Parser::parseProgram() {
             break;
         }
         const int startRow = tk.row;
-        const int startCol = tk.col;
         bool parsed = false;
         if (tk.type == TokenType::DefineModifier) {
             if (auto stmt = parseDefineModifierStmt()) {
@@ -26,11 +25,11 @@ ast::Program Parser::parseProgram() {
                 parsed = true;
             }
         }
-        // if a previous function failed without consuming any token, drop
-        // a token to guarantee moving forward
+        // drop remaining tokens on the failing line, so only a single error is produced, rather than multiple
         if (!parsed) {
-            const Token& after = tokenizer.peek();
-            if (after.type != TokenType::EndOfFile && after.row == startRow && after.col == startCol) {
+            while (tokenizer.hasMoreTokens()) {
+                const Token& after = tokenizer.peek();
+                if (after.type == TokenType::EndOfFile || after.row != startRow) break;
                 tokenizer.next();
             }
         }
@@ -267,12 +266,22 @@ std::optional<ast::KeySyntax> Parser::parseSingleKeySyntax(const Token& tk) {
         }
         atom.value = ast::KeyChar{tk.text.at(0), false};
     } else {
-        try {
-            const uint64_t v = std::stoul(tk.text, nullptr, 16);
-            atom.value = ast::KeyChar{static_cast<char>(static_cast<unsigned char>(v & 0xFF)), true};
-        } catch (...) {
-            atom.value = ast::KeyChar{'\0', true};
+        if (tk.text.empty()) {
+            addError(tk, "blank hex literal: expected 0x?? with at least one hex digit");
+            return std::nullopt;
         }
+        uint64_t v = 0;
+        try {
+            v = std::stoul(tk.text, nullptr, 16);
+        } catch (const std::out_of_range&) {
+            addError(tk, std::format("hex keycode '0x{}' is out of range (max 0xFF)", tk.text));
+            return std::nullopt;
+        }
+        if (v > 0xFF) {
+            addError(tk, std::format("hex keycode '0x{}' is out of range (max 0xFF)", tk.text));
+            return std::nullopt;
+        }
+        atom.value = ast::KeyChar{static_cast<char>(static_cast<unsigned char>(v)), true};
     }
     ks.items.push_back(atom);
     return ks;
