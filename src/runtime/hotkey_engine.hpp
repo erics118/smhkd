@@ -35,6 +35,5 @@ class HotkeyEngine {
     [[nodiscard]] bool handleSequence(const Chord& chord);
     [[nodiscard]] bool applyRemap(const Chord& chord, CGEventType type);
     [[nodiscard]] bool isBlacklisted(std::string_view frontApp) const;
-    [[nodiscard]] static std::string toLower(std::string_view s);
     static void postKeyEvent(const Chord& target, bool keyDown);
 };

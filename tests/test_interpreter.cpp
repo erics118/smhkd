@@ -195,13 +195,14 @@ TEST_CASE("remap with flags (@/&/^) is rejected") {
     CHECK(r.remaps.empty());
 }
 
-TEST_CASE("blacklist preserves order and exact strings") {
-    auto r = interpret_source(R"(blacklist = ["Terminal", "iTerm2", "Code"])");
+TEST_CASE("blacklist preserves order and lowercases strings") {
+    auto r = interpret_source(R"(blacklist = ["Terminal", "iTerm2", "Code", "a b c"])");
     REQUIRE(r.errors.empty());
-    REQUIRE(r.config.blacklist.size() == 3);
-    CHECK(r.config.blacklist[0] == "Terminal");
-    CHECK(r.config.blacklist[1] == "iTerm2");
-    CHECK(r.config.blacklist[2] == "Code");
+    REQUIRE(r.config.blacklist.size() == 4);
+    CHECK(r.config.blacklist[0] == "terminal");
+    CHECK(r.config.blacklist[1] == "iterm2");
+    CHECK(r.config.blacklist[2] == "code");
+    CHECK(r.config.blacklist[3] == "a b c");
 }
 
 TEST_CASE("passthrough/repeat/release flags are propagated to Hotkey") {

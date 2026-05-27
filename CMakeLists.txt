@@ -34,10 +34,10 @@ add_library(smhkd_lib OBJECT
     src/runtime/key_observer_handler.cpp
     src/runtime/process.cpp
     src/runtime/service.cpp
+    src/common/string_util.cpp
 )
 
 target_include_directories(smhkd_lib PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 

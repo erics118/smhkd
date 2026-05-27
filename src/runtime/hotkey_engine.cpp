@@ -7,6 +7,7 @@
 
 #include "../common/command.hpp"
 #include "../common/log.hpp"
+#include "../common/string_util.hpp"
 #include "../input/modifier.hpp"
 
 void HotkeyEngine::applyConfig(std::map<Hotkey, std::string> hotkeys, std::vector<RemapBinding> remaps, ConfigProperties config) {
@@ -133,20 +134,7 @@ bool HotkeyEngine::handleSequence(const Chord& chord) {
 bool HotkeyEngine::isBlacklisted(std::string_view frontApp) const {
     if (frontApp.empty()) return false;
     const auto lowerName = toLower(frontApp);
-    for (const auto& blocked : config_.blacklist) {
-        if (toLower(blocked) == lowerName) {
-            return true;
-        }
-    }
-    return false;
-}
-
-std::string HotkeyEngine::toLower(std::string_view s) {
-    std::string lowered(s);
-    std::ranges::transform(lowered, lowered.begin(), [](unsigned char c) {
-        return static_cast<char>(std::tolower(c));
-    });
-    return lowered;
+    return std::ranges::contains(config_.blacklist, lowerName);
 }
 
 void HotkeyEngine::postKeyEvent(const Chord& target, bool keyDown) {

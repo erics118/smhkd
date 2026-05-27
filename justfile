@@ -10,7 +10,8 @@ configure:
         -G Ninja \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=1 \
         -DCMAKE_BUILD_TYPE={{build-type}} \
-        -DCMAKE_CXX_COMPILER={{llvm-prefix}}/bin/clang++
+        -DCMAKE_CXX_COMPILER={{llvm-prefix}}/bin/clang++ \
+        -DSMHKD_SANITIZERS=ON;
 
 # Build with current configuration
 build: configure

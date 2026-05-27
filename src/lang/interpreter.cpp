@@ -3,6 +3,7 @@
 #include <algorithm>
 
 #include "../common/log.hpp"
+#include "../common/string_util.hpp"
 
 void Interpreter::addError(std::string message) {
     errors_.push_back(InterpreterError{.message = std::move(message)});
@@ -211,7 +212,12 @@ void Interpreter::applyDefine(const ast::DefineModifierStmt& node) {
 void Interpreter::applyConfig(const ast::ConfigPropertyStmt& node, ConfigProperties& config) {
     if (node.name == "blacklist") {
         if (!node.listValues.empty()) {
-            config.blacklist = node.listValues;
+            config.blacklist.clear();
+            config.blacklist.reserve(node.listValues.size());
+            // pre-lowercase everything
+            for (const auto& value : node.listValues) {
+                config.blacklist.push_back(toLower(value));
+            }
         } else {
             addError("blacklist config provided without any process names; ignoring");
         }

@@ -33,7 +33,7 @@ integer_config_property_name
     | 'simultaneous_threshold' (* max time between keysyms to be considered as a simultaneous_keysym *);
 
 list_config_property_name
-    = 'blacklist' (* ignore input events when these processes are frontmost *);
+    = 'blacklist' (* ignore input events when these processes names are frontmost (case-insensitive) *);
 
 string_literal
     = '"' , ? any character except newline, double quotes must be escaped as \" ? , '"';
