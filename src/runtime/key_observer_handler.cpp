@@ -73,8 +73,9 @@ bool KeyObserverHandler::setupEventTap() {
 }
 
 CGEventRef KeyObserverHandler::eventCallback(
-    CGEventTapProxy /*proxy*/, CGEventType type, CGEventRef event, void* /*refcon*/) {
-    if (handleKeyEvent(event, type)) return nullptr;
+    CGEventTapProxy /*proxy*/, CGEventType type, CGEventRef event, void* refcon) {
+    auto* self = static_cast<KeyObserverHandler*>(refcon);
+    if (self->handleKeyEvent(event, type)) return nullptr;
     return event;
 }
 
@@ -90,7 +91,11 @@ bool KeyObserverHandler::handleKeyEvent(CGEventRef event, CGEventType type) {
     auto exitChord = EXIT_CHORD;
 
     if (exitChord.isActivatedBy(current)) {
-        std::exit(1);
+        // clear before exiting shell
+        std::print("\033[J\n");
+        info("exiting observer");
+        CFRunLoopStop(runLoop);
+        return true;
     }
 
     std::string eventType;

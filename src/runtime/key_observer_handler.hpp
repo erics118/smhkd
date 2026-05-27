@@ -19,9 +19,9 @@ class KeyObserverHandler {
     bool setupEventTap();
 
     static CGEventRef eventCallback(
-        CGEventTapProxy /*proxy*/, CGEventType type, CGEventRef event, void* /*refcon*/);
+        CGEventTapProxy /*proxy*/, CGEventType type, CGEventRef event, void* refcon);
 
-    static bool handleKeyEvent(CGEventRef event, CGEventType type);
+    bool handleKeyEvent(CGEventRef event, CGEventType type);
 
    public:
     bool init();
