@@ -1,5 +1,7 @@
 #include "locale.hpp"
 
+#include <Carbon/Carbon.h>
+
 #include <array>
 #include <unordered_map>
 
@@ -33,8 +35,8 @@ std::unordered_map<std::string, Keycode> buildKeycodeMap() {
         kTISPropertyUnicodeKeyLayoutData));
     if (!uchr) return {};
 
-    const auto* keyboardLayout =
-        reinterpret_cast<const UCKeyboardLayout*>(CFDataGetBytePtr(uchr));  // NOLINT(cppcoreguidelines-pro-type-reinterpret-cast)
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+    const auto* keyboardLayout = reinterpret_cast<const UCKeyboardLayout*>(CFDataGetBytePtr(uchr));
     if (!keyboardLayout) return {};
 
     for (uint32_t keycode : layoutDependentKeycodes) {

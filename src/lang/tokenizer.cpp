@@ -108,7 +108,7 @@ Token Tokenizer::getNextToken() {
             return Token{TokenType::Invalid, invalid, startRow, startCol};
         }
 
-        if (tryParseLiteralKey(text).has_value()) {
+        if (parseLiteralKey(text).has_value()) {
             return Token{TokenType::Literal, text, startRow, startCol};
         }
         if (text == "define_modifier") {

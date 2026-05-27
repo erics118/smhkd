@@ -7,7 +7,9 @@
 #include <unordered_set>
 #include <vector>
 
-struct ArgsConfig {
+namespace cli {
+
+struct Config {
     std::unordered_set<std::string> short_args;
     std::unordered_set<std::string> long_args;
 };
@@ -27,9 +29,13 @@ struct Args {
     }
 };
 
+Args parseArgs(const std::vector<std::string>& argv, const Config& config);
+
+}  // namespace cli
+
 template <>
-struct std::formatter<Args> : std::formatter<std::string_view> {
-    auto format(const Args& args, std::format_context& ctx) const {
+struct std::formatter<cli::Args> : std::formatter<std::string_view> {
+    auto format(const cli::Args& args, std::format_context& ctx) const {
         auto out = ctx.out();
         for (const auto& [key, value] : args.args) {
             out = std::format_to(out, "{}: {}\n", key, value);
@@ -37,5 +43,3 @@ struct std::formatter<Args> : std::formatter<std::string_view> {
         return out;
     }
 };
-
-Args parse_args(const std::vector<std::string>& argv, const ArgsConfig& config);

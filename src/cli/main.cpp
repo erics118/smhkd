@@ -24,7 +24,7 @@
 
 namespace {
 
-Chord parse_cli_keypress(std::string_view spec) {
+Chord parseCliKeypress(std::string_view spec) {
     if (spec.empty()) {
         fatal("empty key spec");
     }
@@ -49,8 +49,8 @@ Chord parse_cli_keypress(std::string_view spec) {
     return *chord;
 }
 
-std::string parse_arguments(std::span<char* const> argv) {
-    ArgsConfig config{
+std::filesystem::path parseArguments(std::span<char* const> argv) {
+    cli::Config config{
         .short_args = {"c:", "k:", "r", "o", "v"},
         .long_args = {
             "config:",
@@ -74,8 +74,8 @@ std::string parse_arguments(std::span<char* const> argv) {
     for (const auto* arg : userArgs) {
         argVector.emplace_back(arg);
     }
-    Args args = parse_args(argVector, config);
-    set_verbose_logging(args.contains('v') || args.contains("verbose"));
+    cli::Args args = parseArgs(argVector, config);
+    setVerboseLogging(args.contains('v') || args.contains("verbose"));
 
     if (args.get("version")) {
         std::print("smhkd-v{}\n", SMHKD_VERSION);
@@ -83,33 +83,33 @@ std::string parse_arguments(std::span<char* const> argv) {
     }
 
     if (auto keySpec = args.get('k', "key")) {
-        const Chord chord = parse_cli_keypress(*keySpec);
+        const Chord chord = parseCliKeypress(*keySpec);
         HotkeyEngine::synthesizeKeyPress(chord);
         exit(0);
     }
 
     if (args.get("install-service")) {
-        service_install();
+        service::install();
         exit(0);
     }
 
     if (args.get("uninstall-service")) {
-        service_uninstall();
+        service::uninstall();
         exit(0);
     }
 
     if (args.get("start-service")) {
-        service_start();
+        service::start();
         exit(0);
     }
 
     if (args.get("stop-service")) {
-        service_stop();
+        service::stop();
         exit(0);
     }
 
     if (args.get("restart-service")) {
-        service_restart();
+        service::restart();
         exit(0);
     }
 
@@ -123,15 +123,18 @@ std::string parse_arguments(std::span<char* const> argv) {
     }
 
     if (args.get('r', "reload")) {
-        pid_t pid = read_pid_file();
+        pid_t pid = readPidFile();
         if (pid) kill(pid, SIGUSR1);
         info("config reloaded");
         exit(0);
     }
 
-    std::string config_file = args.get('c', "config").value_or(get_config_file("smhkd").value_or(""));
+    std::filesystem::path config_file =
+        args.get('c', "config")
+            .transform([](std::string value) { return std::filesystem::path{std::move(value)}; })
+            .value_or(getConfigFile("smhkd").value_or(std::filesystem::path{}));
 
-    validate_config_file(config_file);
+    ensureConfigFile(config_file);
 
     if (args.get("dump-ast")) {
         auto result = ConfigLoader::loadFromFile(config_file);
@@ -162,11 +165,11 @@ int main(int argc, char* argv[]) {
         fatal("failed to initialize keycode map");
     }
 
-    const std::string config_file = parse_arguments(std::span<char* const>(argv, static_cast<size_t>(argc)));
+    const std::filesystem::path config_file = parseArguments(std::span<char* const>(argv, static_cast<size_t>(argc)));
 
-    create_pid_file();
+    createPidFile();
 
-    if (!check_privileges()) {
+    if (!checkPrivileges()) {
         fatal("must run with accessibility access");
     }
 

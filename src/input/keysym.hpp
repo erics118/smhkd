@@ -105,7 +105,7 @@ struct std::formatter<LiteralKey> : std::formatter<std::string_view> {
 
 uint32_t literalKeyToKeycode(LiteralKey k);
 
-std::optional<LiteralKey> tryParseLiteralKey(const std::string& name);
+std::optional<LiteralKey> parseLiteralKey(const std::string& name);
 
 int getImplicitFlags(LiteralKey k);
 

@@ -263,7 +263,7 @@ std::optional<ast::KeySyntax> Parser::parseSingleKeySyntax(const Token& tk) {
     ks.isBraceExpansion = false;
     ast::KeyAtom atom;
     if (tk.type == TokenType::Literal) {
-        if (auto lit = tryParseLiteralKey(tk.text)) atom.value = *lit;
+        if (auto lit = parseLiteralKey(tk.text)) atom.value = *lit;
         else atom.value = ast::KeyChar{tk.text.empty() ? '\0' : tk.text.at(0), false};
     } else if (tk.type == TokenType::Key) {
         atom.value = ast::KeyChar{tk.text.at(0), false};

@@ -13,18 +13,18 @@ enum class level : std::uint8_t {
     error,
 };
 
-inline bool& verbose_logging_flag() {
+inline bool& verboseLoggingFlag() {
     static bool enabled = false;
     return enabled;
 }
 
-inline void set_verbose_logging(bool enabled) {
-    verbose_logging_flag() = enabled;
+inline void setVerboseLogging(bool enabled) {
+    verboseLoggingFlag() = enabled;
 }
 
 template <typename T>
 void print(const level ll, const T& msg) {
-    if (ll == level::debug && !verbose_logging_flag()) return;
+    if (ll == level::debug && !verboseLoggingFlag()) return;
     std::string type{};
     switch (ll) {
         case level::debug: type = "\u001b[36mdebug\u001b[0m"; break;

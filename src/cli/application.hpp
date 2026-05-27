@@ -1,16 +1,14 @@
 #pragma once
 
-#include <CoreFoundation/CoreFoundation.h>
-
 #include <array>
+#include <filesystem>
 #include <memory>
-#include <string>
 
 #include "../runtime/key_handler.hpp"
 
 class Application {
    public:
-    explicit Application(std::string configFile);
+    explicit Application(std::filesystem::path configFile);
     ~Application();
     Application(const Application&) = delete;
     Application& operator=(const Application&) = delete;
@@ -24,7 +22,7 @@ class Application {
         KeyHandler* handler{};
     };
 
-    std::string configFile_;
+    std::filesystem::path configFile_;
     std::unique_ptr<KeyHandler> keyHandler_;
     ReloadContext reloadContext_{};
     std::array<int, 2> reloadSignalPipe_ = {-1, -1};

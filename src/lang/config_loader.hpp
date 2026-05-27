@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -23,5 +24,5 @@ struct ConfigLoadResult {
 class ConfigLoader {
    public:
     static ConfigLoadResult loadFromContents(std::string_view contents);
-    static ConfigLoadResult loadFromFile(const std::string& path);
+    static ConfigLoadResult loadFromFile(const std::filesystem::path& path);
 };

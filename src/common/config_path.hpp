@@ -1,8 +1,9 @@
 #pragma once
 
+#include <filesystem>
 #include <optional>
 #include <string>
 
-void validate_config_file(const std::string& config_file);
+void ensureConfigFile(const std::filesystem::path& configFile);
 
-[[nodiscard]] std::optional<std::string> get_config_file(const std::string& name);
+[[nodiscard]] std::optional<std::filesystem::path> getConfigFile(const std::string& name);

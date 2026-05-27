@@ -1,35 +1,35 @@
 #pragma once
 
-#include <Carbon/Carbon.h>
-#include <CoreFoundation/CoreFoundation.h>
+#include <CoreGraphics/CGEventTypes.h>
 
-#include <string>
+#include <filesystem>
 
 #include "hotkey_engine.hpp"
 
-struct KeyHandler {
-    std::string configFileName;
+class KeyHandler {
+   private:
+    std::filesystem::path configFile;
 
     CFRunLoopRef runLoop{};
     CFMachPortRef eventTap{};
     HotkeyEngine engine;
 
-    explicit KeyHandler(const std::string& configFileName) : configFileName(configFileName) {
-        loadConfig(configFileName);
+    static std::string getFrontProcessName();
+    bool setupEventTap();
+    [[nodiscard]] static CGEventRef eventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void* refcon);
+    [[nodiscard]] bool handleKeyEvent(CGEventRef event, CGEventType type);
+    void loadConfig(const std::filesystem::path& configFile);
+
+   public:
+    explicit KeyHandler(std::filesystem::path configFile) : configFile(std::move(configFile)) {
+        loadConfig(this->configFile);
     }
 
     bool init();
     void run() const;
-    void loadConfig(const std::string& config_file);
-    bool setupEventTap();
-    [[nodiscard]] static CGEventRef eventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void* refcon);
-    [[nodiscard]] bool handleKeyEvent(CGEventRef event, CGEventType type);
 
     void reload() {
         engine.reset();
-        loadConfig(configFileName);
+        loadConfig(configFile);
     }
-
-   private:
-    static std::string getFrontProcessName();
 };

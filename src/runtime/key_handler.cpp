@@ -51,8 +51,8 @@ bool KeyHandler::handleKeyEvent(CGEventRef event, CGEventType type) {
         .modifiers = {.flags = Hotkey_Flag_RAlt},
     };
     if (exitChord.isActivatedBy(current)) {
-        info("exit hotkey, ralt-c, detected, ending program");
-        service_stop();
+        error("exit hotkey, ralt-c, detected, ending program");
+        service::stop();
         std::exit(1);
     }
 
@@ -83,9 +83,9 @@ void KeyHandler::run() const {
     CFRunLoopRun();
 }
 
-void KeyHandler::loadConfig(const std::string& config_file) {
-    info("config file set to: {}", config_file);
-    auto result = ConfigLoader::loadFromFile(config_file);
+void KeyHandler::loadConfig(const std::filesystem::path& configFile) {
+    info("config file set to: {}", configFile.string());
+    auto result = ConfigLoader::loadFromFile(configFile);
     if (result.fileError) {
         warn("config error: {}", *result.fileError);
     }

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <CoreFoundation/CFBase.h>
 #include <CoreFoundation/CFString.h>
 
 #include <format>

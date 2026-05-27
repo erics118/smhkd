@@ -129,9 +129,7 @@ struct std::formatter<ModifierFlags> : std::formatter<std::string_view> {
     }
 };
 
-int eventLRModifierFlagsToHotkeyFlags(CGEventFlags eventflags, const LRModifierGroup& group);
-
-bool compareLRModifier(const ModifierFlags& a, const ModifierFlags& b, const LRModifierGroup& group);
+int eventFlagsToHotkeyFlags(CGEventFlags eventFlags, const LRModifierGroup& group);
 
 ModifierFlags eventModifierFlagsToHotkeyFlags(CGEventFlags flags);
 

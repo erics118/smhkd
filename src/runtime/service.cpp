@@ -1,37 +1,73 @@
 #include "service.hpp"
 
+#include <libproc.h>
+#include <spawn.h>
+#include <sys/fcntl.h>
+#include <unistd.h>
+
 #include <filesystem>
 #include <fstream>
+#include <string>
+#include <string_view>
+#include <vector>
 
 #include "../common/log.hpp"
 
+constexpr std::string LAUNCHCTL_PATH = "/bin/launchctl";
+constexpr std::string_view PLIST_NAME = "com.erics118.smhkd";
+constexpr std::string_view PLIST_TEMPLATE = R"(<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>{}</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>{}</string>
+    </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>{}</string>
+    </dict>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+        <key>Crashed</key>
+        <true/>
+    </dict>
+    <key>StandardOutPath</key>
+    <string>/tmp/smhkd_{}.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/smhkd_{}.err.log</string>
+    <key>ProcessType</key>
+    <string>Interactive</string>
+    <key>Nice</key>
+    <integer>-20</integer>
+</dict>
+</plist>)";
+
 namespace {
 
-void require_launchctl_success(const std::vector<std::string>& args, std::string_view action, bool suppress_output = false) {
-    const int status = launchctl_exec(args, suppress_output);
-    if (status != 0) {
-        fatal("launchctl {} failed with exit code {}", action, status);
-    }
-}
-
-}  // namespace
-
-std::string get_home_directory() {
+std::filesystem::path getHomeDirectory() {
     if (const char* homeDir = std::getenv("HOME")) {
         return homeDir;
     }
     fatal("failed to get home directory path");
 }
 
-std::string get_plist_path() {
-    auto home = get_home_directory();
+std::filesystem::path getPlistPath() {
+    auto home = getHomeDirectory();
     if (home.empty()) {
         fatal("failed to get plist path");
     }
-    return std::format("{}/Library/LaunchAgents/{}.plist", home, PLIST_NAME);
+    return home / "Library" / "LaunchAgents" / std::format("{}.plist", PLIST_NAME);
 }
 
-std::string get_plist_contents() {
+std::string getPlistContents() {
     const char* user = getenv("USER");
     if (!user) {
         fatal("USER environment variable not set");
@@ -51,7 +87,7 @@ std::string get_plist_contents() {
     return contents;
 }
 
-int launchctl_exec(const std::vector<std::string>& args, bool suppress_output) {
+int launchctl(const std::vector<std::string>& args, bool suppressOutput) {
     std::vector<std::string> stringStorage;
     stringStorage.reserve(args.size() + 1);
     std::vector<char*> c_args;
@@ -65,7 +101,7 @@ int launchctl_exec(const std::vector<std::string>& args, bool suppress_output) {
     c_args.push_back(nullptr);
     posix_spawn_file_actions_t actions{};
     posix_spawn_file_actions_init(&actions);
-    if (suppress_output) {
+    if (suppressOutput) {
         posix_spawn_file_actions_addopen(&actions, STDOUT_FILENO, "/dev/null", O_WRONLY | O_APPEND, 0);
         posix_spawn_file_actions_addopen(&actions, STDERR_FILENO, "/dev/null", O_WRONLY | O_APPEND, 0);
     }
@@ -84,105 +120,113 @@ int launchctl_exec(const std::vector<std::string>& args, bool suppress_output) {
     return WEXITSTATUS(status);
 }
 
-std::string get_domain_target() {
+void ensureLaunchctl(const std::vector<std::string>& args, std::string_view action, bool suppressOutput = false) {
+    const int status = launchctl(args, suppressOutput);
+    if (status != 0) {
+        fatal("launchctl {} failed with exit code {}", action, status);
+    }
+}
+
+std::string getDomainTarget() {
     static const std::string target = std::format("gui/{}", getuid());
     return target;
 }
 
-std::string get_service_target() {
+std::string getServiceTarget() {
     static const std::string target = std::format("gui/{}/{}", getuid(), PLIST_NAME);
     return target;
 }
 
-bool is_service_bootstrapped() {
-    auto result = launchctl_exec({"blame", get_service_target()}, true);
+bool isServiceBootstrapped() {
+    auto result = launchctl({"blame", getServiceTarget()}, true);
     return result == 0;
 }
+}  // namespace
 
-void service_install() {
-    auto plist_path = get_plist_path();
-    if (std::filesystem::exists(plist_path)) {
-        fatal("service file '{}' is already installed", plist_path);
+void service::install() {
+    auto plistPath = getPlistPath();
+    if (std::filesystem::exists(plistPath)) {
+        fatal("service file '{}' is already installed", plistPath.string());
     }
-    auto plist_contents = get_plist_contents();
-    std::filesystem::create_directories(std::filesystem::path{plist_path}.parent_path());
-    std::ofstream file(plist_path);
+    auto plistContents = getPlistContents();
+    std::filesystem::create_directories(plistPath.parent_path());
+    std::ofstream file(plistPath);
     if (!file) {
-        fatal("failed to open '{}' for writing", plist_path);
+        fatal("failed to open '{}' for writing", plistPath.string());
     }
-    file << plist_contents;
+    file << plistContents;
     if (!file) {
-        fatal("failed to write to '{}'", plist_path);
+        fatal("failed to write to '{}'", plistPath.string());
     }
     info("service installed");
 }
 
-void service_uninstall() {
-    auto plist_path = get_plist_path();
-    if (!std::filesystem::exists(plist_path)) {
-        fatal("service file '{}' is not installed", plist_path);
+void service::uninstall() {
+    auto plistPath = getPlistPath();
+    if (!std::filesystem::exists(plistPath)) {
+        fatal("service file '{}' is not installed", plistPath.string());
     }
     std::error_code ec;
-    std::filesystem::remove(plist_path, ec);
+    std::filesystem::remove(plistPath, ec);
     if (ec) {
-        fatal("failed to remove service file '{}': {}", plist_path, ec.message());
+        fatal("failed to remove service file '{}': {}", plistPath.string(), ec.message());
     }
     info("service uninstalled");
 }
 
-void service_start() {
-    auto plist_path = get_plist_path();
-    bool installed_during_start = false;
-    if (!std::filesystem::exists(plist_path)) {
-        warn("service file '{}' does not exist, installing", plist_path);
-        service_install();
-        installed_during_start = true;
+void service::start() {
+    auto plistPath = getPlistPath();
+    bool installedDuringStart = false;
+    if (!std::filesystem::exists(plistPath)) {
+        warn("service file '{}' does not exist, installing", plistPath.string());
+        install();
+        installedDuringStart = true;
     }
-    auto service_target = get_service_target();
-    auto domain_target = get_domain_target();
-    const bool wasBootstrapped = is_service_bootstrapped();
+    auto serviceTarget = getServiceTarget();
+    auto domainTarget = getDomainTarget();
+    const bool wasBootstrapped = isServiceBootstrapped();
     if (wasBootstrapped) {
         info("service already started");
         return;
     }
 
-    require_launchctl_success({"enable", service_target}, "enable", true);
-    require_launchctl_success({"bootstrap", domain_target, plist_path}, "bootstrap", true);
+    ensureLaunchctl({"enable", serviceTarget}, "enable", true);
+    ensureLaunchctl({"bootstrap", domainTarget, plistPath.string()}, "bootstrap", true);
 
-    if (!is_service_bootstrapped()) {
+    if (!isServiceBootstrapped()) {
         fatal("service did not appear in launchctl after start");
     }
 
-    if (installed_during_start) {
+    if (installedDuringStart) {
         info("service installed and started");
     } else {
         info("service started");
     }
 }
 
-void service_restart() {
-    auto plist_path = get_plist_path();
-    if (!std::filesystem::exists(plist_path)) {
-        fatal("service file '{}' is not installed", plist_path);
+void service::restart() {
+    auto plistPath = getPlistPath();
+    if (!std::filesystem::exists(plistPath)) {
+        fatal("service file '{}' is not installed", plistPath.string());
     }
-    require_launchctl_success({"kickstart", "-k", get_service_target()}, "restart");
+    ensureLaunchctl({"kickstart", "-k", getServiceTarget()}, "restart");
     info("service restarted");
 }
 
-void service_stop() {
-    auto plist_path = get_plist_path();
-    if (!std::filesystem::exists(plist_path)) {
-        fatal("service file '{}' is not installed", plist_path);
+void service::stop() {
+    auto plistPath = getPlistPath();
+    if (!std::filesystem::exists(plistPath)) {
+        fatal("service file '{}' is not installed", plistPath.string());
     }
-    auto service_target = get_service_target();
-    auto domain_target = get_domain_target();
-    if (!is_service_bootstrapped()) {
+    auto serviceTarget = getServiceTarget();
+    auto domainTarget = getDomainTarget();
+    if (!isServiceBootstrapped()) {
         warn("service is not loaded");
         return;
     }
 
-    require_launchctl_success({"bootout", domain_target, plist_path}, "bootout", true);
-    require_launchctl_success({"disable", service_target}, "disable", true);
+    ensureLaunchctl({"bootout", domainTarget, plistPath.string()}, "bootout", true);
+    ensureLaunchctl({"disable", serviceTarget}, "disable", true);
 
     info("service stopped");
 }

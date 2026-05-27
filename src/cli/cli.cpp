@@ -2,7 +2,7 @@
 
 #include "../common/log.hpp"
 
-Args parse_args(const std::vector<std::string>& argv, const ArgsConfig& config) {
+cli::Args cli::parseArgs(const std::vector<std::string>& argv, const cli::Config& config) {
     std::unordered_map<std::string, std::string> res;
     for (size_t i = 0; i < argv.size(); ++i) {
         std::string a = argv.at(i);
@@ -43,5 +43,5 @@ Args parse_args(const std::vector<std::string>& argv, const ArgsConfig& config) 
             fatal("unexpected positional argument: {}", a);
         }
     }
-    return Args{res};
+    return cli::Args{res};
 }

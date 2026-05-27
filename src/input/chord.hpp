@@ -1,8 +1,5 @@
 #pragma once
 
-#include <CoreGraphics/CGEventTypes.h>
-#include <IOKit/hidsystem/ev_keymap.h>
-
 #include <compare>
 #include <format>
 

@@ -1,8 +1,5 @@
 #include "application.hpp"
 
-#include <fcntl.h>
-#include <unistd.h>
-
 #include <array>
 #include <csignal>
 
@@ -10,7 +7,7 @@
 
 Application* Application::instance_ = nullptr;
 
-Application::Application(std::string configFile) : configFile_(std::move(configFile)) {}
+Application::Application(std::filesystem::path configFile) : configFile_(std::move(configFile)) {}
 
 Application::~Application() {
     for (int fd : reloadSignalPipe_) {

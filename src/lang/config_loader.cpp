@@ -21,18 +21,18 @@ ConfigLoadResult ConfigLoader::loadFromContents(std::string_view contents) {
     return result;
 }
 
-ConfigLoadResult ConfigLoader::loadFromFile(const std::string& path) {
+ConfigLoadResult ConfigLoader::loadFromFile(const std::filesystem::path& path) {
     std::ifstream file(path);
     if (!file) {
         ConfigLoadResult result{};
-        result.fileError = std::format("failed to open config file '{}'", path);
+        result.fileError = std::format("failed to open config file '{}'", path.string());
         return result;
     }
 
     const std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
     auto result = loadFromContents(contents);
     if (!file.good() && !file.eof()) {
-        result.fileError = std::format("failed to read config file '{}'", path);
+        result.fileError = std::format("failed to read config file '{}'", path.string());
     }
     return result;
 }

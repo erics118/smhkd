@@ -1,45 +1,61 @@
 #include "config_path.hpp"
 
+#include <pwd.h>
+#include <unistd.h>
+
 #include <cstdlib>
 #include <filesystem>
-#include <format>
 
 #include "log.hpp"
 
 namespace {
 
-[[nodiscard]] bool file_exists(const std::string& filename) {
+[[nodiscard]] bool fileExists(const std::filesystem::path& filename) {
     return std::filesystem::exists(filename) && std::filesystem::is_regular_file(filename);
+}
+
+std::optional<std::filesystem::path> getHome() {
+    if (const char* home = std::getenv("HOME")) {
+        return home;
+    }
+
+    if (passwd* pw = getpwuid(getuid())) {
+        if (pw->pw_dir) {
+            return pw->pw_dir;
+        }
+    }
+
+    return std::nullopt;
 }
 
 }  // namespace
 
-void validate_config_file(const std::string& config_file) {
-    if (config_file.empty()) {
+void ensureConfigFile(const std::filesystem::path& configFile) {
+    if (configFile.empty()) {
         fatal("config file path is empty");
     }
-    if (!file_exists(config_file)) {
-        fatal("config file not found: {}", config_file);
+    if (!fileExists(configFile)) {
+        fatal("config file not found: {}", configFile.string());
     }
 }
 
-std::optional<std::string> get_config_file(const std::string& name) {
-    char* xdgHome = getenv("XDG_CONFIG_HOME");
-    std::string path;
+std::optional<std::filesystem::path> getConfigFile(const std::string& name) {
+    std::filesystem::path path;
 
+    char* xdgHome = getenv("XDG_CONFIG_HOME");
     if (xdgHome && *xdgHome) {
-        path = std::format("{}/{}/{}rc", xdgHome, name, name);
-        if (file_exists(path)) return path;
+        path = std::filesystem::path{xdgHome} / name / (name + "rc");
+        if (fileExists(path)) return path;
     }
 
-    char* home = getenv("HOME");
-    if (!home || !*home) return {};
+    auto home = getHome();
+    if (!home) return {};
 
-    path = std::format("{}/.config/{}/{}rc", home, name, name);
-    if (file_exists(path)) return path;
+    path = *home / ".config" / name / (name + "rc");
+    if (fileExists(path)) return path;
 
-    path = std::format("{}/.{}/{}rc", home, name, name);
-    if (file_exists(path)) return path;
+    path = *home / ("." + name) / (name + "rc");
+    if (fileExists(path)) return path;
 
     return {};
 }

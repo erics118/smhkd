@@ -17,7 +17,7 @@
 class HotkeyEngine {
    public:
     void applyConfig(std::map<Hotkey, std::string> hotkeys, std::vector<RemapBinding> remaps, ConfigProperties config);
-    [[nodiscard]] bool handleEvent(const Chord& current, CGEventType type, bool isRepeat, std::string_view frontProcessName);
+    [[nodiscard]] bool handleEvent(const Chord& current, CGEventType type, bool isRepeat, std::string_view frontProcess);
     void reset();
     static void synthesizeKeyPress(const Chord& target);
 
@@ -27,14 +27,14 @@ class HotkeyEngine {
     std::map<Hotkey, std::string> hotkeys_;
     std::vector<RemapBinding> remaps_;
     ConfigProperties config_;
-    std::optional<Chord> lastTriggeredChord_;
-    std::vector<Chord> currentChords_;
-    std::chrono::time_point<std::chrono::system_clock> lastKeyPressTime_;
+    std::optional<Chord> lastChord_;
+    std::vector<Chord> sequence_;
+    std::chrono::time_point<std::chrono::system_clock> lastPressTime_;
 
     void clearSequence();
-    [[nodiscard]] bool checkAndExecuteSequence(const Chord& current);
-    [[nodiscard]] bool checkAndApplyRemap(const Chord& current, CGEventType type);
-    [[nodiscard]] bool isBlacklistedProcess(std::string_view frontProcessName) const;
+    [[nodiscard]] bool handleSequence(const Chord& chord);
+    [[nodiscard]] bool applyRemap(const Chord& chord, CGEventType type);
+    [[nodiscard]] bool isBlacklisted(std::string_view frontApp) const;
     [[nodiscard]] static std::string toLower(std::string_view s);
-    static void postRemappedKeyEvent(const Chord& target, bool keyDown);
+    static void postKeyEvent(const Chord& target, bool keyDown);
 };

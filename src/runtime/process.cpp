@@ -1,10 +1,15 @@
 #include "process.hpp"
 
+#include <Carbon/Carbon.h>
+#include <fcntl.h>
+#include <sys/file.h>
+#include <unistd.h>
+
 #include <format>
 
 #include "../common/log.hpp"
 
-pid_t read_pid_file() {
+pid_t readPidFile() {
     const auto* user = std::getenv("USER");
     if (!user) {
         fatal("could not create path to pid file because 'env USER' is not set");
@@ -29,7 +34,7 @@ pid_t read_pid_file() {
     return pid;
 }
 
-void create_pid_file() {
+void createPidFile() {
     const auto* user = std::getenv("USER");
     if (!user) {
         fatal("could not create path to pid file because 'env USER' is not set");
@@ -53,7 +58,7 @@ void create_pid_file() {
     debug("created pid file: {}", pid_file);
 }
 
-bool check_privileges() {
+bool checkPrivileges() {
     std::array<const void*, 1> keys = {kAXTrustedCheckOptionPrompt};
     std::array<const void*, 1> values = {kCFBooleanTrue};
     CFDictionaryRef options = CFDictionaryCreate(

@@ -16,22 +16,22 @@ void HotkeyEngine::applyConfig(std::map<Hotkey, std::string> hotkeys, std::vecto
     reset();
 }
 
-bool HotkeyEngine::handleEvent(const Chord& current, CGEventType type, bool isRepeat, std::string_view frontProcessName) {
-    if (!config_.blacklist.empty() && isBlacklistedProcess(frontProcessName)) {
+bool HotkeyEngine::handleEvent(const Chord& current, CGEventType type, bool isRepeat, std::string_view frontProcess) {
+    if (!config_.blacklist.empty() && isBlacklisted(frontProcess)) {
         clearSequence();
-        lastTriggeredChord_ = std::nullopt;
+        lastChord_ = std::nullopt;
         return false;
     }
 
-    if (type == kCGEventKeyUp && lastTriggeredChord_ && lastTriggeredChord_->keysym.keycode == current.keysym.keycode) {
-        lastTriggeredChord_ = std::nullopt;
+    if (type == kCGEventKeyUp && lastChord_ && lastChord_->keysym.keycode == current.keysym.keycode) {
+        lastChord_ = std::nullopt;
     }
 
-    if (type == kCGEventKeyDown && !isRepeat && checkAndExecuteSequence(current)) {
+    if (type == kCGEventKeyDown && !isRepeat && handleSequence(current)) {
         return true;
     }
 
-    if (checkAndApplyRemap(current, type)) {
+    if (applyRemap(current, type)) {
         return true;
     }
 
@@ -39,17 +39,17 @@ bool HotkeyEngine::handleEvent(const Chord& current, CGEventType type, bool isRe
         if (hotkey.chords.size() > 1) continue;
         if (!hotkey.chords[0].isActivatedBy(current)) continue;
 
-        const bool eventTypeMatches =
+        const bool typeMatches =
             (!hotkey.on_release && type == kCGEventKeyDown) || (hotkey.on_release && type == kCGEventKeyUp);
         const bool repeatMatches = (isRepeat && hotkey.repeat) || !isRepeat;
-        if (!eventTypeMatches || !repeatMatches) continue;
+        if (!typeMatches || !repeatMatches) continue;
 
         debug("hotkey matched: {}", hotkey);
         if (!command.empty()) {
             debug("executing command: {}", command);
             executeCommand(command);
             if (type == kCGEventKeyDown) {
-                lastTriggeredChord_ = current;
+                lastChord_ = current;
             }
         }
         return !hotkey.passthrough;
@@ -57,7 +57,7 @@ bool HotkeyEngine::handleEvent(const Chord& current, CGEventType type, bool isRe
     return false;
 }
 
-bool HotkeyEngine::checkAndApplyRemap(const Chord& current, CGEventType type) {
+bool HotkeyEngine::applyRemap(const Chord& chord, CGEventType type) {
     if (type != kCGEventKeyDown && type != kCGEventKeyUp) {
         return false;
     }
@@ -66,54 +66,54 @@ bool HotkeyEngine::checkAndApplyRemap(const Chord& current, CGEventType type) {
         if (remap.source.chords.size() != 1) {
             continue;
         }
-        if (!remap.source.chords[0].isActivatedBy(current)) {
+        if (!remap.source.chords[0].isActivatedBy(chord)) {
             continue;
         }
-        postRemappedKeyEvent(remap.target, type == kCGEventKeyDown);
+        postKeyEvent(remap.target, type == kCGEventKeyDown);
         return true;
     }
     return false;
 }
 
 void HotkeyEngine::synthesizeKeyPress(const Chord& target) {
-    postRemappedKeyEvent(target, true);
+    postKeyEvent(target, true);
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    postRemappedKeyEvent(target, false);
+    postKeyEvent(target, false);
 }
 
 void HotkeyEngine::reset() {
     clearSequence();
-    lastTriggeredChord_ = std::nullopt;
+    lastChord_ = std::nullopt;
 }
 
 void HotkeyEngine::clearSequence() {
-    currentChords_.clear();
-    lastKeyPressTime_ = std::chrono::time_point<std::chrono::system_clock>::min();
+    sequence_.clear();
+    lastPressTime_ = std::chrono::time_point<std::chrono::system_clock>::min();
 }
 
-bool HotkeyEngine::checkAndExecuteSequence(const Chord& current) {
+bool HotkeyEngine::handleSequence(const Chord& chord) {
     const auto now = std::chrono::system_clock::now();
-    if (lastKeyPressTime_ != std::chrono::time_point<std::chrono::system_clock>::min() && now - lastKeyPressTime_ > config_.maxChordInterval) {
+    if (lastPressTime_ != std::chrono::time_point<std::chrono::system_clock>::min() && now - lastPressTime_ > config_.maxChordInterval) {
         clearSequence();
         return false;
     }
-    lastKeyPressTime_ = now;
-    currentChords_.push_back(current);
+    lastPressTime_ = now;
+    sequence_.push_back(chord);
 
     for (const auto& [hotkey, command] : hotkeys_) {
         if (hotkey.chords.size() == 1) continue;
-        if (currentChords_.size() > hotkey.chords.size()) continue;
+        if (sequence_.size() > hotkey.chords.size()) continue;
 
         bool matches = true;
-        for (size_t i = 0; i < currentChords_.size(); i++) {
-            if (!hotkey.chords[i].isActivatedBy(currentChords_[i])) {
+        for (size_t i = 0; i < sequence_.size(); i++) {
+            if (!hotkey.chords[i].isActivatedBy(sequence_[i])) {
                 matches = false;
                 break;
             }
         }
         if (!matches) continue;
 
-        if (currentChords_.size() == hotkey.chords.size()) {
+        if (sequence_.size() == hotkey.chords.size()) {
             debug("Matched complete chord sequence ending with: {}", hotkey);
             if (!command.empty()) {
                 debug("executing command: {}", command);
@@ -122,7 +122,7 @@ bool HotkeyEngine::checkAndExecuteSequence(const Chord& current) {
             clearSequence();
             return true;
         }
-        debug("Matched partial chord sequence: {}", current);
+        debug("Matched partial chord sequence: {}", chord);
         return true;
     }
 
@@ -130,9 +130,9 @@ bool HotkeyEngine::checkAndExecuteSequence(const Chord& current) {
     return false;
 }
 
-bool HotkeyEngine::isBlacklistedProcess(std::string_view frontProcessName) const {
-    if (frontProcessName.empty()) return false;
-    const auto lowerName = toLower(frontProcessName);
+bool HotkeyEngine::isBlacklisted(std::string_view frontApp) const {
+    if (frontApp.empty()) return false;
+    const auto lowerName = toLower(frontApp);
     for (const auto& blocked : config_.blacklist) {
         if (toLower(blocked) == lowerName) {
             return true;
@@ -149,7 +149,7 @@ std::string HotkeyEngine::toLower(std::string_view s) {
     return lowered;
 }
 
-void HotkeyEngine::postRemappedKeyEvent(const Chord& target, bool keyDown) {
+void HotkeyEngine::postKeyEvent(const Chord& target, bool keyDown) {
     CGEventRef event = CGEventCreateKeyboardEvent(nullptr, static_cast<CGKeyCode>(target.keysym.keycode), keyDown);
     if (!event) {
         warn("failed to create synthetic key event for remap");

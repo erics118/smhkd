@@ -1,7 +1,6 @@
 #pragma once
 
-#include <Carbon/Carbon.h>
-#include <CoreFoundation/CoreFoundation.h>
+#include <CoreGraphics/CGEventTypes.h>
 
 #include "../input/chord.hpp"
 #include "../input/modifier.hpp"
@@ -14,7 +13,8 @@ class KeyObserverHandler {
     // exit chord: ctrl + c
     static constexpr Chord EXIT_CHORD{
         .keysym = {.keycode = 8},
-        .modifiers = {.flags = Hotkey_Flag_Control}};
+        .modifiers = {.flags = Hotkey_Flag_Control},
+    };
 
     bool setupEventTap();
 

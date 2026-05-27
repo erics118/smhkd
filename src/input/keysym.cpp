@@ -6,7 +6,7 @@ uint32_t literalKeyToKeycode(LiteralKey k) {
     return literal_keys[static_cast<size_t>(k)].keycode;
 }
 
-std::optional<LiteralKey> tryParseLiteralKey(const std::string& name) {
+std::optional<LiteralKey> parseLiteralKey(const std::string& name) {
     for (size_t i = 0; i < literal_keys.size(); i++) {
         if (literal_keys[i].name == name) return static_cast<LiteralKey>(i);
     }
