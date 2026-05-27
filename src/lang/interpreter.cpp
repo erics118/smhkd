@@ -96,7 +96,7 @@ std::optional<Chord> Interpreter::buildChord(const ast::ChordSyntax& syntax) {
     return chord;
 }
 
-bool Interpreter::setHotkeyKeys(Hotkey& hk, const ast::HotkeySyntax& syn, int braceChordIndex, size_t braceItemIndex) {
+bool Interpreter::setHotkeyKeys(Hotkey& hk, const ast::HotkeySyntax& syn, std::optional<size_t> braceChordIndex, size_t braceItemIndex) {
     for (size_t i = 0; i < syn.chords.size(); i++) {
         const auto& key = syn.chords[i].key;
         if (!key.has_value() || key->items.empty()) {
@@ -231,7 +231,7 @@ void Interpreter::applyRemap(const ast::RemapStmt& node, std::vector<RemapBindin
         addError("remaps do not support brace expansion in the source key");
         return;
     }
-    if (!setHotkeyKeys(*source, node.source, -1, 0)) {
+    if (!setHotkeyKeys(*source, node.source, std::nullopt, 0)) {
         return;
     }
     auto target = buildChord(node.target);
@@ -252,16 +252,16 @@ void Interpreter::applyHotkey(const ast::HotkeyStmt& h, std::map<Hotkey, std::st
         return;
     }
 
-    int braceChordIndex = -1;
+    std::optional<size_t> braceChordIndex;
     for (size_t i = 0; i < syn.chords.size(); i++) {
         if (syn.chords[i].key && syn.chords[i].key->isBraceExpansion) {
-            braceChordIndex = static_cast<int>(i);
+            braceChordIndex = i;
             break;
         }
     }
 
     std::vector<std::string> commandExpansions = parseCommandBraceExpansion(h.command);
-    size_t expansionCount = braceChordIndex >= 0 ? syn.chords[braceChordIndex].key->items.size() : 1;
+    size_t expansionCount = braceChordIndex ? syn.chords[*braceChordIndex].key->items.size() : 1;
 
     if (!commandExpansions.empty() && commandExpansions.size() != expansionCount) {
         addError(std::format(

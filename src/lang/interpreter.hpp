@@ -67,7 +67,7 @@ class Interpreter {
     void setChordKeyFromAtom(Chord& chord, const ast::KeyAtom& atom);
     std::optional<Hotkey> buildBaseHotkey(const ast::HotkeySyntax& syn);
     std::optional<Chord> buildChord(const ast::ChordSyntax& syntax);
-    bool setHotkeyKeys(Hotkey& hk, const ast::HotkeySyntax& syn, int braceChordIndex, size_t braceItemIndex);
+    bool setHotkeyKeys(Hotkey& hk, const ast::HotkeySyntax& syn, std::optional<size_t> braceChordIndex, size_t braceItemIndex);
 
     // command parsing
     static std::string trim(std::string_view s);
