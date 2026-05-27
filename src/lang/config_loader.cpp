@@ -3,6 +3,8 @@
 #include <fstream>
 #include <iterator>
 
+#include "interpreter.hpp"
+
 ConfigLoadResult ConfigLoader::loadFromContents(std::string_view contents) {
     ConfigLoadResult result{};
     const std::string source(contents);
@@ -11,8 +13,7 @@ ConfigLoadResult ConfigLoader::loadFromContents(std::string_view contents) {
     result.program = parser.parseProgram();
     result.parseErrors = parser.errors();
 
-    Interpreter interpreter;
-    auto interpreterResult = interpreter.interpret(result.program);
+    auto interpreterResult = interpretProgram(result.program);
     result.hotkeys = std::move(interpreterResult.hotkeys);
     result.remaps = std::move(interpreterResult.remaps);
     result.config = interpreterResult.config;

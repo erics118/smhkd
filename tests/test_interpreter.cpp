@@ -18,8 +18,7 @@ InterpreterResult interpret_source(std::string_view src) {
     [[maybe_unused]] static const bool _ = initializeKeycodeMap();
     Parser p{std::string{src}};
     auto program = p.parseProgram();
-    Interpreter interp;
-    return interp.interpret(program);
+    return interpretProgram(program);
 }
 
 // keycodes/commands in a hotkey map, indexed for easier assertion

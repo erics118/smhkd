@@ -38,15 +38,15 @@ Chord parseCliKeypress(std::string_view spec) {
         fatal("invalid key spec");
     }
 
-    Interpreter interpreter;
-    auto chord = interpreter.interpretChordSyntax(*chordSyntax);
-    for (const auto& interpreter_error : interpreter.errors()) {
+    auto result = interpretChord(*chordSyntax);
+
+    for (const auto& interpreter_error : result.errors) {
         error("invalid key spec: {}", interpreter_error.message);
     }
-    if (!chord) {
+    if (!result.chord) {
         fatal("invalid key spec");
     }
-    return *chord;
+    return *result.chord;
 }
 
 std::filesystem::path parseArguments(std::span<char* const> argv) {

@@ -4,7 +4,6 @@
 #include <map>
 #include <optional>
 #include <string>
-#include <unordered_map>
 #include <vector>
 
 #include "../input/chord.hpp"
@@ -45,38 +44,11 @@ struct InterpreterResult {
     std::vector<InterpreterError> errors;
 };
 
-class Interpreter {
-   public:
-    Interpreter() = default;
-    [[nodiscard]] InterpreterResult interpret(const ast::Program& program);
-    std::optional<Chord> interpretChordSyntax(const ast::ChordSyntax& syntax);
-    [[nodiscard]] const std::vector<InterpreterError>& errors() const { return errors_; }
-
-   private:
-    std::unordered_map<std::string, std::vector<ast::ModifierAtom>> defines;
-    std::unordered_map<std::string, int> cache;
-    std::vector<InterpreterError> errors_;
-
-    void addError(std::string message);
-
-    // modifier resolution
-    std::optional<int> resolveModifierFlags(const std::string& name);
-    std::optional<int> resolveModifierAtoms(const std::vector<ast::ModifierAtom>& atoms);
-
-    // hotkey building
-    void setChordKeyFromAtom(Chord& chord, const ast::KeyAtom& atom);
-    std::optional<Hotkey> buildBaseHotkey(const ast::HotkeySyntax& syn);
-    std::optional<Chord> buildChord(const ast::ChordSyntax& syntax);
-    bool setHotkeyKeys(Hotkey& hk, const ast::HotkeySyntax& syn, std::optional<size_t> braceChordIndex, size_t braceItemIndex);
-
-    // command parsing
-    static std::string trim(std::string_view s);
-    static std::string unescapeDoubleBraces(std::string_view s);
-    std::vector<std::string> parseCommandBraceExpansion(const std::string& command);
-
-    // statement application
-    void applyDefine(const ast::DefineModifierStmt& node);
-    void applyConfig(const ast::ConfigPropertyStmt& node, ConfigProperties& config);
-    void applyRemap(const ast::RemapStmt& node, std::vector<RemapBinding>& remaps);
-    void applyHotkey(const ast::HotkeyStmt& h, std::map<Hotkey, std::string>& hotkeys);
+struct ChordResult {
+    std::optional<Chord> chord;
+    std::vector<InterpreterError> errors;
 };
+
+[[nodiscard]] InterpreterResult interpretProgram(const ast::Program& program);
+
+[[nodiscard]] ChordResult interpretChord(const ast::ChordSyntax& syntax);

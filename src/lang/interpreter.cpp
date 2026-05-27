@@ -1,9 +1,48 @@
 #include "interpreter.hpp"
 
 #include <algorithm>
+#include <unordered_map>
 
 #include "../common/log.hpp"
 #include "../common/string_util.hpp"
+
+namespace {
+
+class Interpreter {
+   public:
+    Interpreter() = default;
+
+    InterpreterResult interpret(const ast::Program& program);
+    ChordResult interpretChord(const ast::ChordSyntax& syntax);
+
+   private:
+    std::unordered_map<std::string, std::vector<ast::ModifierAtom>> defines;
+    std::unordered_map<std::string, int> cache;
+    std::vector<InterpreterError> errors_;
+
+    void addError(std::string message);
+
+    // modifier resolution
+    std::optional<int> resolveModifierFlags(const std::string& name);
+    std::optional<int> resolveModifierAtoms(const std::vector<ast::ModifierAtom>& atoms);
+
+    // hotkey building
+    void setChordKeyFromAtom(Chord& chord, const ast::KeyAtom& atom);
+    std::optional<Hotkey> buildBaseHotkey(const ast::HotkeySyntax& syn);
+    std::optional<Chord> buildChord(const ast::ChordSyntax& syntax);
+    bool setHotkeyKeys(Hotkey& hk, const ast::HotkeySyntax& syn, std::optional<size_t> braceChordIndex, size_t braceItemIndex);
+
+    // command parsing
+    static std::string trim(std::string_view s);
+    static std::string unescapeDoubleBraces(std::string_view s);
+    std::vector<std::string> parseCommandBraceExpansion(const std::string& command);
+
+    // statement application
+    void applyDefine(const ast::DefineModifierStmt& node);
+    void applyConfig(const ast::ConfigPropertyStmt& node, ConfigProperties& config);
+    void applyRemap(const ast::RemapStmt& node, std::vector<RemapBinding>& remaps);
+    void applyHotkey(const ast::HotkeyStmt& h, std::map<Hotkey, std::string>& hotkeys);
+};
 
 void Interpreter::addError(std::string message) {
     errors_.push_back(InterpreterError{.message = std::move(message)});
@@ -317,9 +356,6 @@ void Interpreter::applyHotkey(const ast::HotkeyStmt& h, std::map<Hotkey, std::st
 
 InterpreterResult Interpreter::interpret(const ast::Program& program) {
     InterpreterResult result{};
-    defines.clear();
-    cache.clear();
-    errors_.clear();
 
     // first pass: defines, config, and remaps
     for (const auto& stmt : program.statements) {
@@ -341,13 +377,21 @@ InterpreterResult Interpreter::interpret(const ast::Program& program) {
         if (!std::holds_alternative<ast::HotkeyStmt>(stmt)) continue;
         applyHotkey(std::get<ast::HotkeyStmt>(stmt), result.hotkeys);
     }
-    result.errors = errors_;
+    result.errors = std::move(errors_);
     return result;
 }
 
-std::optional<Chord> Interpreter::interpretChordSyntax(const ast::ChordSyntax& syntax) {
-    defines.clear();
-    cache.clear();
-    errors_.clear();
-    return buildChord(syntax);
+ChordResult Interpreter::interpretChord(const ast::ChordSyntax& syntax) {
+    auto chord = buildChord(syntax);
+    return ChordResult{.chord = chord, .errors = std::move(errors_)};
+}
+
+}  // namespace
+
+InterpreterResult interpretProgram(const ast::Program& program) {
+    return Interpreter{}.interpret(program);
+}
+
+ChordResult interpretChord(const ast::ChordSyntax& syntax) {
+    return Interpreter{}.interpretChord(syntax);
 }
