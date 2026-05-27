@@ -4,6 +4,7 @@
 #include <string>
 
 enum class TokenType {
+    Invalid,
     DefineModifier,
     Modifier,
     Key,
@@ -34,6 +35,7 @@ struct std::formatter<TokenType> : std::formatter<std::string_view> {
     auto format(const TokenType& tt, std::format_context& ctx) const {
         std::string_view name;
         switch (tt) {
+            case TokenType::Invalid: name = "Invalid"; break;
             case TokenType::DefineModifier: name = "DefineModifier"; break;
             case TokenType::Modifier: name = "Modifier"; break;
             case TokenType::Key: name = "Key"; break;

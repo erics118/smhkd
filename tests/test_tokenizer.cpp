@@ -2,6 +2,7 @@
 #include <vector>
 
 #include "doctest.h"
+#include "lang/parser.hpp"
 #include "lang/tokenizer.hpp"
 
 namespace {
@@ -52,12 +53,13 @@ TEST_CASE("f1 is recognized as Literal") {
     CHECK(toks[0].type == TokenType::Literal);
 }
 
-TEST_CASE("unknown characters like '-' are silently skipped") {
-    auto toks = tokenize_all("cmd + 1");
-    REQUIRE(toks.size() == 2);
-    CHECK(toks[0].type == TokenType::Modifier);
-    CHECK(toks[0].text == "cmd");
-    CHECK(toks[1].type == TokenType::Integer);
+TEST_CASE("unknown characters like '-' are not allowed") {
+    Parser p{"cmd - 1"};
+    auto program = p.parseProgram();
+    REQUIRE(!p.errors().empty());
+    CHECK(p.errors()[0].message
+              == "unexpected token Invalid ('-') while parsing chord sequence. Expected one of: Modifier, OpenBrace, Literal, Key, KeyHex, Integer");
+    CHECK(program.statements.empty());
 }
 
 TEST_CASE("hex literals tokenize as KeyHex") {

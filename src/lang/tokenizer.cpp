@@ -20,8 +20,8 @@ Token Tokenizer::next() {
 }
 
 bool Tokenizer::hasMoreTokens(int offset) {
-    if (peeked && nextToken_.type == TokenType::EndOfFile) {
-        return false;
+    if (peeked && offset == 0) {
+        return nextToken_.type != TokenType::EndOfFile;
     }
     return (position + offset < contents.size());
 }
@@ -104,8 +104,9 @@ Token Tokenizer::getNextToken() {
 
         const std::string text = readIdentifier();
         if (text.empty()) {
+            const std::string invalid(1, c);
             advance();
-            continue;
+            return Token{TokenType::Invalid, invalid, startRow, startCol};
         }
 
         if (tryParseLiteralKey(text).has_value()) {

@@ -66,6 +66,34 @@ TEST_CASE("malformed line produces only one error (recovery)") {
     CHECK(p.errors().size() == 1);
 }
 
+TEST_CASE("invalid leading character in config line is reported directly") {
+    Parser p{"- a"};
+    auto program = p.parseProgram();
+    REQUIRE(program.statements.empty());
+    REQUIRE(p.errors().size() == 1);
+    CHECK(p.errors()[0].row == 0);
+    CHECK(p.errors()[0].col == 0);
+    CHECK(p.errors()[0].message == "unexpected token Invalid ('-') while parsing chord sequence. Expected one of: Modifier, OpenBrace, Literal, Key, KeyHex, Integer");
+}
+
+TEST_CASE("whitespace-separated chords on one line require an explicit separator") {
+    Parser p{"a f"};
+    auto program = p.parseProgram();
+    REQUIRE(program.statements.empty());
+    REQUIRE(p.errors().size() == 1);
+    CHECK(p.errors()[0].row == 0);
+    CHECK(p.errors()[0].col == 2);
+    CHECK(p.errors()[0].message == "unexpected token Key ('f') while parsing chord sequence. Expected ';', ':' or '|'");
+}
+
+TEST_CASE("semicolon-separated chord sequence still requires a hotkey delimiter") {
+    Parser p{"a ; 1"};
+    auto program = p.parseProgram();
+    REQUIRE(program.statements.empty());
+    REQUIRE(p.errors().size() == 1);
+    CHECK(p.errors()[0].message == "unexpected end of file after chord sequence. Expected ':' or '|'");
+}
+
 TEST_CASE("define_modifier parses to DefineModifierStmt") {
     Parser p{"define_modifier hyper = cmd + shift"};
     auto program = p.parseProgram();

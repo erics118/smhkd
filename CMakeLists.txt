@@ -57,6 +57,7 @@ target_compile_options(smhkd_lib PUBLIC
 )
 
 option(SMHKD_SANITIZERS "Enable Address/UB/implicit-conversion sanitizers and libc++ hardening" ON)
+
 if(SMHKD_SANITIZERS)
     target_compile_options(smhkd_lib PUBLIC
         -fsanitize=address,undefined,implicit-conversion
