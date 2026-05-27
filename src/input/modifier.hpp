@@ -111,17 +111,22 @@ struct std::formatter<ModifierFlags> : std::formatter<std::string_view> {
     auto format(const ModifierFlags& m, std::format_context& ctx) const {
         if (m.flags == 0) return std::format_to(ctx.out(), "");
 
-        std::vector<std::string> parts;
+        auto out = ctx.out();
+        bool first = true;
         for (const auto& entry : builtin_modifiers) {
-            if (m.has(entry.flag)) parts.push_back(entry.name);
+            if (!m.has(entry.flag)) continue;
+            if (!first) out = std::format_to(out, " + ");
+            out = std::format_to(out, "{}", entry.name);
+            first = false;
         }
-        if (m.has(Hotkey_Flag_NX)) parts.push_back("nx");
+        if (m.has(Hotkey_Flag_NX)) {
+            if (!first) out = std::format_to(out, " + ");
+            out = std::format_to(out, "nx");
+            first = false;
+        }
 
-        if (parts.empty()) return std::format_to(ctx.out(), "");
-
-        std::string result = parts[0];
-        for (size_t i = 1; i < parts.size(); ++i) result += " + " + parts[i];
-        return std::format_to(ctx.out(), "{}", result);
+        if (first) return std::format_to(ctx.out(), "");
+        return out;
     }
 };
 

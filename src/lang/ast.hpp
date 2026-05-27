@@ -118,81 +118,74 @@ struct std::formatter<ast::KeySyntax> : std::formatter<std::string_view> {
         if (!ks.isBraceExpansion) {
             return std::format_to(ctx.out(), "{}", ks.items.front());
         }
-        std::string result = "{";
+        auto out = std::format_to(ctx.out(), "{{");
         for (size_t i = 0; i < ks.items.size(); i++) {
-            if (i > 0) result += ", ";
-            result += std::format("{}", ks.items[i]);
+            if (i > 0) out = std::format_to(out, ", ");
+            out = std::format_to(out, "{}", ks.items[i]);
         }
-        result += "}";
-        return std::format_to(ctx.out(), "{}", result);
+        return std::format_to(out, "}}");
     }
 };
 
 template <>
 struct std::formatter<ast::ChordSyntax> : std::formatter<std::string_view> {
     auto format(const ast::ChordSyntax& cs, std::format_context& ctx) const {
-        std::string result;
-        // Format modifiers with " + " after each (matching original logic)
+        auto out = ctx.out();
         for (const auto& mod : cs.modifiers) {
-            result += std::format("{}", mod);
-            result += " + ";
+            out = std::format_to(out, "{} + ", mod);
         }
-        // Format key (or missing key)
         if (cs.key) {
-            result += std::format("{}", *cs.key);
+            return std::format_to(out, "{}", *cs.key);
         } else {
-            result += "<missing-key>";
+            return std::format_to(out, "<missing-key>");
         }
-        return std::format_to(ctx.out(), "{}", result);
     }
 };
 
 template <>
 struct std::formatter<ast::HotkeySyntax> : std::formatter<std::string_view> {
     auto format(const ast::HotkeySyntax& syn, std::format_context& ctx) const {
-        std::string result;
-        if (syn.passthrough) result += "passthrough, ";
-        if (syn.repeat) result += "repeat, ";
-        if (syn.onRelease) result += "onRelease, ";
-        result += "[";
+        auto out = ctx.out();
+        if (syn.passthrough) out = std::format_to(out, "passthrough, ");
+        if (syn.repeat) out = std::format_to(out, "repeat, ");
+        if (syn.onRelease) out = std::format_to(out, "onRelease, ");
+        out = std::format_to(out, "[");
         for (size_t i = 0; i < syn.chords.size(); i++) {
-            if (i > 0) result += "; ";
-            result += std::format("{}", syn.chords[i]);
+            if (i > 0) out = std::format_to(out, "; ");
+            out = std::format_to(out, "{}", syn.chords[i]);
         }
-        result += "]";
-        return std::format_to(ctx.out(), "{}", result);
+        return std::format_to(out, "]");
     }
 };
 
 template <>
 struct std::formatter<ast::DefineModifierStmt> : std::formatter<std::string_view> {
     auto format(const ast::DefineModifierStmt& stmt, std::format_context& ctx) const {
-        std::string result = "define_modifier: " + stmt.name + " = ";
+        auto out = std::format_to(ctx.out(), "define_modifier: {} = ", stmt.name);
         for (size_t i = 0; i < stmt.parts.size(); i++) {
-            if (i > 0) result += " + ";
-            result += std::format("{}", stmt.parts[i]);
+            if (i > 0) out = std::format_to(out, " + ");
+            out = std::format_to(out, "{}", stmt.parts[i]);
         }
-        return std::format_to(ctx.out(), "{}", result);
+        return out;
     }
 };
 
 template <>
 struct std::formatter<ast::ConfigPropertyStmt> : std::formatter<std::string_view> {
     auto format(const ast::ConfigPropertyStmt& stmt, std::format_context& ctx) const {
-        std::string renderedValue;
+        auto out = std::format_to(ctx.out(), "config: {} = ", stmt.name);
         if (stmt.intValue) {
-            renderedValue = std::format("{}", *stmt.intValue);
+            return std::format_to(out, "{}", *stmt.intValue);
         } else if (!stmt.listValues.empty()) {
-            renderedValue = "[";
+            out = std::format_to(out, "[");
             for (size_t i = 0; i < stmt.listValues.size(); i++) {
-                if (i > 0) renderedValue += ", ";
-                renderedValue += std::format("\"{}\"", stmt.listValues[i]);
+                if (i > 0) out = std::format_to(out, ", ");
+                out = std::format_to(out, "\"{}\"", stmt.listValues[i]);
             }
-            renderedValue += "]";
+            return std::format_to(out, "]");
         } else {
-            renderedValue = "<unset>";
+            return std::format_to(out, "<unset>");
         }
-        return std::format_to(ctx.out(), "config: {} = {}", stmt.name, renderedValue);
     }
 };
 
@@ -206,12 +199,11 @@ struct std::formatter<ast::HotkeyStmt> : std::formatter<std::string_view> {
 template <>
 struct std::formatter<ast::Program> : std::formatter<std::string_view> {
     auto format(const ast::Program& program, std::format_context& ctx) const {
-        std::string result = "Program{\n";
+        auto out = std::format_to(ctx.out(), "Program{{\n");
         for (const auto& s : program.statements) {
-            result += "  ";
-            std::visit([&](const auto& node) { result += std::format("{}\n", node); }, s);
+            out = std::format_to(out, "  ");
+            out = std::visit([&](const auto& node) { return std::format_to(out, "{}\n", node); }, s);
         }
-        result += "}\n";
-        return std::format_to(ctx.out(), "{}", result);
+        return std::format_to(out, "}}\n");
     }
 };

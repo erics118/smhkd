@@ -1,10 +1,15 @@
 #include "locale.hpp"
 
 #include <array>
+#include <unordered_map>
 
-std::unordered_map<std::string, Keycode> keycodeMap;
+#include "../common/cf_string.hpp"
 
-bool initializeKeycodeMap() {
+namespace {
+
+std::unordered_map<std::string, Keycode> buildKeycodeMap() {
+    std::unordered_map<std::string, Keycode> keycodeMap;
+
     static const std::array<uint32_t, 36> layoutDependentKeycodes = {
         kVK_ANSI_A, kVK_ANSI_B, kVK_ANSI_C, kVK_ANSI_D, kVK_ANSI_E,
         kVK_ANSI_F, kVK_ANSI_G, kVK_ANSI_H, kVK_ANSI_I, kVK_ANSI_J,
@@ -22,16 +27,14 @@ bool initializeKeycodeMap() {
     std::unique_ptr<std::remove_pointer_t<TISInputSourceRef>, decltype(&CFRelease)>
         keyboard(TISCopyCurrentASCIICapableKeyboardLayoutInputSource(), CFRelease);
 
-    if (!keyboard) return false;
+    if (!keyboard) return {};
 
     const auto* uchr = static_cast<CFDataRef>(TISGetInputSourceProperty(keyboard.get(),
         kTISPropertyUnicodeKeyLayoutData));
-    if (!uchr) return false;
+    if (!uchr) return {};
 
     const auto* keyboardLayout = reinterpret_cast<const UCKeyboardLayout*>(CFDataGetBytePtr(uchr));
-    if (!keyboardLayout) return false;
-
-    keycodeMap.clear();
+    if (!keyboardLayout) return {};
 
     for (uint32_t keycode : layoutDependentKeycodes) {
         if (UCKeyTranslate(keyboardLayout,
@@ -58,5 +61,32 @@ bool initializeKeycodeMap() {
         }
     }
 
-    return !keycodeMap.empty();
+    return keycodeMap;
+}
+
+const std::unordered_map<std::string, Keycode>& keycodeMap() {
+    static const auto map = buildKeycodeMap();
+    return map;
+}
+
+}  // namespace
+
+bool initializeKeycodeMap() {
+    return !keycodeMap().empty();
+}
+
+std::optional<Keycode> lookupKeycode(std::string_view key) {
+    if (const auto it = keycodeMap().find(std::string(key)); it != keycodeMap().end()) {
+        return it->second;
+    }
+    return std::nullopt;
+}
+
+std::optional<std::string> lookupKeyString(Keycode keycode) {
+    for (const auto& [key, code] : keycodeMap()) {
+        if (code == keycode) {
+            return key;
+        }
+    }
+    return std::nullopt;
 }

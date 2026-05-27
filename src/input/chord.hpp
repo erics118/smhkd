@@ -21,13 +21,10 @@ struct Chord {
 template <>
 struct std::formatter<Chord> : std::formatter<std::string_view> {
     auto format(const Chord& c, std::format_context& ctx) const {
-        std::string modStr = std::format("{}", c.modifiers);
-        std::string keyStr = std::format("{}", c.keysym);
-
-        if (modStr.empty()) {
-            return std::format_to(ctx.out(), "{}", keyStr);
+        if (c.modifiers.flags == 0) {
+            return std::format_to(ctx.out(), "{}", c.keysym);
         }
 
-        return std::format_to(ctx.out(), "{} + {}", modStr, keyStr);
+        return std::format_to(ctx.out(), "{} + {}", c.modifiers, c.keysym);
     }
 };

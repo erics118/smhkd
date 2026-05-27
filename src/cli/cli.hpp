@@ -7,8 +7,6 @@
 #include <unordered_set>
 #include <vector>
 
-#include "../common/log.hpp"
-
 struct ArgsConfig {
     std::unordered_set<std::string> short_args;
     std::unordered_set<std::string> long_args;
@@ -32,11 +30,11 @@ struct Args {
 template <>
 struct std::formatter<Args> : std::formatter<std::string_view> {
     auto format(const Args& args, std::format_context& ctx) const {
-        std::string result;
+        auto out = ctx.out();
         for (const auto& [key, value] : args.args) {
-            result += std::format("{}: {}\n", key, value);
+            out = std::format_to(out, "{}: {}\n", key, value);
         }
-        return std::format_to(ctx.out(), "{}", result);
+        return out;
     }
 };
 

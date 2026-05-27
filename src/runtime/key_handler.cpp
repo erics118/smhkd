@@ -1,9 +1,8 @@
 #include "key_handler.hpp"
 
-#include <fstream>
-
-#include "../common/command.hpp"
-#include "../lang/parser.hpp"
+#include "../common/cf_string.hpp"
+#include "../common/log.hpp"
+#include "../lang/config_loader.hpp"
 #include "../runtime/service.hpp"
 
 bool KeyHandler::init() {
@@ -33,49 +32,6 @@ CGEventRef KeyHandler::eventCallback(CGEventTapProxy /*proxy*/, CGEventType type
     return event;
 }
 
-void KeyHandler::clearSequence() {
-    currentChords.clear();
-    lastKeyPressTime = std::chrono::time_point<std::chrono::system_clock>::min();
-}
-
-bool KeyHandler::checkAndExecuteSequence(const Chord& current) {
-    auto now = std::chrono::system_clock::now();
-    if (lastKeyPressTime != std::chrono::time_point<std::chrono::system_clock>::min() && now - lastKeyPressTime > config.maxChordInterval) {
-        clearSequence();
-        return false;
-    }
-    lastKeyPressTime = now;
-    currentChords.push_back(current);
-
-    for (const auto& [hotkey, command] : hotkeys) {
-        if (hotkey.chords.size() == 1) continue;
-        if (currentChords.size() > hotkey.chords.size()) continue;
-
-        bool matches = true;
-        for (size_t i = 0; i < currentChords.size(); i++) {
-            if (!(hotkey.chords[i].isActivatedBy(currentChords[i]))) {
-                matches = false;
-                break;
-            }
-        }
-        if (!matches) continue;
-
-        if (currentChords.size() == hotkey.chords.size()) {
-            debug("Matched complete chord sequence ending with: {}", hotkey);
-            if (!command.empty()) {
-                debug("executing command: {}", command);
-                executeCommand(command);
-            }
-            clearSequence();
-            return true;
-        }
-        debug("Matched partial chord sequence: {}", current);
-        return true;
-    }
-    clearSequence();
-    return false;
-}
-
 bool KeyHandler::handleKeyEvent(CGEventRef event, CGEventType type) {
     auto keyCode = static_cast<CGKeyCode>(CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode));
     CGEventFlags flags = CGEventGetFlags(event);
@@ -96,52 +52,7 @@ bool KeyHandler::handleKeyEvent(CGEventRef event, CGEventType type) {
         std::exit(1);
     }
 
-    if (!config.blacklist.empty() && isBlacklistedProcess()) {
-        clearSequence();
-        lastTriggeredChord = std::nullopt;
-        return false;
-    }
-
-    if (type == kCGEventKeyUp && lastTriggeredChord && lastTriggeredChord->keysym.keycode == keyCode) {
-        lastTriggeredChord = std::nullopt;
-    }
-
-    if (type == kCGEventKeyDown && !isRepeat) {
-        if (checkAndExecuteSequence(current)) return true;
-    }
-
-    for (const auto& [hotkey, command] : hotkeys) {
-        if (hotkey.chords.size() > 1) continue;
-        if (hotkey.chords[0].isActivatedBy(current)) {
-            bool event_type_matches = (!hotkey.on_release && type == kCGEventKeyDown) || (hotkey.on_release && type == kCGEventKeyUp);
-            bool repeat_matches = (isRepeat && hotkey.repeat) || !isRepeat;
-            if (event_type_matches && repeat_matches) {
-                debug("hotkey matched: {}", hotkey);
-                if (!command.empty()) {
-                    debug("executing command: {}", command);
-                    executeCommand(command);
-                    if (type == kCGEventKeyDown) {
-                        lastTriggeredChord = current;
-                    }
-                }
-                if (hotkey.passthrough) return false;
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-bool KeyHandler::isBlacklistedProcess() const {
-    auto name = getFrontProcessName();
-    if (name.empty()) return false;
-    auto lowerName = toLower(std::move(name));
-    for (const auto& blocked : config.blacklist) {
-        if (toLower(blocked) == lowerName) {
-            return true;
-        }
-    }
-    return false;
+    return engine.handleEvent(current, type, isRepeat, getFrontProcessName());
 }
 
 std::string KeyHandler::getFrontProcessName() {
@@ -162,11 +73,6 @@ std::string KeyHandler::getFrontProcessName() {
     return result;
 }
 
-std::string KeyHandler::toLower(std::string s) {
-    std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-    return s;
-}
-
 void KeyHandler::run() const {
     if (!runLoop) return;
     info("running key handler");
@@ -175,13 +81,15 @@ void KeyHandler::run() const {
 
 void KeyHandler::loadConfig(const std::string& config_file) {
     info("config file set to: {}", config_file);
-    std::ifstream file(config_file);
-    std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-
-    Parser parser(contents);
-    ast::Program program = parser.parseProgram();
-    Interpreter interpreter;
-    auto result = interpreter.interpret(program);
-    this->hotkeys = std::move(result.hotkeys);
-    this->config = result.config;
+    auto result = ConfigLoader::loadFromFile(config_file);
+    if (result.fileError) {
+        warn("config error: {}", *result.fileError);
+    }
+    for (const auto& parse_error : result.parseErrors) {
+        warn("parse error at line {}, column {}: {}", parse_error.row, parse_error.col, parse_error.message);
+    }
+    for (const auto& interpreter_error : result.interpreterErrors) {
+        warn("config error: {}", interpreter_error.message);
+    }
+    engine.applyConfig(std::move(result.hotkeys), std::move(result.config));
 }

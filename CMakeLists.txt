@@ -14,6 +14,7 @@ if(CCACHE_PROGRAM)
 endif()
 
 add_executable(${PROJECT_NAME}
+    src/cli/application.cpp
     src/cli/main.cpp
     src/cli/cli.cpp
     src/common/cf_string.cpp
@@ -23,9 +24,11 @@ add_executable(${PROJECT_NAME}
     src/input/keysym.cpp
     src/input/locale.cpp
     src/input/modifier.cpp
+    src/lang/config_loader.cpp
     src/lang/interpreter.cpp
     src/lang/parser.cpp
     src/lang/tokenizer.cpp
+    src/runtime/hotkey_engine.cpp
     src/runtime/key_handler.cpp
     src/runtime/key_observer_handler.cpp
     src/runtime/process.cpp

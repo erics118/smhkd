@@ -5,16 +5,12 @@
 #include <Carbon/Carbon.h>
 #include <CoreFoundation/CoreFoundation.h>
 
-#include <unordered_map>
-
-#include "../common/cf_string.hpp"
+#include <optional>
+#include <string>
+#include <string_view>
 
 using Keycode = uint32_t;
 
-// global keycode map
-extern std::unordered_map<std::string, Keycode> keycodeMap;
-
-// From keysym module/header
-// literal arrays come from keysym
-
 bool initializeKeycodeMap();
+std::optional<Keycode> lookupKeycode(std::string_view key);
+std::optional<std::string> lookupKeyString(Keycode keycode);

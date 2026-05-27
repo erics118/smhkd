@@ -26,8 +26,8 @@ int getImplicitFlags(LiteralKey k) {
 }
 
 uint32_t getKeycode(char key) {
-    if (const auto it = keycodeMap.find(std::string{key}); it != keycodeMap.end()) {
-        return it->second;
+    if (auto keycode = lookupKeycode(std::string_view(&key, 1))) {
+        return *keycode;
     }
 
     return static_cast<uint32_t>(static_cast<unsigned char>(key));

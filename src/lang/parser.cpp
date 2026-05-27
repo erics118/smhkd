@@ -1,7 +1,5 @@
 #include "parser.hpp"
 
-#include "../common/log.hpp"
-
 ast::Program Parser::parseProgram() {
     ast::Program program;
     while (tokenizer.hasMoreTokens()) {
@@ -26,23 +24,30 @@ ast::Program Parser::parseProgram() {
     return program;
 }
 
+void Parser::addError(const Token& token, std::string message) {
+    errors_.push_back(ParseError{
+        .row = token.row,
+        .col = token.col,
+        .message = std::move(message),
+    });
+}
+
 Token Parser::consume(TokenType expected) {
     Token token = tokenizer.next();
     if (token.type != expected) {
-        warn("parse error at line {}, column {}: expected {} but got {} ('{}')",
-            token.row, token.col, expected, token.type, token.text);
+        addError(token, std::format("expected {} but got {} ('{}')", expected, token.type, token.text));
     }
     return token;
 }
 
 std::optional<ast::DefineModifierStmt> Parser::parseDefineModifierStmt() {
-    debug("Parsing define_modifier");
     consume(TokenType::DefineModifier);
     Token nameToken = tokenizer.next();
     if (nameToken.type != TokenType::Modifier && nameToken.type != TokenType::Key) {
-        warn(
-            "parse error at line {}, column {}: expected custom modifier name after 'define_modifier' but got {} ('{}')",
-            nameToken.row, nameToken.col, nameToken.type, nameToken.text);
+        addError(nameToken, std::format(
+                                "expected custom modifier name after 'define_modifier' but got {} ('{}')",
+                                nameToken.type,
+                                nameToken.text));
         return std::nullopt;
     }
     std::string customName = nameToken.text;
@@ -73,31 +78,31 @@ std::optional<ast::DefineModifierStmt> Parser::parseDefineModifierStmt() {
         break;
     }
     if (stmt.parts.empty()) {
-        warn(
-            "parse error at line {}: No expansions found for custom modifier '{}'. ", nameToken.row, customName);
+        addError(nameToken, std::format("no expansions found for custom modifier '{}'", customName));
         return std::nullopt;
     }
     return stmt;
 }
 
 std::optional<ast::ConfigPropertyStmt> Parser::parseConfigPropertyStmt() {
-    debug("Parsing a config property");
     Token cpToken = consume(TokenType::ConfigProperty);
     ast::ConfigPropertyStmt stmt;
     stmt.name = cpToken.text;
 
     if (cpToken.text == "blacklist") {
         if (tokenizer.peek().type != TokenType::Equals) {
-            warn(
-                "parse error at line {}, column {}: expected '=' after blacklist config but got {} ('{}')",
-                tokenizer.peek().row, tokenizer.peek().col, tokenizer.peek().type, tokenizer.peek().text);
+            addError(tokenizer.peek(), std::format(
+                                           "expected '=' after blacklist config but got {} ('{}')",
+                                           tokenizer.peek().type,
+                                           tokenizer.peek().text));
             return std::nullopt;
         }
         consume(TokenType::Equals);
         if (tokenizer.peek().type != TokenType::OpenBracket) {
-            warn(
-                "parse error at line {}, column {}: expected '[' after blacklist config but got {} ('{}')",
-                tokenizer.peek().row, tokenizer.peek().col, tokenizer.peek().type, tokenizer.peek().text);
+            addError(tokenizer.peek(), std::format(
+                                           "expected '[' after blacklist config but got {} ('{}')",
+                                           tokenizer.peek().type,
+                                           tokenizer.peek().text));
             return std::nullopt;
         }
         consume(TokenType::OpenBracket);
@@ -108,7 +113,7 @@ std::optional<ast::ConfigPropertyStmt> Parser::parseConfigPropertyStmt() {
                 break;
             }
             if (tk.type == TokenType::EndOfFile) {
-                warn("parse error at line {}, column {}: unexpected end of file while parsing blacklist", tk.row, tk.col);
+                addError(tk, "unexpected end of file while parsing blacklist");
                 break;
             }
             if (tk.type == TokenType::Comma) {
@@ -122,13 +127,14 @@ std::optional<ast::ConfigPropertyStmt> Parser::parseConfigPropertyStmt() {
                 }
                 continue;
             }
-            warn(
-                "parse error at line {}, column {}: unexpected token {} ('{}') in blacklist. Expected quoted string or identifier",
-                tk.row, tk.col, tk.type, tk.text);
+            addError(tk, std::format(
+                             "unexpected token {} ('{}') in blacklist. Expected quoted string or identifier",
+                             tk.type,
+                             tk.text));
             tokenizer.next();
         }
         if (stmt.listValues.empty()) {
-            warn("blacklist config provided but no process names were parsed");
+            addError(cpToken, "blacklist config provided but no process names were parsed");
             return std::nullopt;
         }
         return stmt;
@@ -140,17 +146,20 @@ std::optional<ast::ConfigPropertyStmt> Parser::parseConfigPropertyStmt() {
     }
     Token intToken = tokenizer.next();
     if (intToken.type != TokenType::Modifier && intToken.type != TokenType::Key) {
-        warn(
-            "parse error at line {}, column {}: expected integer after '=' for config property '{}' but got {} ('{}')",
-            intToken.row, intToken.col, cpToken.text, intToken.type, intToken.text);
+        addError(intToken, std::format(
+                               "expected integer after '=' for config property '{}' but got {} ('{}')",
+                               cpToken.text,
+                               intToken.type,
+                               intToken.text));
         return std::nullopt;
     }
     try {
         stmt.intValue = std::stoi(intToken.text);
     } catch (...) {
-        warn(
-            "parse error at line {}, column {}: value '{}' for config property '{}' is not a valid integer",
-            intToken.row, intToken.col, intToken.text, cpToken.text);
+        addError(intToken, std::format(
+                               "value '{}' for config property '{}' is not a valid integer",
+                               intToken.text,
+                               cpToken.text));
         return std::nullopt;
     }
     return stmt;
@@ -167,16 +176,12 @@ std::optional<ast::KeySyntax> Parser::parseKeyBraceExpansionSyntax() {
     while (true) {
         const Token& tk = tokenizer.peek();
         if (tk.type == TokenType::EndOfFile) {
-            warn(
-                "parse error at line {}, column {}: unexpected end of file while parsing brace expansion",
-                tk.row, tk.col);
+            addError(tk, "unexpected end of file while parsing brace expansion");
             return std::nullopt;
         }
         if (tk.type == TokenType::CloseBrace) {
             if (ks.items.empty()) {
-                warn(
-                    "parse error at line {}, column {}: brace expansion must contain at least one key",
-                    tk.row, tk.col);
+                addError(tk, "brace expansion must contain at least one key");
                 return std::nullopt;
             }
             consume(TokenType::CloseBrace);
@@ -185,9 +190,10 @@ std::optional<ast::KeySyntax> Parser::parseKeyBraceExpansionSyntax() {
 
         auto keySyntax = parseSingleKeySyntax(tk);
         if (!keySyntax) {
-            warn(
-                "parse error at line {}, column {}: unexpected token {} ('{}') in brace expansion",
-                tk.row, tk.col, tk.type, tk.text);
+            addError(tk, std::format(
+                             "unexpected token {} ('{}') in brace expansion",
+                             tk.type,
+                             tk.text));
             tokenizer.next();
             return std::nullopt;
         }
@@ -202,9 +208,10 @@ std::optional<ast::KeySyntax> Parser::parseKeyBraceExpansionSyntax() {
         if (separator.type == TokenType::CloseBrace) {
             continue;
         }
-        warn(
-            "parse error at line {}, column {}: unexpected token {} ('{}') in brace expansion. Expected ',' or '}}'",
-            separator.row, separator.col, separator.type, separator.text);
+        addError(separator, std::format(
+                                "unexpected token {} ('{}') in brace expansion. Expected ',' or '}}'",
+                                separator.type,
+                                separator.text));
         tokenizer.next();
         return std::nullopt;
     }
@@ -238,10 +245,7 @@ std::optional<ast::KeySyntax> Parser::parseSingleKeySyntax(const Token& tk) cons
 bool Parser::parseHotkeyToken(ast::HotkeySyntax& syntax, bool& foundColon) {
     const Token& tk = tokenizer.peek();
     if (tk.type == TokenType::EndOfFile) {
-        warn(
-            "parse error at line {}, column {}: unexpected end of file while "
-            "parsing hotkey. Expected ':' followed by a command",
-            tk.row, tk.col);
+        addError(tk, "unexpected end of file while parsing hotkey. Expected ':' followed by a command");
         return false;
     }
     if (tk.type == TokenType::Colon) {
@@ -296,9 +300,10 @@ bool Parser::parseHotkeyToken(ast::HotkeySyntax& syntax, bool& foundColon) {
         return true;
     }
 
-    warn(
-        "parse error at line {}, column {}: unexpected token {} ('{}') while parsing hotkey",
-        tk.row, tk.col, tk.type, tk.text);
+    addError(tk, std::format(
+                     "unexpected token {} ('{}') while parsing hotkey",
+                     tk.type,
+                     tk.text));
     tokenizer.next();
     return true;
 }
@@ -315,9 +320,10 @@ std::optional<ast::HotkeyStmt> Parser::parseHotkeyStmt() {
     }
     const Token nextTk = consume(TokenType::Command);
     if (nextTk.type != TokenType::Command || nextTk.text.empty()) {
-        warn(
-            "parse error at line {}, column {}: expected command after ':' but got {} ('{}')",
-            nextTk.row, nextTk.col, nextTk.type, nextTk.text);
+        addError(nextTk, std::format(
+                             "expected command after ':' but got {} ('{}')",
+                             nextTk.type,
+                             nextTk.text));
         return std::nullopt;
     }
     stmt.syntax = std::move(syntax);

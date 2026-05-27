@@ -2,25 +2,37 @@
 
 #include <algorithm>
 
-int Interpreter::resolveModifierFlags(const std::string& name) {
+#include "../common/log.hpp"
+
+void Interpreter::addError(std::string message) {
+    errors_.push_back(InterpreterError{.message = std::move(message)});
+}
+
+std::optional<int> Interpreter::resolveModifierFlags(const std::string& name) {
     if (auto it = cache.find(name); it != cache.end()) return it->second;
-    if (auto bi = parseBuiltinModifier(name)) return cache[name] = builtinModifierToFlags(*bi);
+    if (auto bi = parseBuiltinModifier(name)) {
+        const int flags = builtinModifierToFlags(*bi);
+        cache[name] = flags;
+        return flags;
+    }
     if (auto it = defines.find(name); it != defines.end()) {
         int flags = 0;
         for (const auto& part : it->second) {
-            int partFlags = std::holds_alternative<BuiltinModifier>(part.value)
-                              ? builtinModifierToFlags(std::get<BuiltinModifier>(part.value))
-                              : resolveModifierFlags(std::get<std::string>(part.value));
-            if (partFlags == 0) {
-                warn("invalid modifier reference in custom modifier definition '{}'", name);
-                return cache[name] = 0;
+            std::optional<int> partFlags =
+                std::holds_alternative<BuiltinModifier>(part.value)
+                    ? std::optional<int>(builtinModifierToFlags(std::get<BuiltinModifier>(part.value)))
+                    : resolveModifierFlags(std::get<std::string>(part.value));
+            if (!partFlags) {
+                addError(std::format("invalid modifier reference in custom modifier definition '{}'", name));
+                return std::nullopt;
             }
-            flags |= partFlags;
+            flags |= *partFlags;
         }
-        return cache[name] = flags;
+        cache[name] = flags;
+        return flags;
     }
-    warn("unknown modifier '{}'", name);
-    return cache[name] = 0;
+    addError(std::format("unknown modifier '{}'", name));
+    return std::nullopt;
 }
 
 void Interpreter::setChordKeyFromAtom(Chord& chord, const ast::KeyAtom& atom) {
@@ -40,7 +52,7 @@ void Interpreter::setChordKeyFromAtom(Chord& chord, const ast::KeyAtom& atom) {
         atom.value);
 }
 
-Hotkey Interpreter::buildBaseHotkey(const ast::HotkeySyntax& syn) {
+std::optional<Hotkey> Interpreter::buildBaseHotkey(const ast::HotkeySyntax& syn) {
     Hotkey base{.passthrough = syn.passthrough, .repeat = syn.repeat, .on_release = syn.onRelease};
     base.chords.reserve(syn.chords.size());
     for (const auto& chordSyn : syn.chords) {
@@ -50,10 +62,11 @@ Hotkey Interpreter::buildBaseHotkey(const ast::HotkeySyntax& syn) {
             if (std::holds_alternative<BuiltinModifier>(modName.value)) {
                 flags = builtinModifierToFlags(std::get<BuiltinModifier>(modName.value));
             } else {
-                flags = resolveModifierFlags(std::get<std::string>(modName.value));
-                if (flags == 0) {
-                    return Hotkey{};
+                auto resolvedFlags = resolveModifierFlags(std::get<std::string>(modName.value));
+                if (!resolvedFlags) {
+                    return std::nullopt;
                 }
+                flags = *resolvedFlags;
             }
             c.modifiers.flags |= flags;
         }
@@ -62,13 +75,12 @@ Hotkey Interpreter::buildBaseHotkey(const ast::HotkeySyntax& syn) {
     return base;
 }
 
-void Interpreter::setHotkeyKeys(Hotkey& hk, const ast::HotkeySyntax& syn, int braceChordIndex, size_t braceItemIndex) {
+bool Interpreter::setHotkeyKeys(Hotkey& hk, const ast::HotkeySyntax& syn, int braceChordIndex, size_t braceItemIndex) {
     for (size_t i = 0; i < syn.chords.size(); i++) {
         const auto& key = syn.chords[i].key;
         if (!key.has_value() || key->items.empty()) {
-            warn("chord {} in multi-chord sequence is missing a keysym", i + 1);
-            hk.chords.clear();
-            return;
+            addError(std::format("chord {} in multi-chord sequence is missing a keysym", i + 1));
+            return false;
         }
         const auto& keyAtom = (i == braceChordIndex && braceItemIndex < key->items.size())
                                 ? key->items[braceItemIndex]
@@ -76,6 +88,7 @@ void Interpreter::setHotkeyKeys(Hotkey& hk, const ast::HotkeySyntax& syn, int br
 
         setChordKeyFromAtom(hk.chords[i], keyAtom);
     }
+    return true;
 }
 
 std::string Interpreter::trim(std::string_view s) {
@@ -142,6 +155,7 @@ InterpreterResult Interpreter::interpret(const ast::Program& program) {
     InterpreterResult result{};
     defines.clear();
     cache.clear();
+    errors_.clear();
 
     for (const auto& stmt : program.statements) {
         std::visit([&](const auto& node) {
@@ -153,15 +167,15 @@ InterpreterResult Interpreter::interpret(const ast::Program& program) {
                     if (!node.listValues.empty()) {
                         result.config.blacklist = node.listValues;
                     } else {
-                        warn("blacklist config provided without any process names; ignoring");
+                        addError("blacklist config provided without any process names; ignoring");
                     }
                     return;
                 }
 
                 if (!node.intValue) {
-                    warn(
+                    addError(std::format(
                         "config property '{}' requires an integer value. Skipping this property",
-                        node.name);
+                        node.name));
                     return;
                 }
 
@@ -172,8 +186,9 @@ InterpreterResult Interpreter::interpret(const ast::Program& program) {
                 else if (node.name == "simultaneous_threshold")
                     result.config.simultaneousThreshold = ms;
                 else {
-                    warn("unknown config property: '{}'. Valid properties are: max_chord_interval, hold_modifier_threshold, simultaneous_threshold, blacklist",
-                        node.name);
+                    addError(std::format(
+                        "unknown config property: '{}'. Valid properties are: max_chord_interval, hold_modifier_threshold, simultaneous_threshold, blacklist",
+                        node.name));
                 }
             }
         },
@@ -184,9 +199,8 @@ InterpreterResult Interpreter::interpret(const ast::Program& program) {
         if (!std::holds_alternative<ast::HotkeyStmt>(stmt)) continue;
         const auto& h = std::get<ast::HotkeyStmt>(stmt);
         const auto& syn = h.syntax;
-        Hotkey base = buildBaseHotkey(syn);
-
-        if (base.chords.empty()) {
+        auto base = buildBaseHotkey(syn);
+        if (!base) {
             continue;
         }
 
@@ -202,15 +216,16 @@ InterpreterResult Interpreter::interpret(const ast::Program& program) {
         size_t expansionCount = braceChordIndex >= 0 ? syn.chords[braceChordIndex].key->items.size() : 1;
 
         if (!commandExpansions.empty() && commandExpansions.size() != expansionCount) {
-            warn("brace expansion mismatch: found {} key items in brace expansion but found {} command expansions. Skipping this hotkey.",
-                expansionCount, commandExpansions.size());
+            addError(std::format(
+                "brace expansion mismatch: found {} key items in brace expansion but found {} command expansions. Skipping this hotkey.",
+                expansionCount,
+                commandExpansions.size()));
             continue;
         }
 
         for (size_t i = 0; i < expansionCount; i++) {
-            Hotkey hk = base;
-            setHotkeyKeys(hk, syn, braceChordIndex, i);
-            if (hk.chords.empty()) {
+            Hotkey hk = *base;
+            if (!setHotkeyKeys(hk, syn, braceChordIndex, i)) {
                 continue;
             }
             std::string command = commandExpansions.empty() ? h.command : commandExpansions[i];
@@ -218,5 +233,6 @@ InterpreterResult Interpreter::interpret(const ast::Program& program) {
             result.hotkeys[hk] = command;
         }
     }
+    result.errors = errors_;
     return result;
 }

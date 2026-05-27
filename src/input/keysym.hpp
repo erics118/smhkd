@@ -115,10 +115,8 @@ uint32_t getKeycode(char key);
 template <>
 struct std::formatter<Keysym> : std::formatter<std::string_view> {
     auto format(const Keysym& k, std::format_context& ctx) const {
-        for (const auto& [key, code] : keycodeMap) {
-            if (code == k.keycode) {
-                return std::format_to(ctx.out(), "{}", key);
-            }
+        if (auto key = lookupKeyString(k.keycode)) {
+            return std::format_to(ctx.out(), "{}", *key);
         }
         for (const auto& entry : literal_keys) {
             if (entry.keycode == k.keycode) {

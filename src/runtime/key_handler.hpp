@@ -3,29 +3,16 @@
 #include <Carbon/Carbon.h>
 #include <CoreFoundation/CoreFoundation.h>
 
-#include <cctype>
-#include <chrono>
-#include <map>
-#include <optional>
 #include <string>
-#include <vector>
 
-#include "../input/chord.hpp"
-#include "../input/hotkey.hpp"
-#include "../lang/interpreter.hpp"
+#include "hotkey_engine.hpp"
 
 struct KeyHandler {
     std::string configFileName;
 
     CFRunLoopRef runLoop{};
     CFMachPortRef eventTap{};
-
-    std::map<Hotkey, std::string> hotkeys;
-    ConfigProperties config;
-
-    std::optional<Chord> lastTriggeredChord;
-    std::vector<Chord> currentChords;
-    std::chrono::time_point<std::chrono::system_clock> lastKeyPressTime;
+    HotkeyEngine engine;
 
     explicit KeyHandler(const std::string& configFileName) : configFileName(configFileName) {
         loadConfig(configFileName);
@@ -39,14 +26,10 @@ struct KeyHandler {
     [[nodiscard]] bool handleKeyEvent(CGEventRef event, CGEventType type);
 
     void reload() {
-        clearSequence();
+        engine.reset();
         loadConfig(configFileName);
     }
 
    private:
-    void clearSequence();
-    bool checkAndExecuteSequence(const Chord& current);
-    bool isBlacklistedProcess() const;
     static std::string getFrontProcessName();
-    static std::string toLower(std::string s);
 };

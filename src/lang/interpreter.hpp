@@ -2,11 +2,11 @@
 
 #include <chrono>
 #include <map>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
-#include "../common/log.hpp"
 #include "../input/chord.hpp"
 #include "../input/hotkey.hpp"
 #include "ast.hpp"
@@ -26,9 +26,14 @@ struct ConfigProperties {
     std::vector<std::string> blacklist;
 };
 
+struct InterpreterError {
+    std::string message;
+};
+
 struct InterpreterResult {
     std::map<Hotkey, std::string> hotkeys;
     ConfigProperties config;
+    std::vector<InterpreterError> errors;
 };
 
 class Interpreter {
@@ -39,14 +44,17 @@ class Interpreter {
    private:
     std::unordered_map<std::string, std::vector<ast::ModifierAtom>> defines;
     std::unordered_map<std::string, int> cache;
+    std::vector<InterpreterError> errors_;
+
+    void addError(std::string message);
 
     // modifier resolution
-    int resolveModifierFlags(const std::string& name);
+    std::optional<int> resolveModifierFlags(const std::string& name);
 
     // hotkey building
     void setChordKeyFromAtom(Chord& chord, const ast::KeyAtom& atom);
-    Hotkey buildBaseHotkey(const ast::HotkeySyntax& syn);
-    void setHotkeyKeys(Hotkey& hk, const ast::HotkeySyntax& syn, int braceChordIndex, size_t braceItemIndex);
+    std::optional<Hotkey> buildBaseHotkey(const ast::HotkeySyntax& syn);
+    bool setHotkeyKeys(Hotkey& hk, const ast::HotkeySyntax& syn, int braceChordIndex, size_t braceItemIndex);
 
     // command parsing
     static std::string trim(std::string_view s);
