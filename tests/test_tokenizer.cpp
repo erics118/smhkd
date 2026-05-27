@@ -29,6 +29,15 @@ TEST_CASE("integers tokenize as Integer, not Modifier/Key") {
     CHECK(toks[2].text == "500");
 }
 
+TEST_CASE("unknown config-looking identifiers stay as plain identifiers in the tokenizer") {
+    auto toks = tokenize_all("nonexistent_property = 1");
+    REQUIRE(toks.size() == 3);
+    CHECK(toks[0].type == TokenType::Modifier);
+    CHECK(toks[0].text == "nonexistent_property");
+    CHECK(toks[1].type == TokenType::Equals);
+    CHECK(toks[2].type == TokenType::Integer);
+}
+
 TEST_CASE("single-digit identifier is Integer") {
     auto toks = tokenize_all("1");
     REQUIRE(toks.size() == 1);
@@ -58,7 +67,7 @@ TEST_CASE("unknown characters like '-' are not allowed") {
     auto program = p.parseProgram();
     REQUIRE(!p.errors().empty());
     CHECK(p.errors()[0].message
-              == "unexpected token Invalid ('-') while parsing chord sequence. Expected one of: Modifier, OpenBrace, Literal, Key, KeyHex, Integer");
+          == "unexpected token Invalid ('-') while parsing chord sequence. Expected one of: Modifier, OpenBrace, Literal, Key, KeyHex, Integer");
     CHECK(program.statements.empty());
 }
 

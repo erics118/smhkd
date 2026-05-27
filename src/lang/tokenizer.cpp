@@ -5,24 +5,23 @@
 
 #include "../input/keysym.hpp"
 
-const Token& Tokenizer::peek() {
-    if (!peeked) {
-        nextToken_ = getNextToken();
-        peeked = true;
+const Token& Tokenizer::peek(size_t offset) {
+    while (bufferedTokens.size() <= offset) {
+        bufferedTokens.push_back(getNextToken());
     }
-    return nextToken_;
+    return bufferedTokens[offset];
 }
 
 Token Tokenizer::next() {
-    Token token = peeked ? nextToken_ : getNextToken();
-    peeked = false;
-    return token;
+    if (!bufferedTokens.empty()) {
+        Token token = bufferedTokens.front();
+        bufferedTokens.pop_front();
+        return token;
+    }
+    return getNextToken();
 }
 
-bool Tokenizer::hasMoreTokens(int offset) {
-    if (peeked && offset == 0) {
-        return nextToken_.type != TokenType::EndOfFile;
-    }
+bool Tokenizer::hasRemainingInput(int offset) {
     return (position + offset < contents.size());
 }
 
@@ -132,7 +131,7 @@ std::string Tokenizer::readHex() {
     std::string result;
     advance();
     advance();
-    while (hasMoreTokens()) {
+    while (hasRemainingInput()) {
         char c = peekChar();
         if (!std::isxdigit(static_cast<unsigned char>(c))) {
             break;
@@ -146,9 +145,9 @@ std::string Tokenizer::readHex() {
 std::string Tokenizer::readQuotedString() {
     std::string result;
     advance();
-    while (hasMoreTokens()) {
+    while (hasRemainingInput()) {
         char c = peekChar();
-        if (c == '\\' && hasMoreTokens(1) && peekChar(1) == '"') {
+        if (c == '\\' && hasRemainingInput(1) && peekChar(1) == '"') {
             result.push_back('"');
             advance();
             advance();
@@ -191,7 +190,7 @@ bool Tokenizer::isIdentifierChar(char c) {
 
 std::string Tokenizer::readIdentifier() {
     std::string result;
-    while (hasMoreTokens()) {
+    while (hasRemainingInput()) {
         char c = peekChar();
         if (!isIdentifierChar(c)) {
             break;
@@ -203,7 +202,7 @@ std::string Tokenizer::readIdentifier() {
 }
 
 void Tokenizer::skipWhitespaceAndComments() {
-    while (hasMoreTokens()) {
+    while (hasRemainingInput()) {
         skipWhitespace();
         if (peekChar() == '#') {
             eatComment();
@@ -214,7 +213,7 @@ void Tokenizer::skipWhitespaceAndComments() {
 }
 
 void Tokenizer::skipWhitespace() {
-    while (hasMoreTokens()) {
+    while (hasRemainingInput()) {
         char c = peekChar();
         if (c == '\n') {
             advanceNewline();
@@ -227,7 +226,7 @@ void Tokenizer::skipWhitespace() {
 }
 
 void Tokenizer::eatComment() {
-    while (hasMoreTokens()) {
+    while (hasRemainingInput()) {
         if (peekChar() == '\n') {
             advanceNewline();
             return;
@@ -237,7 +236,7 @@ void Tokenizer::eatComment() {
 }
 
 void Tokenizer::advance() {
-    if (hasMoreTokens()) {
+    if (hasRemainingInput()) {
         position++;
         col++;
     }
@@ -250,6 +249,6 @@ void Tokenizer::advanceNewline() {
 }
 
 char Tokenizer::peekChar(int offset) {
-    if (!hasMoreTokens(offset)) return '\0';
+    if (!hasRemainingInput(offset)) return '\0';
     return contents[position + offset];
 }

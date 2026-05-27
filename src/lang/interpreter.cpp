@@ -260,7 +260,12 @@ void Interpreter::applyHotkey(const ast::HotkeyStmt& h, std::map<Hotkey, std::st
         }
     }
 
+    const size_t errorCountBeforeCommandExpansion = errors_.size();
     std::vector<std::string> commandExpansions = parseCommandBraceExpansion(h.command);
+    // got more errors, so skip hotkey processing
+    if (errors_.size() != errorCountBeforeCommandExpansion) {
+        return;
+    }
     size_t expansionCount = braceChordIndex ? syn.chords[*braceChordIndex].key->items.size() : 1;
 
     if (!commandExpansions.empty() && commandExpansions.size() != expansionCount) {
@@ -276,7 +281,7 @@ void Interpreter::applyHotkey(const ast::HotkeyStmt& h, std::map<Hotkey, std::st
         if (!setHotkeyKeys(hk, syn, braceChordIndex, i)) {
             continue;
         }
-        std::string command = commandExpansions.empty() ? h.command : commandExpansions[i];
+        std::string command = commandExpansions.empty() ? unescapeDoubleBraces(h.command) : commandExpansions[i];
         debug("adding command: {} : {}", hk, command);
         hotkeys[hk] = command;
     }

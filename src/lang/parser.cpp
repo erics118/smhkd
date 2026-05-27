@@ -2,7 +2,7 @@
 
 ast::Program Parser::parseProgram() {
     ast::Program program;
-    while (tokenizer.hasMoreTokens()) {
+    while (true) {
         const Token tk = tokenizer.peek();
         if (tk.type == TokenType::EndOfFile) {
             break;
@@ -14,7 +14,7 @@ ast::Program Parser::parseProgram() {
                 program.statements.emplace_back(std::move(*stmt));
                 parsed = true;
             }
-        } else if (tk.type == TokenType::ConfigProperty) {
+        } else if (tk.type == TokenType::ConfigProperty || startsConfigAssignment()) {
             if (auto stmt = parseConfigPropertyStmt()) {
                 program.statements.emplace_back(std::move(*stmt));
                 parsed = true;
@@ -31,6 +31,16 @@ ast::Program Parser::parseProgram() {
         }
     }
     return program;
+}
+
+bool Parser::startsConfigAssignment() {
+    const Token first = tokenizer.peek();
+    if (first.type != TokenType::Modifier && first.type != TokenType::Key) {
+        return false;
+    }
+
+    const Token second = tokenizer.peek(1);
+    return second.row == first.row && second.type == TokenType::Equals;
 }
 
 void Parser::addError(const Token& token, std::string message) {
@@ -52,7 +62,7 @@ void Parser::addUnexpectedEofError(const Token& token, std::string_view context,
 }
 
 void Parser::skipRemainingTokensOnRow(int row) {
-    while (tokenizer.hasMoreTokens()) {
+    while (true) {
         const Token after = tokenizer.peek();
         if (after.type == TokenType::EndOfFile || after.row != row) {
             break;
@@ -62,7 +72,7 @@ void Parser::skipRemainingTokensOnRow(int row) {
 }
 
 void Parser::dropTrailingTokens(int row, std::string_view context) {
-    while (tokenizer.hasMoreTokens()) {
+    while (true) {
         const Token trailing = tokenizer.peek();
         if (trailing.type == TokenType::EndOfFile || trailing.row != row) {
             break;
@@ -141,7 +151,7 @@ std::optional<ast::ConfigPropertyStmt> Parser::parseBlacklistConfigStmt(const To
     if (!expect(TokenType::OpenBracket, "after blacklist config")) {
         return std::nullopt;
     }
-    while (tokenizer.hasMoreTokens()) {
+    while (true) {
         const Token& tk = tokenizer.peek();
         if (tk.type == TokenType::CloseBracket) {
             tokenizer.next();
@@ -169,6 +179,7 @@ std::optional<ast::ConfigPropertyStmt> Parser::parseBlacklistConfigStmt(const To
         addError(cpToken, "blacklist config provided but no process names were parsed");
         return std::nullopt;
     }
+    dropTrailingTokens(cpToken.row, "after blacklist config");
     return stmt;
 }
 
@@ -194,6 +205,7 @@ std::optional<ast::ConfigPropertyStmt> Parser::parseIntegerConfigStmt(const Toke
                                cpToken.text));
         return std::nullopt;
     }
+    dropTrailingTokens(cpToken.row, std::format("after config property '{}'", cpToken.text));
     return stmt;
 }
 
@@ -299,7 +311,7 @@ bool Parser::startsChord(const Token& tk) {
 
 std::optional<ast::ChordSyntax> Parser::parseChordSyntax(int row, const ChordParseOptions& options) {
     ast::ChordSyntax chord;
-    while (tokenizer.hasMoreTokens()) {
+    while (true) {
         const Token& tk = tokenizer.peek();
         if (tk.type == TokenType::EndOfFile || tk.row != row) {
             break;

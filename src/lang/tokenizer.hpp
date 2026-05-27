@@ -1,5 +1,6 @@
 #pragma once
 
+#include <deque>
 #include <string>
 
 #include "token.hpp"
@@ -10,18 +11,17 @@ class Tokenizer {
     size_t position{};
     int row{};
     int col{};
-    bool peeked{};
-    Token nextToken_;
+    std::deque<Token> bufferedTokens;
     bool nextTokenIsCommand{};
 
    public:
     explicit Tokenizer(std::string_view contents) : contents(contents) {}
 
-    [[nodiscard]] const Token& peek();
+    [[nodiscard]] const Token& peek(size_t offset = 0);
     Token next();
-    [[nodiscard]] bool hasMoreTokens(int offset = 0);
 
    private:
+    [[nodiscard]] bool hasRemainingInput(int offset = 0);
     Token getNextToken();
     [[nodiscard]] std::string readHex();
     [[nodiscard]] std::string readQuotedString();

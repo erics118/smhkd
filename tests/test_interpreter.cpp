@@ -124,7 +124,7 @@ TEST_CASE("escaped braces in command are literal and do not trigger expansion") 
     auto r = interpret_source("cmd + a : echo {{literal}}");
     REQUIRE(r.errors.empty());
     REQUIRE(r.hotkeys.size() == 1);
-    CHECK(r.hotkeys.begin()->second == "echo {{literal}}");
+    CHECK(r.hotkeys.begin()->second == "echo {literal}");
 }
 
 TEST_CASE("config values apply to the correct field") {

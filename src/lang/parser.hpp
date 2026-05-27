@@ -32,6 +32,7 @@ class Parser {
     [[nodiscard]] const std::vector<ParseError>& errors() const { return errors_; }
 
    private:
+    [[nodiscard]] bool startsConfigAssignment();
     std::optional<Token> expect(TokenType expected, std::string_view context);
 
     void addError(const Token& token, std::string message);
