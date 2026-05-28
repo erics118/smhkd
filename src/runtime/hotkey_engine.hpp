@@ -31,8 +31,6 @@ class HotkeyEngine {
     std::vector<Chord> sequence_;
     std::chrono::time_point<std::chrono::system_clock> lastPressTime_;
 
-    static std::string getFrontProcessName();
-
     void clearSequence();
     [[nodiscard]] bool handleSequence(const Chord& chord);
     [[nodiscard]] bool applyRemap(const Chord& chord, CGEventType type);

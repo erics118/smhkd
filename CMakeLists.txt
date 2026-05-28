@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.28)
-project(smhkd VERSION 1.0.0 LANGUAGES CXX)
+project(smhkd VERSION 1.0.0 LANGUAGES CXX OBJCXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -21,6 +21,7 @@ add_library(smhkd_lib OBJECT
     src/common/cf_string.cpp
     src/common/command.cpp
     src/common/config_path.cpp
+    src/common/front_app.mm
     src/input/chord.cpp
     src/input/keysym.cpp
     src/input/locale.cpp

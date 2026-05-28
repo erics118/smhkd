@@ -7,8 +7,8 @@
 #include <chrono>
 #include <thread>
 
-#include "../common/cf_string.hpp"
 #include "../common/command.hpp"
+#include "../common/front_app.hpp"
 #include "../common/log.hpp"
 #include "../common/string_util.hpp"
 #include "../input/modifier.hpp"
@@ -119,24 +119,6 @@ void HotkeyEngine::synthesizeKeyPress(const Chord& target) {
 void HotkeyEngine::reset() {
     clearSequence();
     lastChord_ = std::nullopt;
-}
-
-std::string HotkeyEngine::getFrontProcessName() {
-    ProcessSerialNumber psn{};
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    if (GetFrontProcess(&psn) != noErr) {
-        return "";
-    }
-    CFStringRef cfName{};
-    if (CopyProcessName(&psn, &cfName) != noErr || !cfName) {
-        return "";
-    }
-#pragma clang diagnostic pop
-
-    std::string result = cfStringToString(cfName);
-    CFRelease(cfName);
-    return result;
 }
 
 void HotkeyEngine::clearSequence() {
