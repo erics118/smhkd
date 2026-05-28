@@ -56,25 +56,7 @@ bool KeyHandler::handleKeyEvent(CGEventRef event, CGEventType type) {
         std::exit(1);
     }
 
-    return engine.handleEvent(current, type, isRepeat, getFrontProcessName());
-}
-
-std::string KeyHandler::getFrontProcessName() {
-    ProcessSerialNumber psn{};
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    if (GetFrontProcess(&psn) != noErr) {
-        return "";
-    }
-    CFStringRef cfName{};
-    if (CopyProcessName(&psn, &cfName) != noErr || !cfName) {
-        return "";
-    }
-#pragma clang diagnostic pop
-
-    std::string result = cfStringToString(cfName);
-    CFRelease(cfName);
-    return result;
+    return engine.handleEvent(current, type, isRepeat);
 }
 
 void KeyHandler::run() const {

@@ -14,7 +14,6 @@ class KeyHandler {
     CFMachPortRef eventTap{};
     HotkeyEngine engine;
 
-    static std::string getFrontProcessName();
     bool setupEventTap();
     [[nodiscard]] static CGEventRef eventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void* refcon);
     [[nodiscard]] bool handleKeyEvent(CGEventRef event, CGEventType type);

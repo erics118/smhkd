@@ -5,6 +5,7 @@
 #include <chrono>
 #include <thread>
 
+#include "../common/cf_string.hpp"
 #include "../common/command.hpp"
 #include "../common/log.hpp"
 #include "../common/string_util.hpp"
@@ -78,13 +79,31 @@ bool HotkeyEngine::applyRemap(const Chord& chord, CGEventType type) {
 
 void HotkeyEngine::synthesizeKeyPress(const Chord& target) {
     postKeyEvent(target, true);
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    std::this_thread::sleep_for(std::chrono::milliseconds(3));
     postKeyEvent(target, false);
 }
 
 void HotkeyEngine::reset() {
     clearSequence();
     lastChord_ = std::nullopt;
+}
+
+std::string HotkeyEngine::getFrontProcessName() {
+    ProcessSerialNumber psn{};
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    if (GetFrontProcess(&psn) != noErr) {
+        return "";
+    }
+    CFStringRef cfName{};
+    if (CopyProcessName(&psn, &cfName) != noErr || !cfName) {
+        return "";
+    }
+#pragma clang diagnostic pop
+
+    std::string result = cfStringToString(cfName);
+    CFRelease(cfName);
+    return result;
 }
 
 void HotkeyEngine::clearSequence() {
@@ -131,9 +150,10 @@ bool HotkeyEngine::handleSequence(const Chord& chord) {
     return false;
 }
 
-bool HotkeyEngine::isBlacklisted(std::string_view frontApp) const {
-    if (frontApp.empty()) return false;
-    const auto lowerName = toLower(frontApp);
+bool HotkeyEngine::isBlacklisted(std::string_view processName) const {
+    if (config_.blacklist.empty()) return false;
+    if (processName.empty()) return false;
+    const std::string lowerName = toLower(processName);
     return std::ranges::contains(config_.blacklist, lowerName);
 }
 
