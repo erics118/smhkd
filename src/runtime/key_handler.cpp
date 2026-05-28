@@ -1,9 +1,19 @@
 #include "key_handler.hpp"
 
-#include "../common/cf_string.hpp"
+#include <os/signpost.h>
+
 #include "../common/log.hpp"
 #include "../lang/config_loader.hpp"
 #include "../runtime/service.hpp"
+
+namespace {
+
+os_log_t signpostLog() {
+    static os_log_t log = os_log_create("dev.smhkd", "PointsOfInterest");
+    return log;
+}
+
+}  // namespace
 
 bool KeyHandler::init() {
     runLoop = CFRunLoopGetCurrent();
@@ -28,7 +38,21 @@ bool KeyHandler::setupEventTap() {
 
 CGEventRef KeyHandler::eventCallback(CGEventTapProxy /*proxy*/, CGEventType type, CGEventRef event, void* refcon) {
     auto* keyHandler = static_cast<KeyHandler*>(refcon);
-    if (keyHandler->handleKeyEvent(event, type)) return nullptr;
+
+    // if disabled, skip processing the event and re-enable the event tap
+    if (type == kCGEventTapDisabledByTimeout || type == kCGEventTapDisabledByUserInput) {
+        CGEventTapEnable(keyHandler->eventTap, true);
+        warn("event tap was disabled ({}); re-enabled", static_cast<int>(type));
+        return event;
+    }
+
+    os_log_t log = signpostLog();
+    os_signpost_id_t spid = os_signpost_id_generate(log);
+    os_signpost_interval_begin(log, spid, "eventCallback", "type=%d", static_cast<int>(type));
+    bool consumed = keyHandler->handleKeyEvent(event, type);
+    os_signpost_interval_end(log, spid, "eventCallback", "consumed=%d", consumed ? 1 : 0);
+
+    if (consumed) return nullptr;
     return event;
 }
 
