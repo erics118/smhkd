@@ -27,8 +27,8 @@ class Parser {
    public:
     explicit Parser(std::string contents) : contents_(std::move(contents)), tokenizer(contents_) {}
     ast::Program parseProgram();
-    std::optional<ast::ChordSyntax> parseChord(const ChordParseOptions& options = {});
-    std::optional<std::vector<ast::ChordSyntax>> parseChordSequence(const ChordParseOptions& options = {});
+    std::optional<ast::Chord> parseChord(const ChordParseOptions& options = {});
+    std::optional<std::vector<ast::Chord>> parseChordSequence(const ChordParseOptions& options = {});
     [[nodiscard]] const std::vector<ParseError>& errors() const { return errors_; }
 
    private:
@@ -44,16 +44,16 @@ class Parser {
     void skipRemainingTokensOnRow(int row);
     void dropTrailingTokens(int row, std::string_view context);
 
-    std::optional<ast::DefineModifierStmt> parseDefineModifierStmt();
-    std::optional<ast::ConfigPropertyStmt> parseConfigPropertyStmt();
-    std::optional<ast::ConfigPropertyStmt> parseBlacklistConfigStmt(const Token& cpToken);
-    std::optional<ast::ConfigPropertyStmt> parseIntegerConfigStmt(const Token& cpToken);
-    std::optional<ast::KeySyntax> parseKeyBraceExpansion();
-    [[nodiscard]] std::optional<ast::KeySyntax> parseSingleKeySyntax(const Token& tk);
-    std::optional<ast::ChordSyntax> parseChordSyntax(int row, const ChordParseOptions& options);
-    std::optional<ast::ChordSyntax> parseSequenceElement(const ChordParseOptions& options);
+    std::optional<ast::DefineModifier> parseDefineModifierStmt();
+    std::optional<ast::ConfigProperty> parseConfigPropertyStmt();
+    std::optional<ast::ConfigProperty> parseBlacklistConfigStmt(const Token& cpToken);
+    std::optional<ast::ConfigProperty> parseIntegerConfigStmt(const Token& cpToken);
+    std::optional<ast::Keysym> parseBraceExpansionKeysym();
+    [[nodiscard]] std::optional<ast::SimpleKeysym> consumeSimpleKeysym();
+    std::optional<ast::Chord> parseChord(int row, const ChordParseOptions& options);
+    std::optional<ast::Chord> parseSequenceElement(const ChordParseOptions& options);
     std::optional<bool> consumeSequenceSeparator(int row);
     std::optional<ast::Stmt> parseBindingStmt();
-    std::optional<ast::HotkeyStmt> parseHotkeyStmt(ast::HotkeySyntax syntax);
-    std::optional<ast::RemapStmt> parseRemapStmt(ast::HotkeySyntax syntax);
+    std::optional<ast::Hotkey> parseHotkeyStmt(ast::Chords binding);
+    std::optional<ast::Remap> parseRemapStmt(ast::Chords binding);
 };

@@ -11,16 +11,16 @@
 
 namespace ast {
 
-struct ModifierAtom {
+struct Modifier {
     std::variant<BuiltinModifier, std::string> value;
 };
 
-struct DefineModifierStmt {
+struct DefineModifier {
     std::string name;
-    std::vector<ModifierAtom> parts;
+    std::vector<Modifier> parts;
 };
 
-struct ConfigPropertyStmt {
+struct ConfigProperty {
     std::string name;
     std::optional<int> intValue;
     std::vector<std::string> listValues;
@@ -31,38 +31,49 @@ struct KeyChar {
     bool isHex;
 };
 
-struct KeyAtom {
+struct SimpleKeysym {
     std::variant<LiteralKey, KeyChar> value;
 };
 
-struct KeySyntax {
-    bool isBraceExpansion{false};
-    std::vector<KeyAtom> items;
+struct BraceExpansionKeysym {
+    std::vector<SimpleKeysym> alternatives;
 };
 
-struct ChordSyntax {
-    std::vector<ModifierAtom> modifiers;
-    std::optional<KeySyntax> key;
+using Keysym = std::variant<SimpleKeysym, BraceExpansionKeysym>;
+
+inline bool isBrace(const Keysym& k) {
+    return std::holds_alternative<BraceExpansionKeysym>(k);
+}
+inline const BraceExpansionKeysym* asBrace(const Keysym& k) {
+    return std::get_if<BraceExpansionKeysym>(&k);
+}
+inline const SimpleKeysym* asSimple(const Keysym& k) {
+    return std::get_if<SimpleKeysym>(&k);
+}
+
+struct Chord {
+    std::vector<Modifier> modifiers;
+    std::optional<Keysym> key;
 };
 
-struct HotkeySyntax {
+struct Chords {
     bool passthrough{};
     bool repeat{};
     bool onRelease{};
-    std::vector<ChordSyntax> chords;
+    std::vector<Chord> sequence;
 };
 
-struct HotkeyStmt {
-    HotkeySyntax syntax;
+struct Hotkey {
+    Chords chords;
     std::string command;
 };
 
-struct RemapStmt {
-    HotkeySyntax source;
-    ChordSyntax target;
+struct Remap {
+    Chords source;
+    Chord target;
 };
 
-using Stmt = std::variant<DefineModifierStmt, ConfigPropertyStmt, HotkeyStmt, RemapStmt>;
+using Stmt = std::variant<DefineModifier, ConfigProperty, Hotkey, Remap>;
 
 struct Program {
     std::vector<Stmt> statements;
@@ -71,8 +82,8 @@ struct Program {
 }  // namespace ast
 
 template <>
-struct std::formatter<ast::ModifierAtom> : std::formatter<std::string_view> {
-    auto format(const ast::ModifierAtom& m, std::format_context& ctx) const {
+struct std::formatter<ast::Modifier> : std::formatter<std::string_view> {
+    auto format(const ast::Modifier& m, std::format_context& ctx) const {
         return std::visit([&](const auto& v) { return std::format_to(ctx.out(), "{}", v); }, m.value);
     }
 };
@@ -88,8 +99,8 @@ struct ::std::formatter<ast::KeyChar> : std::formatter<std::string_view> {
 };
 
 template <>
-struct ::std::formatter<ast::KeyAtom> : std::formatter<std::string_view> {
-    auto format(const ast::KeyAtom& atom, std::format_context& ctx) const {
+struct ::std::formatter<ast::SimpleKeysym> : std::formatter<std::string_view> {
+    auto format(const ast::SimpleKeysym& ks, std::format_context& ctx) const {
         return std::visit(
             [&](const auto& v) {
                 using T = std::decay_t<decltype(v)>;
@@ -100,31 +111,35 @@ struct ::std::formatter<ast::KeyAtom> : std::formatter<std::string_view> {
                 }
                 return ctx.out();
             },
-            atom.value);
+            ks.value);
     }
 };
 
 template <>
-struct std::formatter<ast::KeySyntax> : std::formatter<std::string_view> {
-    auto format(const ast::KeySyntax& ks, std::format_context& ctx) const {
-        if (ks.items.empty()) {
-            return std::format_to(ctx.out(), "<none>");
+struct std::formatter<ast::Keysym> : std::formatter<std::string_view> {
+    auto format(const ast::Keysym& ks, std::format_context& ctx) const {
+        if (std::holds_alternative<ast::SimpleKeysym>(ks)) {
+            return std::format_to(ctx.out(), "{}", std::get<ast::SimpleKeysym>(ks));
         }
-        if (!ks.isBraceExpansion) {
-            return std::format_to(ctx.out(), "{}", ks.items.front());
+        if (std::holds_alternative<ast::BraceExpansionKeysym>(ks)) {
+            const auto& be = std::get<ast::BraceExpansionKeysym>(ks);
+            if (be.alternatives.empty()) {
+                return std::format_to(ctx.out(), "<empty-brace-expansion>");
+            }
+            auto out = std::format_to(ctx.out(), "{{");
+            for (size_t i = 0; i < be.alternatives.size(); i++) {
+                if (i > 0) out = std::format_to(out, ", ");
+                out = std::format_to(out, "{}", be.alternatives[i]);
+            }
+            return std::format_to(out, "}}");
         }
-        auto out = std::format_to(ctx.out(), "{{");
-        for (size_t i = 0; i < ks.items.size(); i++) {
-            if (i > 0) out = std::format_to(out, ", ");
-            out = std::format_to(out, "{}", ks.items[i]);
-        }
-        return std::format_to(out, "}}");
+        return ctx.out();
     }
 };
 
 template <>
-struct std::formatter<ast::ChordSyntax> : std::formatter<std::string_view> {
-    auto format(const ast::ChordSyntax& cs, std::format_context& ctx) const {
+struct std::formatter<ast::Chord> : std::formatter<std::string_view> {
+    auto format(const ast::Chord& cs, std::format_context& ctx) const {
         auto out = ctx.out();
         for (const auto& mod : cs.modifiers) {
             out = std::format_to(out, "{} + ", mod);
@@ -137,24 +152,24 @@ struct std::formatter<ast::ChordSyntax> : std::formatter<std::string_view> {
 };
 
 template <>
-struct std::formatter<ast::HotkeySyntax> : std::formatter<std::string_view> {
-    auto format(const ast::HotkeySyntax& syn, std::format_context& ctx) const {
+struct std::formatter<ast::Chords> : std::formatter<std::string_view> {
+    auto format(const ast::Chords& syn, std::format_context& ctx) const {
         auto out = ctx.out();
         if (syn.passthrough) out = std::format_to(out, "passthrough, ");
         if (syn.repeat) out = std::format_to(out, "repeat, ");
         if (syn.onRelease) out = std::format_to(out, "onRelease, ");
         out = std::format_to(out, "[");
-        for (size_t i = 0; i < syn.chords.size(); i++) {
+        for (size_t i = 0; i < syn.sequence.size(); i++) {
             if (i > 0) out = std::format_to(out, "; ");
-            out = std::format_to(out, "{}", syn.chords[i]);
+            out = std::format_to(out, "{}", syn.sequence[i]);
         }
         return std::format_to(out, "]");
     }
 };
 
 template <>
-struct std::formatter<ast::DefineModifierStmt> : std::formatter<std::string_view> {
-    auto format(const ast::DefineModifierStmt& stmt, std::format_context& ctx) const {
+struct std::formatter<ast::DefineModifier> : std::formatter<std::string_view> {
+    auto format(const ast::DefineModifier& stmt, std::format_context& ctx) const {
         auto out = std::format_to(ctx.out(), "define_modifier: {} = ", stmt.name);
         for (size_t i = 0; i < stmt.parts.size(); i++) {
             if (i > 0) out = std::format_to(out, " + ");
@@ -165,8 +180,8 @@ struct std::formatter<ast::DefineModifierStmt> : std::formatter<std::string_view
 };
 
 template <>
-struct std::formatter<ast::ConfigPropertyStmt> : std::formatter<std::string_view> {
-    auto format(const ast::ConfigPropertyStmt& stmt, std::format_context& ctx) const {
+struct std::formatter<ast::ConfigProperty> : std::formatter<std::string_view> {
+    auto format(const ast::ConfigProperty& stmt, std::format_context& ctx) const {
         auto out = std::format_to(ctx.out(), "config: {} = ", stmt.name);
         if (stmt.intValue) {
             return std::format_to(out, "{}", *stmt.intValue);
@@ -184,15 +199,15 @@ struct std::formatter<ast::ConfigPropertyStmt> : std::formatter<std::string_view
 };
 
 template <>
-struct std::formatter<ast::HotkeyStmt> : std::formatter<std::string_view> {
-    auto format(const ast::HotkeyStmt& stmt, std::format_context& ctx) const {
-        return std::format_to(ctx.out(), "hotkey: {} \"{}\"", stmt.syntax, stmt.command);
+struct std::formatter<ast::Hotkey> : std::formatter<std::string_view> {
+    auto format(const ast::Hotkey& stmt, std::format_context& ctx) const {
+        return std::format_to(ctx.out(), "hotkey: {} \"{}\"", stmt.chords, stmt.command);
     }
 };
 
 template <>
-struct std::formatter<ast::RemapStmt> : std::formatter<std::string_view> {
-    auto format(const ast::RemapStmt& stmt, std::format_context& ctx) const {
+struct std::formatter<ast::Remap> : std::formatter<std::string_view> {
+    auto format(const ast::Remap& stmt, std::format_context& ctx) const {
         return std::format_to(ctx.out(), "remap: {} | {}", stmt.source, stmt.target);
     }
 };

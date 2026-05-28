@@ -49,6 +49,6 @@ struct ChordResult {
     std::vector<InterpreterError> errors;
 };
 
-[[nodiscard]] InterpreterResult interpretProgram(const ast::Program& program);
+[[nodiscard]] InterpreterResult interpretProgram(const ast::Program& p);
 
-[[nodiscard]] ChordResult interpretChord(const ast::ChordSyntax& syntax);
+[[nodiscard]] ChordResult interpretChord(const ast::Chord& ch);

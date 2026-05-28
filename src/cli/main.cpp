@@ -30,15 +30,15 @@ Chord parseCliKeypress(std::string_view spec) {
     }
 
     Parser parser{std::string{spec}};
-    auto chordSyntax = parser.parseChord();
+    auto chord = parser.parseChord();
     for (const auto& parse_error : parser.errors()) {
         error("invalid key spec at line {}, column {}: {}", parse_error.row, parse_error.col, parse_error.message);
     }
-    if (!chordSyntax) {
+    if (!chord) {
         fatal("invalid key spec");
     }
 
-    auto result = interpretChord(*chordSyntax);
+    auto result = interpretChord(*chord);
 
     for (const auto& interpreter_error : result.errors) {
         error("invalid key spec: {}", interpreter_error.message);

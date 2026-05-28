@@ -1,15 +1,27 @@
+#include <variant>
+
 #include "doctest.h"
 #include "input/modifier.hpp"
 #include "lang/parser.hpp"
 
 namespace {
 
-const ast::KeyChar& key_char(const ast::KeySyntax& keySyntax, size_t index = 0) {
-    return std::get<ast::KeyChar>(keySyntax.items.at(index).value);
+const ast::KeyChar& key_char(const ast::Keysym& keysym, size_t index = 0) {
+    return std::visit([&](const auto& v) -> const ast::KeyChar& {
+        using T = std::decay_t<decltype(v)>;
+        if constexpr (std::is_same_v<T, ast::SimpleKeysym>) {
+            return std::get<ast::KeyChar>(v.value);
+        } else if constexpr (std::is_same_v<T, ast::BraceExpansionKeysym>) {
+            return std::get<ast::KeyChar>(v.alternatives.at(index).value);
+        } else {
+            static_assert(false, "unhandled Keysym alternative");
+        }
+    },
+        keysym);
 }
 
-BuiltinModifier builtin_modifier(const ast::ModifierAtom& atom) {
-    return std::get<BuiltinModifier>(atom.value);
+BuiltinModifier builtin_modifier(const ast::Modifier& modifier) {
+    return std::get<BuiltinModifier>(modifier.value);
 }
 
 }  // namespace
@@ -20,18 +32,18 @@ TEST_CASE("simple hotkey parses full AST content") {
 
     CHECK(p.errors().empty());
     REQUIRE(program.statements.size() == 1);
-    auto& stmt = std::get<ast::HotkeyStmt>(program.statements[0]);
+    auto& stmt = std::get<ast::Hotkey>(program.statements[0]);
     CHECK(stmt.command == "echo hi");
-    CHECK_FALSE(stmt.syntax.passthrough);
-    CHECK_FALSE(stmt.syntax.repeat);
-    CHECK_FALSE(stmt.syntax.onRelease);
-    REQUIRE(stmt.syntax.chords.size() == 1);
-    REQUIRE(stmt.syntax.chords[0].modifiers.size() == 1);
-    CHECK(builtin_modifier(stmt.syntax.chords[0].modifiers[0]) == BuiltinModifier::Cmd);
-    REQUIRE(stmt.syntax.chords[0].key.has_value());
-    CHECK_FALSE(stmt.syntax.chords[0].key->isBraceExpansion);
-    CHECK(key_char(*stmt.syntax.chords[0].key).value == 'a');
-    CHECK_FALSE(key_char(*stmt.syntax.chords[0].key).isHex);
+    CHECK_FALSE(stmt.chords.passthrough);
+    CHECK_FALSE(stmt.chords.repeat);
+    CHECK_FALSE(stmt.chords.onRelease);
+    REQUIRE(stmt.chords.sequence.size() == 1);
+    REQUIRE(stmt.chords.sequence[0].modifiers.size() == 1);
+    CHECK(builtin_modifier(stmt.chords.sequence[0].modifiers[0]) == BuiltinModifier::Cmd);
+    REQUIRE(stmt.chords.sequence[0].key.has_value());
+    CHECK_FALSE(std::holds_alternative<ast::BraceExpansionKeysym>(*stmt.chords.sequence[0].key));
+    CHECK(key_char(*stmt.chords.sequence[0].key).value == 'a');
+    CHECK_FALSE(key_char(*stmt.chords.sequence[0].key).isHex);
 }
 
 TEST_CASE("hotkey flags and multi-chord sequence preserve parser structure") {
@@ -40,20 +52,20 @@ TEST_CASE("hotkey flags and multi-chord sequence preserve parser structure") {
 
     CHECK(p.errors().empty());
     REQUIRE(program.statements.size() == 1);
-    auto& stmt = std::get<ast::HotkeyStmt>(program.statements[0]);
+    auto& stmt = std::get<ast::Hotkey>(program.statements[0]);
     CHECK(stmt.command == "echo hi");
-    CHECK(stmt.syntax.passthrough);
-    CHECK(stmt.syntax.repeat);
-    CHECK(stmt.syntax.onRelease);
-    REQUIRE(stmt.syntax.chords.size() == 2);
-    REQUIRE(stmt.syntax.chords[0].modifiers.size() == 1);
-    REQUIRE(stmt.syntax.chords[1].modifiers.size() == 1);
-    CHECK(builtin_modifier(stmt.syntax.chords[0].modifiers[0]) == BuiltinModifier::Cmd);
-    CHECK(builtin_modifier(stmt.syntax.chords[1].modifiers[0]) == BuiltinModifier::Shift);
-    REQUIRE(stmt.syntax.chords[0].key.has_value());
-    REQUIRE(stmt.syntax.chords[1].key.has_value());
-    CHECK(key_char(*stmt.syntax.chords[0].key).value == 'a');
-    CHECK(key_char(*stmt.syntax.chords[1].key).value == 'b');
+    CHECK(stmt.chords.passthrough);
+    CHECK(stmt.chords.repeat);
+    CHECK(stmt.chords.onRelease);
+    REQUIRE(stmt.chords.sequence.size() == 2);
+    REQUIRE(stmt.chords.sequence[0].modifiers.size() == 1);
+    REQUIRE(stmt.chords.sequence[1].modifiers.size() == 1);
+    CHECK(builtin_modifier(stmt.chords.sequence[0].modifiers[0]) == BuiltinModifier::Cmd);
+    CHECK(builtin_modifier(stmt.chords.sequence[1].modifiers[0]) == BuiltinModifier::Shift);
+    REQUIRE(stmt.chords.sequence[0].key.has_value());
+    REQUIRE(stmt.chords.sequence[1].key.has_value());
+    CHECK(key_char(*stmt.chords.sequence[0].key).value == 'a');
+    CHECK(key_char(*stmt.chords.sequence[1].key).value == 'b');
 }
 
 TEST_CASE("unknown config assignment is rejected by the parser") {
@@ -72,11 +84,11 @@ TEST_CASE("multi-digit integer in key position emits error and recovers") {
     REQUIRE(p.errors().size() == 1);
     CHECK(p.errors()[0].message.contains("'10' is not a valid key"));
     REQUIRE(program.statements.size() == 1);
-    auto& stmt = std::get<ast::HotkeyStmt>(program.statements[0]);
+    auto& stmt = std::get<ast::Hotkey>(program.statements[0]);
     CHECK(stmt.command == "echo good");
-    REQUIRE(stmt.syntax.chords.size() == 1);
-    REQUIRE(stmt.syntax.chords[0].key.has_value());
-    CHECK(key_char(*stmt.syntax.chords[0].key).value == '1');
+    REQUIRE(stmt.chords.sequence.size() == 1);
+    REQUIRE(stmt.chords.sequence[0].key.has_value());
+    CHECK(key_char(*stmt.chords.sequence[0].key).value == '1');
 }
 
 TEST_CASE("scalar config requires Integer token") {
@@ -85,7 +97,7 @@ TEST_CASE("scalar config requires Integer token") {
 
     CHECK(p.errors().empty());
     REQUIRE(program.statements.size() == 1);
-    auto& stmt = std::get<ast::ConfigPropertyStmt>(program.statements[0]);
+    auto& stmt = std::get<ast::ConfigProperty>(program.statements[0]);
     CHECK(stmt.name == "max_chord_interval");
     REQUIRE(stmt.intValue.has_value());
     CHECK(*stmt.intValue == 500);
@@ -115,7 +127,7 @@ TEST_CASE("scalar config reports trailing tokens after value") {
     auto program = p.parseProgram();
 
     REQUIRE(program.statements.size() == 1);
-    auto& stmt = std::get<ast::ConfigPropertyStmt>(program.statements[0]);
+    auto& stmt = std::get<ast::ConfigProperty>(program.statements[0]);
     REQUIRE(stmt.intValue.has_value());
     CHECK(*stmt.intValue == 500);
     REQUIRE(p.errors().size() == 1);
@@ -129,7 +141,7 @@ TEST_CASE("blacklist parses quoted string entries") {
 
     CHECK(p.errors().empty());
     REQUIRE(program.statements.size() == 1);
-    auto& stmt = std::get<ast::ConfigPropertyStmt>(program.statements[0]);
+    auto& stmt = std::get<ast::ConfigProperty>(program.statements[0]);
     REQUIRE(stmt.listValues.size() == 3);
     CHECK(stmt.listValues[0] == "Terminal");
     CHECK(stmt.listValues[1] == "iTerm2");
@@ -168,7 +180,7 @@ TEST_CASE("blacklist reports unexpected eof when closing bracket is missing") {
     auto program = p.parseProgram();
 
     REQUIRE(program.statements.size() == 1);
-    auto& stmt = std::get<ast::ConfigPropertyStmt>(program.statements[0]);
+    auto& stmt = std::get<ast::ConfigProperty>(program.statements[0]);
     REQUIRE(stmt.listValues.size() == 1);
     CHECK(stmt.listValues[0] == "Terminal");
     REQUIRE(p.errors().size() == 1);
@@ -180,7 +192,7 @@ TEST_CASE("blacklist reports trailing tokens after closing bracket") {
     auto program = p.parseProgram();
 
     REQUIRE(program.statements.size() == 1);
-    auto& stmt = std::get<ast::ConfigPropertyStmt>(program.statements[0]);
+    auto& stmt = std::get<ast::ConfigProperty>(program.statements[0]);
     REQUIRE(stmt.listValues.size() == 1);
     CHECK(stmt.listValues[0] == "Terminal");
     REQUIRE(p.errors().size() == 1);
@@ -194,12 +206,14 @@ TEST_CASE("brace expansion parses into brace key syntax") {
 
     CHECK(p.errors().empty());
     REQUIRE(program.statements.size() == 1);
-    auto& stmt = std::get<ast::HotkeyStmt>(program.statements[0]);
-    REQUIRE(stmt.syntax.chords.size() == 1);
-    REQUIRE(stmt.syntax.chords[0].key.has_value());
-    const auto& key = *stmt.syntax.chords[0].key;
-    CHECK(key.isBraceExpansion);
-    REQUIRE(key.items.size() == 2);
+    auto& stmt = std::get<ast::Hotkey>(program.statements[0]);
+    REQUIRE(stmt.chords.sequence.size() == 1);
+    REQUIRE(stmt.chords.sequence[0].key.has_value());
+    const auto& key = *stmt.chords.sequence[0].key;
+    CHECK(std::holds_alternative<ast::BraceExpansionKeysym>(key));
+    const auto& be = std::get<ast::BraceExpansionKeysym>(key);
+    REQUIRE(be.alternatives.size() == 2);
+
     CHECK(key_char(key, 0).value == 'a');
     CHECK(key_char(key, 1).value == 'b');
 }
@@ -247,7 +261,7 @@ TEST_CASE("remap target can start on the line after pipe") {
 
     CHECK(p.errors().empty());
     REQUIRE(program.statements.size() == 1);
-    auto& stmt = std::get<ast::RemapStmt>(program.statements[0]);
+    auto& stmt = std::get<ast::Remap>(program.statements[0]);
     REQUIRE(stmt.target.modifiers.size() == 1);
     CHECK(builtin_modifier(stmt.target.modifiers[0]) == BuiltinModifier::Shift);
     REQUIRE(stmt.target.key.has_value());
@@ -390,7 +404,7 @@ TEST_CASE("define_modifier parses builtin and custom parts") {
 
     CHECK(p.errors().empty());
     REQUIRE(program.statements.size() == 1);
-    auto& stmt = std::get<ast::DefineModifierStmt>(program.statements[0]);
+    auto& stmt = std::get<ast::DefineModifier>(program.statements[0]);
     CHECK(stmt.name == "hyper");
     REQUIRE(stmt.parts.size() == 3);
     CHECK(builtin_modifier(stmt.parts[0]) == BuiltinModifier::Cmd);
@@ -468,15 +482,15 @@ TEST_CASE("remap with pipe parses full source and target") {
 
     CHECK(p.errors().empty());
     REQUIRE(program.statements.size() == 1);
-    auto& stmt = std::get<ast::RemapStmt>(program.statements[0]);
-    REQUIRE(stmt.source.chords.size() == 1);
+    auto& stmt = std::get<ast::Remap>(program.statements[0]);
+    REQUIRE(stmt.source.sequence.size() == 1);
     CHECK_FALSE(stmt.source.passthrough);
     CHECK_FALSE(stmt.source.repeat);
     CHECK_FALSE(stmt.source.onRelease);
-    REQUIRE(stmt.source.chords[0].modifiers.size() == 1);
-    CHECK(builtin_modifier(stmt.source.chords[0].modifiers[0]) == BuiltinModifier::Cmd);
-    REQUIRE(stmt.source.chords[0].key.has_value());
-    CHECK(key_char(*stmt.source.chords[0].key).value == 'a');
+    REQUIRE(stmt.source.sequence[0].modifiers.size() == 1);
+    CHECK(builtin_modifier(stmt.source.sequence[0].modifiers[0]) == BuiltinModifier::Cmd);
+    REQUIRE(stmt.source.sequence[0].key.has_value());
+    CHECK(key_char(*stmt.source.sequence[0].key).value == 'a');
     REQUIRE(stmt.target.modifiers.size() == 1);
     CHECK(builtin_modifier(stmt.target.modifiers[0]) == BuiltinModifier::Shift);
     REQUIRE(stmt.target.key.has_value());
@@ -497,7 +511,7 @@ TEST_CASE("remap reports trailing tokens after target chord") {
     auto program = p.parseProgram();
 
     REQUIRE(program.statements.size() == 1);
-    CHECK(std::holds_alternative<ast::RemapStmt>(program.statements[0]));
+    CHECK(std::holds_alternative<ast::Remap>(program.statements[0]));
     REQUIRE(p.errors().size() == 1);
     CHECK(p.errors()[0].message.contains("after remap target"));
     CHECK(p.errors()[0].message.contains("extra"));

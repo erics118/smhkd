@@ -1,5 +1,7 @@
 #include "parser.hpp"
 
+#include "ast.hpp"
+
 ast::Program Parser::parseProgram() {
     ast::Program program;
     while (true) {
@@ -82,7 +84,7 @@ std::optional<Token> Parser::expect(TokenType expected, std::string_view context
     return tokenizer.next();
 }
 
-std::optional<ast::DefineModifierStmt> Parser::parseDefineModifierStmt() {
+std::optional<ast::DefineModifier> Parser::parseDefineModifierStmt() {
     tokenizer.next();
     Token nameToken = tokenizer.next();
     if (nameToken.type != TokenType::Modifier && nameToken.type != TokenType::Key) {
@@ -94,7 +96,7 @@ std::optional<ast::DefineModifierStmt> Parser::parseDefineModifierStmt() {
     if (!eqToken) {
         return std::nullopt;
     }
-    ast::DefineModifierStmt stmt;
+    ast::DefineModifier stmt;
     stmt.name = customName;
     const int currentRow = eqToken->row;
     while (true) {
@@ -107,9 +109,9 @@ std::optional<ast::DefineModifierStmt> Parser::parseDefineModifierStmt() {
         }
         if (tk.type == TokenType::Modifier || tk.type == TokenType::Key) {
             if (auto bi = parseBuiltinModifier(tk.text)) {
-                stmt.parts.push_back(ast::ModifierAtom{*bi});
+                stmt.parts.push_back(ast::Modifier{*bi});
             } else {
-                stmt.parts.push_back(ast::ModifierAtom{tk.text});
+                stmt.parts.push_back(ast::Modifier{tk.text});
             }
             tokenizer.next();
             continue;
@@ -123,7 +125,7 @@ std::optional<ast::DefineModifierStmt> Parser::parseDefineModifierStmt() {
     return stmt;
 }
 
-std::optional<ast::ConfigPropertyStmt> Parser::parseConfigPropertyStmt() {
+std::optional<ast::ConfigProperty> Parser::parseConfigPropertyStmt() {
     Token cpToken = tokenizer.next();
     if (cpToken.text == "blacklist") {
         return parseBlacklistConfigStmt(cpToken);
@@ -131,8 +133,8 @@ std::optional<ast::ConfigPropertyStmt> Parser::parseConfigPropertyStmt() {
     return parseIntegerConfigStmt(cpToken);
 }
 
-std::optional<ast::ConfigPropertyStmt> Parser::parseBlacklistConfigStmt(const Token& cpToken) {
-    ast::ConfigPropertyStmt stmt;
+std::optional<ast::ConfigProperty> Parser::parseBlacklistConfigStmt(const Token& cpToken) {
+    ast::ConfigProperty stmt;
     stmt.name = cpToken.text;
 
     if (!expect(TokenType::Equals, "after blacklist config")) {
@@ -185,8 +187,8 @@ std::optional<ast::ConfigPropertyStmt> Parser::parseBlacklistConfigStmt(const To
     return stmt;
 }
 
-std::optional<ast::ConfigPropertyStmt> Parser::parseIntegerConfigStmt(const Token& cpToken) {
-    ast::ConfigPropertyStmt stmt;
+std::optional<ast::ConfigProperty> Parser::parseIntegerConfigStmt(const Token& cpToken) {
+    ast::ConfigProperty stmt;
     stmt.name = cpToken.text;
 
     if (!expect(TokenType::Equals, std::format("after config property '{}'", cpToken.text))) {
@@ -211,9 +213,8 @@ std::optional<ast::ConfigPropertyStmt> Parser::parseIntegerConfigStmt(const Toke
     return stmt;
 }
 
-std::optional<ast::KeySyntax> Parser::parseKeyBraceExpansion() {
-    ast::KeySyntax ks;
-    ks.isBraceExpansion = true;
+std::optional<ast::Keysym> Parser::parseBraceExpansionKeysym() {
+    ast::BraceExpansionKeysym be;
     if (!expect(TokenType::OpenBrace, "to start brace expansion")) {
         return std::nullopt;
     }
@@ -225,22 +226,25 @@ std::optional<ast::KeySyntax> Parser::parseKeyBraceExpansion() {
             return std::nullopt;
         }
         if (tk.type == TokenType::CloseBrace) {
-            if (ks.items.empty()) {
+            if (be.alternatives.empty()) {
                 addError(tk, "brace expansion must contain at least one key");
                 return std::nullopt;
             }
             tokenizer.next();
-            return ks;
+            return be;
         }
 
-        auto keySyntax = parseSingleKeySyntax(tk);
-        if (!keySyntax) {
+        if (!isKeyToken(tk.type)) {
             addUnexpectedTokenError(tk, "in brace expansion");
             tokenizer.next();
             return std::nullopt;
         }
-        ks.items.push_back(keySyntax->items.front());
-        tokenizer.next();
+        auto keysym = consumeSimpleKeysym();
+        if (!keysym) {
+            // malformed key, just move on
+            return std::nullopt;
+        }
+        be.alternatives.push_back(*keysym);
 
         const Token& separator = tokenizer.peek();
         if (separator.type == TokenType::Comma) {
@@ -256,19 +260,19 @@ std::optional<ast::KeySyntax> Parser::parseKeyBraceExpansion() {
     }
 }
 
-std::optional<ast::KeySyntax> Parser::parseSingleKeySyntax(const Token& tk) {
+std::optional<ast::SimpleKeysym> Parser::consumeSimpleKeysym() {
+    const Token tk = tokenizer.peek();
     if (!isKeyToken(tk.type)) {
         return std::nullopt;
     }
+    tokenizer.next();
 
-    ast::KeySyntax ks;
-    ks.isBraceExpansion = false;
-    ast::KeyAtom atom;
+    ast::SimpleKeysym ks;
     if (tk.type == TokenType::Literal) {
-        if (auto lit = parseLiteralKey(tk.text)) atom.value = *lit;
-        else atom.value = ast::KeyChar{tk.text.empty() ? '\0' : tk.text.at(0), false};
+        if (auto lit = parseLiteralKey(tk.text)) ks.value = *lit;
+        else ks.value = ast::KeyChar{tk.text.empty() ? '\0' : tk.text.at(0), false};
     } else if (tk.type == TokenType::Key) {
-        atom.value = ast::KeyChar{tk.text.at(0), false};
+        ks.value = ast::KeyChar{tk.text.at(0), false};
     } else if (tk.type == TokenType::Integer) {
         // single-digit Integer doubles as a Key
         // multi-digit integers are not valid keys
@@ -278,7 +282,7 @@ std::optional<ast::KeySyntax> Parser::parseSingleKeySyntax(const Token& tk) {
                              tk.text));
             return std::nullopt;
         }
-        atom.value = ast::KeyChar{tk.text.at(0), false};
+        ks.value = ast::KeyChar{tk.text.at(0), false};
     } else {
         if (tk.text.empty()) {
             addError(tk, "blank hex literal: expected 0x?? with at least one hex digit");
@@ -295,9 +299,8 @@ std::optional<ast::KeySyntax> Parser::parseSingleKeySyntax(const Token& tk) {
             addError(tk, std::format("hex keycode '0x{}' is out of range (max 0xFF)", tk.text));
             return std::nullopt;
         }
-        atom.value = ast::KeyChar{static_cast<char>(static_cast<unsigned char>(v)), true};
+        ks.value = ast::KeyChar{static_cast<char>(static_cast<unsigned char>(v)), true};
     }
-    ks.items.push_back(atom);
     return ks;
 }
 
@@ -315,8 +318,8 @@ bool Parser::startsChord(const Token& tk) {
         || isKeyToken(tk.type);
 }
 
-std::optional<ast::ChordSyntax> Parser::parseChordSyntax(int row, const ChordParseOptions& options) {
-    ast::ChordSyntax chord;
+std::optional<ast::Chord> Parser::parseChord(int row, const ChordParseOptions& options) {
+    ast::Chord chord;
     while (true) {
         const Token& tk = tokenizer.peek();
         if (tk.type == TokenType::EndOfFile || tk.row != row) {
@@ -328,9 +331,9 @@ std::optional<ast::ChordSyntax> Parser::parseChordSyntax(int row, const ChordPar
         }
         if (tk.type == TokenType::Modifier && !chord.key.has_value()) {
             if (auto bi = parseBuiltinModifier(tk.text)) {
-                chord.modifiers.push_back(ast::ModifierAtom{*bi});
+                chord.modifiers.push_back(ast::Modifier{*bi});
             } else {
-                chord.modifiers.push_back(ast::ModifierAtom{tk.text});
+                chord.modifiers.push_back(ast::Modifier{tk.text});
             }
             tokenizer.next();
             continue;
@@ -344,31 +347,28 @@ std::optional<ast::ChordSyntax> Parser::parseChordSyntax(int row, const ChordPar
                 addUnexpectedTokenError(tk, "after chord key");
                 return std::nullopt;
             }
-            auto keySyntax = parseKeyBraceExpansion();
-            if (!keySyntax) {
+            auto keysym = parseBraceExpansionKeysym();
+            if (!keysym) {
                 return std::nullopt;
             }
-            chord.key = std::move(*keySyntax);
+            chord.key = std::move(*keysym);
             break;
         }
-        if (auto keySyntax = parseSingleKeySyntax(tk)) {
+        if (isKeyToken(tk.type)) {
             if (chord.key.has_value()) {
                 addUnexpectedTokenError(tk, "after chord key");
                 return std::nullopt;
             }
-            chord.key = std::move(*keySyntax);
-            tokenizer.next();
+            auto keySyntax = consumeSimpleKeysym();
+            if (!keySyntax) {
+                // // malformed key, just move on
+                return std::nullopt;
+            }
+            chord.key = *keySyntax;
             break;
         }
         if (tk.type == TokenType::Invalid) {
             addUnexpectedTokenError(tk, "while parsing chord sequence", "one of: Modifier, OpenBrace, Literal, Key, KeyHex, Integer");
-            tokenizer.next();
-            return std::nullopt;
-        }
-        // parseSingleKeySyntax returned nullopt: either the token isn't a key
-        // candidate (then we just stop) or it is one but was rejected with an
-        // error added (e.g. multi-digit Integer) — consume to make progress.
-        if (isKeyToken(tk.type)) {
             tokenizer.next();
             return std::nullopt;
         }
@@ -383,7 +383,7 @@ std::optional<ast::ChordSyntax> Parser::parseChordSyntax(int row, const ChordPar
     return chord;
 }
 
-std::optional<ast::ChordSyntax> Parser::parseSequenceElement(const ChordParseOptions& options) {
+std::optional<ast::Chord> Parser::parseSequenceElement(const ChordParseOptions& options) {
     const Token start = tokenizer.peek();
     if (start.type == TokenType::EndOfFile) {
         addUnexpectedEofError(start, "while parsing chord sequence");
@@ -401,7 +401,7 @@ std::optional<ast::ChordSyntax> Parser::parseSequenceElement(const ChordParseOpt
         addUnexpectedTokenError(start, "while parsing chord sequence", "one of: Modifier, OpenBrace, Literal, Key, KeyHex, Integer");
         return std::nullopt;
     }
-    return parseChordSyntax(start.row, options);
+    return parseChord(start.row, options);
 }
 
 std::optional<bool> Parser::consumeSequenceSeparator(int row) {
@@ -421,13 +421,13 @@ std::optional<bool> Parser::consumeSequenceSeparator(int row) {
     return true;
 }
 
-std::optional<ast::ChordSyntax> Parser::parseChord(const ChordParseOptions& options) {
+std::optional<ast::Chord> Parser::parseChord(const ChordParseOptions& options) {
     const Token tk = tokenizer.peek();
     if (tk.type == TokenType::EndOfFile) {
         addUnexpectedEofError(tk, "while parsing chord");
         return std::nullopt;
     }
-    auto chord = parseChordSyntax(tk.row, options);
+    auto chord = parseChord(tk.row, options);
     if (!chord) {
         return std::nullopt;
     }
@@ -435,8 +435,8 @@ std::optional<ast::ChordSyntax> Parser::parseChord(const ChordParseOptions& opti
     return chord;
 }
 
-std::optional<std::vector<ast::ChordSyntax>> Parser::parseChordSequence(const ChordParseOptions& options) {
-    std::vector<ast::ChordSyntax> chords;
+std::optional<std::vector<ast::Chord>> Parser::parseChordSequence(const ChordParseOptions& options) {
+    std::vector<ast::Chord> chords;
     const int row = tokenizer.peek().row;
     while (true) {
         auto chord = parseSequenceElement(options);
@@ -449,23 +449,22 @@ std::optional<std::vector<ast::ChordSyntax>> Parser::parseChordSequence(const Ch
 }
 
 std::optional<ast::Stmt> Parser::parseBindingStmt() {
-    ast::HotkeySyntax syntax;
-    auto chords = parseChordSequence(ChordParseOptions{.allowBraceExpansion = true});
-    if (!chords) {
+    auto sequence = parseChordSequence(ChordParseOptions{.allowBraceExpansion = true});
+    if (!sequence) {
         return std::nullopt;
     }
-    syntax.chords = std::move(*chords);
+    ast::Chords binding{.sequence = std::move(*sequence)};
 
     while (true) {
         const Token& c = tokenizer.peek();
         if (c.type == TokenType::At) {
-            syntax.passthrough = true;
+            binding.passthrough = true;
             tokenizer.next();
         } else if (c.type == TokenType::Ampersand) {
-            syntax.repeat = true;
+            binding.repeat = true;
             tokenizer.next();
         } else if (c.type == TokenType::Caret) {
-            syntax.onRelease = true;
+            binding.onRelease = true;
             tokenizer.next();
         } else {
             break;
@@ -479,13 +478,13 @@ std::optional<ast::Stmt> Parser::parseBindingStmt() {
     }
     if (delimiter.type == TokenType::Colon) {
         tokenizer.next();
-        if (auto stmt = parseHotkeyStmt(std::move(syntax))) {
+        if (auto stmt = parseHotkeyStmt(std::move(binding))) {
             return ast::Stmt{std::move(*stmt)};
         }
         return std::nullopt;
     }
     if (delimiter.type == TokenType::Pipe) {
-        if (auto stmt = parseRemapStmt(std::move(syntax))) {
+        if (auto stmt = parseRemapStmt(std::move(binding))) {
             return ast::Stmt{std::move(*stmt)};
         }
         return std::nullopt;
@@ -494,29 +493,29 @@ std::optional<ast::Stmt> Parser::parseBindingStmt() {
     return std::nullopt;
 }
 
-std::optional<ast::HotkeyStmt> Parser::parseHotkeyStmt(ast::HotkeySyntax syntax) {
-    ast::HotkeyStmt stmt;
+std::optional<ast::Hotkey> Parser::parseHotkeyStmt(ast::Chords binding) {
+    ast::Hotkey stmt;
     auto nextTk = expect(TokenType::Command, "after ':'");
     if (!nextTk) return std::nullopt;
     if (nextTk->text.empty()) {
         addUnexpectedTokenError(*nextTk, "after ':'", "non-empty command");
         return std::nullopt;
     }
-    stmt.syntax = std::move(syntax);
+    stmt.chords = std::move(binding);
     stmt.command = nextTk->text;
     return stmt;
 }
 
-std::optional<ast::RemapStmt> Parser::parseRemapStmt(ast::HotkeySyntax syntax) {
-    ast::RemapStmt stmt;
-    stmt.source = std::move(syntax);
+std::optional<ast::Remap> Parser::parseRemapStmt(ast::Chords binding) {
+    ast::Remap stmt;
+    stmt.source = std::move(binding);
     tokenizer.next();
     const Token start = tokenizer.peek();
     if (start.type == TokenType::EndOfFile) {
         addUnexpectedEofError(start, "after '|'", "remap target chord");
         return std::nullopt;
     }
-    auto target = parseChordSyntax(start.row, ChordParseOptions{.allowBraceExpansion = false});
+    auto target = parseChord(start.row, ChordParseOptions{.allowBraceExpansion = false});
     if (!target) {
         return std::nullopt;
     }
