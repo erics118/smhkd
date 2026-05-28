@@ -21,7 +21,8 @@ void spawnCommand(const std::string& command) {
     if (cpid == 0) {
         setsid();
 
-        std::vector<std::string> stringStorage = {"/bin/zsh", "-c", command};
+        // use zsh without startup files, so especially PATH is inherited
+        std::vector<std::string> stringStorage = {"/bin/zsh", "-f", "-c", command};
         std::vector<char*> args;
         args.reserve(stringStorage.size());
         for (auto& str : stringStorage) {
