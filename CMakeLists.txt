@@ -35,7 +35,13 @@ add_library(smhkd_lib OBJECT
     src/runtime/key_observer_handler.cpp
     src/runtime/process.cpp
     src/runtime/service.cpp
-    src/common/string_util.cpp
+    src/common/string_util.mm
+)
+
+set_source_files_properties(
+    src/common/front_app.mm
+    src/common/string_util.mm
+    PROPERTIES COMPILE_FLAGS "-fobjc-arc"
 )
 
 target_include_directories(smhkd_lib PUBLIC
@@ -52,6 +58,7 @@ target_compile_options(smhkd_lib PUBLIC
     -Wno-deprecated-enum-enum-conversion
     -Wno-deprecated-declarations
     -Wno-deprecated-anon-enum-enum-conversion
+    -Wno-availability
     -Wdangling
     -Wdangling-gsl
     -Wreturn-stack-address

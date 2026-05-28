@@ -28,7 +28,8 @@ Checks: >
   -readability-function-cognitive-complexity,
   *-const-correctness,
   -misc-use-anonymous-namespace,
-  -cppcoreguidelines-avoid-do-while
+  -cppcoreguidelines-avoid-do-while,
+  -google-objc-function-naming
 
 CheckOptions:
   - key: misc-unused-parameters.StrictMode

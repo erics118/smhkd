@@ -168,8 +168,7 @@ bool HotkeyEngine::handleSequence(const Chord& chord) {
 bool HotkeyEngine::isBlacklisted(std::string_view processName) const {
     if (config_.blacklist.empty()) return false;
     if (processName.empty()) return false;
-    const std::string lowerName = toLower(processName);
-    return std::ranges::contains(config_.blacklist, lowerName);
+    return std::ranges::contains(config_.blacklist, processName);
 }
 
 void HotkeyEngine::postKeyEvent(const Chord& target, bool keyDown) {
