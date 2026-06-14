@@ -21,8 +21,8 @@ void spawnCommand(const std::string& command) {
     if (cpid == 0) {
         setsid();
 
-        // use zsh without startup files, so especially PATH is inherited
-        std::vector<std::string> stringStorage = {"/bin/zsh", "-f", "-c", command};
+        // use bash without startup files, so especially PATH is inherited
+        std::vector<std::string> stringStorage = {"/bin/bash", "--norc", "--noprofile", "-c", command};
         std::vector<char*> args;
         args.reserve(stringStorage.size());
         for (auto& str : stringStorage) {
@@ -38,8 +38,9 @@ void spawnCommand(const std::string& command) {
 
 }  // namespace
 
-void executeCommand(const std::string& command) {
+void executeCommand(std::string command) {
     // run the fork/exec on a background queue so event tap thread is never blocked by fork
+    // capture command by value so it outlives this call (the block runs later)
     dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0),
         ^{
           spawnCommand(command);
