@@ -101,7 +101,7 @@ TEST_CASE("scalar config requires Integer token") {
     CHECK(stmt.name == "max_chord_interval");
     REQUIRE(stmt.intValue.has_value());
     CHECK(*stmt.intValue == 500);
-    CHECK(stmt.listValues.empty());
+    CHECK(stmt.stringListValues.empty());
 }
 
 TEST_CASE("scalar config rejects non-integer value") {
@@ -142,10 +142,10 @@ TEST_CASE("blacklist parses quoted string entries") {
     CHECK(p.errors().empty());
     REQUIRE(program.statements.size() == 1);
     auto& stmt = std::get<ast::ConfigProperty>(program.statements[0]);
-    REQUIRE(stmt.listValues.size() == 3);
-    CHECK(stmt.listValues[0] == "Terminal");
-    CHECK(stmt.listValues[1] == "iTerm2");
-    CHECK(stmt.listValues[2] == "42");
+    REQUIRE(stmt.stringListValues.size() == 3);
+    CHECK(stmt.stringListValues[0] == "Terminal");
+    CHECK(stmt.stringListValues[1] == "iTerm2");
+    CHECK(stmt.stringListValues[2] == "42");
 }
 
 TEST_CASE("blacklist without values fails") {
@@ -181,8 +181,8 @@ TEST_CASE("blacklist reports unexpected eof when closing bracket is missing") {
 
     REQUIRE(program.statements.size() == 1);
     auto& stmt = std::get<ast::ConfigProperty>(program.statements[0]);
-    REQUIRE(stmt.listValues.size() == 1);
-    CHECK(stmt.listValues[0] == "Terminal");
+    REQUIRE(stmt.stringListValues.size() == 1);
+    CHECK(stmt.stringListValues[0] == "Terminal");
     REQUIRE(p.errors().size() == 1);
     CHECK(p.errors()[0].message.contains("while parsing blacklist"));
 }
@@ -193,8 +193,8 @@ TEST_CASE("blacklist reports trailing tokens after closing bracket") {
 
     REQUIRE(program.statements.size() == 1);
     auto& stmt = std::get<ast::ConfigProperty>(program.statements[0]);
-    REQUIRE(stmt.listValues.size() == 1);
-    CHECK(stmt.listValues[0] == "Terminal");
+    REQUIRE(stmt.stringListValues.size() == 1);
+    CHECK(stmt.stringListValues[0] == "Terminal");
     REQUIRE(p.errors().size() == 1);
     CHECK(p.errors()[0].message.contains("after blacklist config"));
     CHECK(p.errors()[0].message.contains("extra"));

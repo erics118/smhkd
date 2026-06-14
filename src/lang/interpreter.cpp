@@ -262,15 +262,24 @@ void Interpreter::applyDefine(const ast::DefineModifier& node) {
 
 void Interpreter::applyConfig(const ast::ConfigProperty& node, ConfigProperties& config) {
     if (node.name == "blacklist") {
-        if (!node.listValues.empty()) {
+        if (!node.stringListValues.empty()) {
             config.blacklist.clear();
-            config.blacklist.reserve(node.listValues.size());
+            config.blacklist.reserve(node.stringListValues.size());
             // pre-lowercase everything
-            for (const auto& value : node.listValues) {
+            for (const auto& value : node.stringListValues) {
                 config.blacklist.push_back(toLower(value));
             }
         } else {
             addError("blacklist config provided without any process names; ignoring");
+        }
+        return;
+    }
+
+    if (node.name == "sequence_command") {
+        if (node.stringValue) {
+            config.sequenceCommand = *node.stringValue;
+        } else {
+            addError("sequence_command config provided without a value; ignoring");
         }
         return;
     }
@@ -288,7 +297,7 @@ void Interpreter::applyConfig(const ast::ConfigProperty& node, ConfigProperties&
     else if (node.name == "simultaneous_threshold") config.simultaneousThreshold = ms;
     else {
         addError(std::format(
-            "unknown config property: '{}'. Valid properties are: max_chord_interval, hold_modifier_threshold, simultaneous_threshold, blacklist",
+            "unknown config property: '{}'. Valid properties are: max_chord_interval, hold_modifier_threshold, simultaneous_threshold, blacklist, sequence_command",
             node.name));
     }
 }

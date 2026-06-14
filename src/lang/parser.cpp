@@ -130,6 +130,9 @@ std::optional<ast::ConfigProperty> Parser::parseConfigPropertyStmt() {
     if (cpToken.text == "blacklist") {
         return parseBlacklistConfigStmt(cpToken);
     }
+    if (cpToken.text == "sequence_command") {
+        return parseStringConfigStmt(cpToken);
+    }
     return parseIntegerConfigStmt(cpToken);
 }
 
@@ -148,7 +151,7 @@ std::optional<ast::ConfigProperty> Parser::parseBlacklistConfigStmt(const Token&
     while (true) {
         const Token& tk = tokenizer.peek();
         if (tk.type == TokenType::CloseBracket) {
-            if (expectValue && !stmt.listValues.empty()) {
+            if (expectValue && !stmt.stringListValues.empty()) {
                 addUnexpectedTokenError(tk, "in blacklist", "quoted string");
                 return std::nullopt;
             }
@@ -166,7 +169,7 @@ std::optional<ast::ConfigProperty> Parser::parseBlacklistConfigStmt(const Token&
             }
             Token valueToken = tokenizer.next();
             if (!valueToken.text.empty()) {
-                stmt.listValues.push_back(valueToken.text);
+                stmt.stringListValues.push_back(valueToken.text);
             }
             expectValue = false;
             continue;
@@ -179,7 +182,7 @@ std::optional<ast::ConfigProperty> Parser::parseBlacklistConfigStmt(const Token&
         addUnexpectedTokenError(tk, "in blacklist", "',' or ']'");
         return std::nullopt;
     }
-    if (stmt.listValues.empty()) {
+    if (stmt.stringListValues.empty()) {
         addError(cpToken, "blacklist config provided but no process names were parsed");
         return std::nullopt;
     }
@@ -209,6 +212,24 @@ std::optional<ast::ConfigProperty> Parser::parseIntegerConfigStmt(const Token& c
                                cpToken.text));
         return std::nullopt;
     }
+    dropTrailingTokens(cpToken.row, std::format("after config property '{}'", cpToken.text));
+    return stmt;
+}
+
+std::optional<ast::ConfigProperty> Parser::parseStringConfigStmt(const Token& cpToken) {
+    ast::ConfigProperty stmt;
+    stmt.name = cpToken.text;
+
+    if (!expect(TokenType::Equals, std::format("after config property '{}'", cpToken.text))) {
+        return std::nullopt;
+    }
+    Token strToken = tokenizer.next();
+    if (strToken.type != TokenType::String) {
+        addUnexpectedTokenError(strToken, std::format("after '=' for config property '{}'", cpToken.text), "string");
+        return std::nullopt;
+    }
+    stmt.stringValue = strToken.text;
+
     dropTrailingTokens(cpToken.row, std::format("after config property '{}'", cpToken.text));
     return stmt;
 }

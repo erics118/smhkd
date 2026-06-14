@@ -37,6 +37,7 @@ void print(const level ll, const T& msg) {
 
 template <typename... Args>
 void print(const level ll, const std::format_string<Args...> fmt, Args&&... args) {
+    if (ll == level::debug && !verboseLoggingFlag()) return;
     print(ll, std::format(fmt, std::forward<Args>(args)...));
 }
 

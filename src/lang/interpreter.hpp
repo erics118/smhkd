@@ -23,6 +23,10 @@ struct ConfigProperties {
 
     // process names to ignore (case-insensitive)
     std::vector<std::string> blacklist;
+
+    // command run with the active chord sequence appended as args whenever
+    // it changes (entering/extending/exiting a multi-chord sequence)
+    std::string sequenceCommand;
 };
 
 struct InterpreterError {

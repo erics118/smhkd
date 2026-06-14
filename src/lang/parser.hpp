@@ -48,6 +48,7 @@ class Parser {
     std::optional<ast::ConfigProperty> parseConfigPropertyStmt();
     std::optional<ast::ConfigProperty> parseBlacklistConfigStmt(const Token& cpToken);
     std::optional<ast::ConfigProperty> parseIntegerConfigStmt(const Token& cpToken);
+    std::optional<ast::ConfigProperty> parseStringConfigStmt(const Token& cpToken);
     std::optional<ast::Keysym> parseBraceExpansionKeysym();
     [[nodiscard]] std::optional<ast::SimpleKeysym> consumeSimpleKeysym();
     std::optional<ast::Chord> parseChord(int row, const ChordParseOptions& options);

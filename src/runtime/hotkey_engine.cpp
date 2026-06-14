@@ -121,8 +121,27 @@ void HotkeyEngine::reset() {
 }
 
 void HotkeyEngine::clearSequence() {
+    const bool wasActive = !sequence_.empty();
     sequence_.clear();
     lastPressTime_ = std::chrono::time_point<std::chrono::system_clock>::min();
+    if (wasActive) runSequenceCommand();
+}
+
+void HotkeyEngine::runSequenceCommand() const {
+    if (config_.sequenceCommand.empty()) return;
+
+    std::string state;
+    for (size_t i = 0; i < sequence_.size(); i++) {
+        if (i > 0) state += " ; ";
+        state += std::format("{}", sequence_[i]);
+    }
+
+    std::string command = config_.sequenceCommand;
+    if (size_t pos = command.find("{}"); pos != std::string::npos) {
+        command.replace(pos, 2, state);
+    }
+
+    executeCommand(command);
 }
 
 bool HotkeyEngine::handleSequence(const Chord& chord) {
@@ -157,9 +176,11 @@ bool HotkeyEngine::handleSequence(const Chord& chord) {
             return true;
         }
         debug("Matched partial chord sequence: {}", chord);
+        runSequenceCommand();
         return true;
     }
 
+    sequence_.pop_back();
     clearSequence();
     return false;
 }

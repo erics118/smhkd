@@ -114,7 +114,7 @@ Token Tokenizer::getNextToken() {
         if (text == "define_modifier") {
             return Token{TokenType::DefineModifier, text, startRow, startCol};
         }
-        if (text == "max_chord_interval" || text == "hold_modifier_threshold" || text == "simultaneous_threshold" || text == "blacklist") {
+        if (text == "max_chord_interval" || text == "hold_modifier_threshold" || text == "simultaneous_threshold" || text == "blacklist" || text == "sequence_command") {
             return Token{TokenType::ConfigProperty, text, startRow, startCol};
         }
         if (std::ranges::all_of(text, [](unsigned char ch) { return std::isdigit(ch) != 0; })) {
