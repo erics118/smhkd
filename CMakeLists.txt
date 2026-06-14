@@ -64,6 +64,12 @@ target_compile_options(smhkd_lib PUBLIC
     -Wreturn-stack-address
 )
 
+option(SMHKD_SIGNPOSTS "Enable os_signpost instrumentation for profiling" OFF)
+
+if(SMHKD_SIGNPOSTS)
+    target_compile_definitions(smhkd_lib PUBLIC SMHKD_SIGNPOSTS)
+endif()
+
 option(SMHKD_SANITIZERS "Enable Address/UB/implicit-conversion sanitizers and libc++ hardening" OFF)
 
 if(SMHKD_SANITIZERS)

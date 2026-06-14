@@ -1,8 +1,7 @@
 #include "key_handler.hpp"
 
-#include <os/signpost.h>
-
 #include "../common/log.hpp"
+#include "../common/signpost.hpp"
 #include "../lang/config_loader.hpp"
 #include "../runtime/service.hpp"
 
@@ -47,10 +46,10 @@ CGEventRef KeyHandler::eventCallback(CGEventTapProxy /*proxy*/, CGEventType type
     }
 
     os_log_t log = signpostLog();
-    os_signpost_id_t spid = os_signpost_id_generate(log);
-    os_signpost_interval_begin(log, spid, "eventCallback", "type=%d", static_cast<int>(type));
+    os_signpost_id_t spid = SIGNPOST_GENERATE(log);
+    SIGNPOST_BEGIN(log, spid, "eventCallback", "type=%d", static_cast<int>(type));
     bool consumed = keyHandler->handleKeyEvent(event, type);
-    os_signpost_interval_end(log, spid, "eventCallback", "consumed=%d", consumed ? 1 : 0);
+    SIGNPOST_END(log, spid, "eventCallback", "consumed=%d", consumed ? 1 : 0);
 
     if (consumed) return nullptr;
     return event;

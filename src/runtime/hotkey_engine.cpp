@@ -1,7 +1,5 @@
 #include "hotkey_engine.hpp"
 
-#include <os/signpost.h>
-
 #include <algorithm>
 #include <cctype>
 #include <chrono>
@@ -10,6 +8,7 @@
 #include "../common/command.hpp"
 #include "../common/front_app.hpp"
 #include "../common/log.hpp"
+#include "../common/signpost.hpp"
 #include "../common/string_util.hpp"
 #include "../input/modifier.hpp"
 
@@ -31,18 +30,18 @@ void HotkeyEngine::applyConfig(std::map<Hotkey, std::string> hotkeys, std::vecto
 
 bool HotkeyEngine::handleEvent(const Chord& current, CGEventType type, bool isRepeat) {
     os_log_t log = signpostLog();
-    os_signpost_id_t spid = os_signpost_id_generate(log);
-    os_signpost_interval_begin(log, spid, "handleEvent");
+    os_signpost_id_t spid = SIGNPOST_GENERATE(log);
+    SIGNPOST_BEGIN(log, spid, "handleEvent");
 
     if (!config_.blacklist.empty()) {
-        os_signpost_id_t bp = os_signpost_id_generate(log);
-        os_signpost_interval_begin(log, bp, "frontProcessLookup");
+        os_signpost_id_t bp = SIGNPOST_GENERATE(log);
+        SIGNPOST_BEGIN(log, bp, "frontProcessLookup");
         const auto front = getFrontProcessName();
-        os_signpost_interval_end(log, bp, "frontProcessLookup");
+        SIGNPOST_END(log, bp, "frontProcessLookup");
         if (isBlacklisted(front)) {
             clearSequence();
             lastChord_ = std::nullopt;
-            os_signpost_interval_end(log, spid, "handleEvent", "path=blacklisted");
+            SIGNPOST_END(log, spid, "handleEvent", "path=blacklisted");
             return false;
         }
     }
@@ -52,17 +51,17 @@ bool HotkeyEngine::handleEvent(const Chord& current, CGEventType type, bool isRe
     }
 
     if (type == kCGEventKeyDown && !isRepeat && handleSequence(current)) {
-        os_signpost_interval_end(log, spid, "handleEvent", "path=sequence");
+        SIGNPOST_END(log, spid, "handleEvent", "path=sequence");
         return true;
     }
 
     if (applyRemap(current, type)) {
-        os_signpost_interval_end(log, spid, "handleEvent", "path=remap");
+        SIGNPOST_END(log, spid, "handleEvent", "path=remap");
         return true;
     }
 
-    os_signpost_id_t mp = os_signpost_id_generate(log);
-    os_signpost_interval_begin(log, mp, "hotkeyMatch", "count=%zu", hotkeys_.size());
+    os_signpost_id_t mp = SIGNPOST_GENERATE(log);
+    SIGNPOST_BEGIN(log, mp, "hotkeyMatch", "count=%zu", hotkeys_.size());
     for (const auto& [hotkey, command] : hotkeys_) {
         if (hotkey.chords.size() > 1) continue;
         if (!hotkey.chords[0].isActivatedBy(current)) continue;
@@ -75,20 +74,20 @@ bool HotkeyEngine::handleEvent(const Chord& current, CGEventType type, bool isRe
         debug("hotkey matched: {}", hotkey);
         if (!command.empty()) {
             debug("executing command: {}", command);
-            os_signpost_id_t cp = os_signpost_id_generate(log);
-            os_signpost_interval_begin(log, cp, "executeCommand");
+            os_signpost_id_t cp = SIGNPOST_GENERATE(log);
+            SIGNPOST_BEGIN(log, cp, "executeCommand");
             executeCommand(command);
-            os_signpost_interval_end(log, cp, "executeCommand");
+            SIGNPOST_END(log, cp, "executeCommand");
             if (type == kCGEventKeyDown) {
                 lastChord_ = current;
             }
         }
-        os_signpost_interval_end(log, mp, "hotkeyMatch", "matched=1");
-        os_signpost_interval_end(log, spid, "handleEvent", "path=hotkey");
+        SIGNPOST_END(log, mp, "hotkeyMatch", "matched=1");
+        SIGNPOST_END(log, spid, "handleEvent", "path=hotkey");
         return !hotkey.passthrough;
     }
-    os_signpost_interval_end(log, mp, "hotkeyMatch", "matched=0");
-    os_signpost_interval_end(log, spid, "handleEvent", "path=none");
+    SIGNPOST_END(log, mp, "hotkeyMatch", "matched=0");
+    SIGNPOST_END(log, spid, "handleEvent", "path=none");
     return false;
 }
 
