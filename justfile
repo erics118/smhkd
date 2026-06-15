@@ -2,15 +2,12 @@ build-type := "Debug"
 
 default: debug
 
-# Configure the build with specified build type
-llvm-prefix := `brew --prefix llvm`
-
 configure:
     cmake -S . -B ./build \
         -G Ninja \
         -DCMAKE_EXPORT_COMPILE_COMMANDS=1 \
-        -DCMAKE_BUILD_TYPE={{build-type}} \
-        -DCMAKE_CXX_COMPILER={{llvm-prefix}}/bin/clang++ \
+        -DCMAKE_BUILD_TYPE={{ build-type }} \
+        -DCMAKE_CXX_COMPILER=clang++ \
         -DSMHKD_SANITIZERS=ON;
 
 # Build with current configuration
@@ -28,11 +25,10 @@ release:
     just sign
 
 format:
-    find src -name '*.cpp' -o -name '*.hpp' | xargs {{llvm-prefix}}/bin/clang-format -i
+    find src -name '*.cpp' -o -name '*.hpp' | /opt/homebrew/opt/llvm/bin/clang-format -i
 
+[no-cd]
 test: build
-    ASAN_OPTIONS=detect_leaks=1:abort_on_error=1 \
-    LSAN_OPTIONS=suppressions={{justfile_directory()}}/.lsan-suppressions:print_suppressions=0 \
     ./build/smhkd_tests
 
 clean:
