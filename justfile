@@ -1,4 +1,5 @@
 build-type := "Debug"
+sign-identity := env_var_or_default("SMHKD_SIGN_IDENTITY", "smhkd-cert")
 
 default: debug
 
@@ -35,4 +36,4 @@ clean:
     rm -rf ./build;
 
 sign:
-    codesign --force -i com.erics118.smhkd -s "smhkd-cert" ./build/smhkd
+    codesign --force -i com.erics118.smhkd -s "{{ sign-identity }}" ./build/smhkd
