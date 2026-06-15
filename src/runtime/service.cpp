@@ -90,15 +90,16 @@ std::string getPlistContents() {
 int launchctl(const std::vector<std::string>& args, bool suppressOutput) {
     std::vector<std::string> stringStorage;
     stringStorage.reserve(args.size() + 1);
-    std::vector<char*> c_args;
-    c_args.reserve(args.size() + 2);
     stringStorage.emplace_back(LAUNCHCTL_PATH);
-    c_args.push_back(stringStorage.back().data());
-    for (const auto& arg : args) {
-        stringStorage.push_back(arg);
-        c_args.push_back(stringStorage.back().data());
+    stringStorage.insert(stringStorage.end(), args.begin(), args.end());
+
+    std::vector<char*> c_args;
+    c_args.reserve(stringStorage.size() + 1);
+    for (auto& s : stringStorage) {
+        c_args.push_back(s.data());
     }
     c_args.push_back(nullptr);
+
     posix_spawn_file_actions_t actions{};
     posix_spawn_file_actions_init(&actions);
     if (suppressOutput) {
