@@ -64,6 +64,8 @@ bool KeyHandler::handleKeyEvent(CGEventRef event, CGEventType type) {
     CGEventFlags flags = CGEventGetFlags(event);
     bool isRepeat = CGEventGetIntegerValueField(event, kCGKeyboardEventAutorepeat) != 0;
 
+    debug("TRACE event type={} keycode={} flags={:#x}", static_cast<int>(type), keyCode, flags);
+
     Chord current{
         .keysym = {.keycode = keyCode},
         .modifiers = eventModifierFlagsToHotkeyFlags(flags),
