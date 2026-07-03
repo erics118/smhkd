@@ -26,7 +26,7 @@ release:
     just sign
 
 format:
-    find src -name '*.cpp' -o -name '*.hpp' | /opt/homebrew/opt/llvm/bin/clang-format -i
+    find src -name '*.cpp' -o -name '*.hpp' | xargs clang-format -i
 
 [no-cd]
 test: build

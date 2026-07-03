@@ -101,6 +101,9 @@ target_link_libraries(smhkd_lib PUBLIC
 add_executable(smhkd src/cli/main.cpp)
 target_link_libraries(smhkd PRIVATE smhkd_lib)
 
+include(GNUInstallDirs)
+install(TARGETS smhkd RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+
 # tests
 enable_testing()
 add_executable(smhkd_tests
