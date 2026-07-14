@@ -2,7 +2,7 @@
 max_chord_interval = 5000
 
 blacklist = [
-    "Safari"
+    "safari"
     "processname1"
 ]
 

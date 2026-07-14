@@ -136,7 +136,7 @@ TEST_CASE("scalar config reports trailing tokens after value") {
 }
 
 TEST_CASE("blacklist parses quoted string entries") {
-    Parser p{R"(blacklist = ["Terminal", "iTerm2", "42"])"};
+    Parser p{R"(blacklist = ["Terminal" "iTerm2" "42"])"};
     auto program = p.parseProgram();
 
     CHECK(p.errors().empty());

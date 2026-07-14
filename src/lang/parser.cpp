@@ -147,14 +147,10 @@ std::optional<ast::ConfigProperty> Parser::parseBlacklistConfigStmt(const Token&
         return std::nullopt;
     }
 
-    bool expectValue = true;
+    // entries are separated by whitespace/newlines only, no commas
     while (true) {
         const Token& tk = tokenizer.peek();
         if (tk.type == TokenType::CloseBracket) {
-            if (expectValue && !stmt.stringListValues.empty()) {
-                addUnexpectedTokenError(tk, "in blacklist", "quoted string");
-                return std::nullopt;
-            }
             tokenizer.next();
             break;
         }
@@ -162,25 +158,14 @@ std::optional<ast::ConfigProperty> Parser::parseBlacklistConfigStmt(const Token&
             addUnexpectedEofError(tk, "while parsing blacklist");
             break;
         }
-        if (expectValue) {
-            if (tk.type != TokenType::String) {
-                addUnexpectedTokenError(tk, "in blacklist", "quoted string");
-                return std::nullopt;
-            }
-            Token valueToken = tokenizer.next();
-            if (!valueToken.text.empty()) {
-                stmt.stringListValues.push_back(valueToken.text);
-            }
-            expectValue = false;
-            continue;
+        if (tk.type != TokenType::String) {
+            addUnexpectedTokenError(tk, "in blacklist", "quoted string");
+            return std::nullopt;
         }
-        if (tk.type == TokenType::Comma) {
-            tokenizer.next();
-            expectValue = true;
-            continue;
+        Token valueToken = tokenizer.next();
+        if (!valueToken.text.empty()) {
+            stmt.stringListValues.push_back(valueToken.text);
         }
-        addUnexpectedTokenError(tk, "in blacklist", "',' or ']'");
-        return std::nullopt;
     }
     if (stmt.stringListValues.empty()) {
         addError(cpToken, "blacklist config provided but no process names were parsed");

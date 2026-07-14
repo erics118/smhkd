@@ -213,7 +213,7 @@ TEST_CASE("remap with flags (@/&/^) is rejected") {
 }
 
 TEST_CASE("blacklist preserves order and lowercases strings") {
-    auto r = interpret_source(R"(blacklist = ["Terminal", "iTerm2", "Code", "a b c"])");
+    auto r = interpret_source(R"(blacklist = ["Terminal" "iTerm2" "Code" "a b c"])");
     REQUIRE(r.errors.empty());
     REQUIRE(r.config.blacklist.size() == 4);
     CHECK(r.config.blacklist[0] == "terminal");

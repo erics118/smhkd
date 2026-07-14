@@ -39,7 +39,7 @@ string_literal
     = '"' , ? any character except newline, double quotes must be escaped as \" ? , '"';
 
 string_list
-    = '[' , string_literal , { ',' , string_literal } , ']';
+    = '[' , string_literal , { string_literal } , ']';
 
 config_property
     = ( integer_config_property_name , '=' , number )
