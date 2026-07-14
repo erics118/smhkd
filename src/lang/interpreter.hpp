@@ -4,6 +4,7 @@
 #include <map>
 #include <optional>
 #include <string>
+#include <variant>
 #include <vector>
 
 #include "../input/chord.hpp"
@@ -33,17 +34,16 @@ struct InterpreterError {
     std::string message;
 };
 
-struct RemapBinding {
-    Hotkey source;
-    Chord target;
+// a binding's action is either a shell command (hotkey) or a target chord (remap)
+using BindingAction = std::variant<std::string, Chord>;
 
-    RemapBinding(Hotkey source, Chord target)
-        : source(std::move(source)), target(target) {}
+struct Binding {
+    Hotkey source;
+    BindingAction action;
 };
 
 struct InterpreterResult {
-    std::map<Hotkey, std::string> hotkeys;
-    std::vector<RemapBinding> remaps;
+    std::vector<Binding> bindings;
     ConfigProperties config;
     std::vector<InterpreterError> errors;
 };

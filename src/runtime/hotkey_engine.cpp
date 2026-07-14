@@ -4,6 +4,7 @@
 #include <cctype>
 #include <chrono>
 #include <thread>
+#include <variant>
 
 #include "../common/command.hpp"
 #include "../common/front_app.hpp"
@@ -21,9 +22,8 @@ os_log_t signpostLog() {
 
 }  // namespace
 
-void HotkeyEngine::applyConfig(std::map<Hotkey, std::string> hotkeys, std::vector<RemapBinding> remaps, ConfigProperties config) {
-    hotkeys_ = std::move(hotkeys);
-    remaps_ = std::move(remaps);
+void HotkeyEngine::applyConfig(std::vector<Binding> bindings, ConfigProperties config) {
+    bindings_ = std::move(bindings);
     config_ = std::move(config);
     reset();
 }
@@ -55,28 +55,32 @@ bool HotkeyEngine::handleEvent(const Chord& current, CGEventType type, bool isRe
         return true;
     }
 
-    if (applyRemap(current, type)) {
-        SIGNPOST_END(log, spid, "handleEvent", "path=remap");
-        return true;
-    }
-
     os_signpost_id_t mp = SIGNPOST_GENERATE(log);
-    SIGNPOST_BEGIN(log, mp, "hotkeyMatch", "count=%zu", hotkeys_.size());
-    for (const auto& [hotkey, command] : hotkeys_) {
+    SIGNPOST_BEGIN(log, mp, "hotkeyMatch", "count=%zu", bindings_.size());
+    for (const auto& binding : bindings_) {
+        const auto& hotkey = binding.source;
         if (hotkey.chords.size() > 1) continue;
         if (!hotkey.chords[0].isActivatedBy(current)) continue;
+
+        if (const auto* target = std::get_if<Chord>(&binding.action)) {
+            if (type != kCGEventKeyDown && type != kCGEventKeyUp) continue;
+            postKeyEvent(*target, type == kCGEventKeyDown);
+            SIGNPOST_END(log, mp, "hotkeyMatch", "matched=1");
+            SIGNPOST_END(log, spid, "handleEvent", "path=remap");
+            return true;
+        }
 
         const bool typeMatches =
             (!hotkey.on_release && type == kCGEventKeyDown) || (hotkey.on_release && type == kCGEventKeyUp);
         const bool repeatMatches = (isRepeat && hotkey.repeat) || !isRepeat;
         if (!typeMatches || !repeatMatches) continue;
 
+        const auto& command = std::get<std::string>(binding.action);
         debug("hotkey matched: {}", hotkey);
         if (!command.empty()) {
-            debug("executing command: {}", command);
             os_signpost_id_t cp = SIGNPOST_GENERATE(log);
             SIGNPOST_BEGIN(log, cp, "executeCommand");
-            executeCommand(command);
+            executeHotkeyCommand(command);
             SIGNPOST_END(log, cp, "executeCommand");
             if (type == kCGEventKeyDown) {
                 lastChord_ = current;
@@ -88,24 +92,6 @@ bool HotkeyEngine::handleEvent(const Chord& current, CGEventType type, bool isRe
     }
     SIGNPOST_END(log, mp, "hotkeyMatch", "matched=0");
     SIGNPOST_END(log, spid, "handleEvent", "path=none");
-    return false;
-}
-
-bool HotkeyEngine::applyRemap(const Chord& chord, CGEventType type) {
-    if (type != kCGEventKeyDown && type != kCGEventKeyUp) {
-        return false;
-    }
-
-    for (const auto& remap : remaps_) {
-        if (remap.source.chords.size() != 1) {
-            continue;
-        }
-        if (!remap.source.chords[0].isActivatedBy(chord)) {
-            continue;
-        }
-        postKeyEvent(remap.target, type == kCGEventKeyDown);
-        return true;
-    }
     return false;
 }
 
@@ -153,7 +139,8 @@ bool HotkeyEngine::handleSequence(const Chord& chord) {
     lastPressTime_ = now;
     sequence_.push_back(chord);
 
-    for (const auto& [hotkey, command] : hotkeys_) {
+    for (const auto& binding : bindings_) {
+        const auto& hotkey = binding.source;
         if (hotkey.chords.size() == 1) continue;
         if (sequence_.size() > hotkey.chords.size()) continue;
 
@@ -168,10 +155,9 @@ bool HotkeyEngine::handleSequence(const Chord& chord) {
 
         if (sequence_.size() == hotkey.chords.size()) {
             debug("Matched complete chord sequence ending with: {}", hotkey);
-            if (!command.empty()) {
-                debug("executing command: {}", command);
-                executeCommand(command);
-            }
+            // remaps are always single-chord (enforced at interpret time), so a
+            // multi-chord match here can only be a command action
+            executeHotkeyCommand(std::get<std::string>(binding.action));
             clearSequence();
             return true;
         }
@@ -183,6 +169,12 @@ bool HotkeyEngine::handleSequence(const Chord& chord) {
     sequence_.pop_back();
     clearSequence();
     return false;
+}
+
+void HotkeyEngine::executeHotkeyCommand(const std::string& command) const {
+    if (command.empty()) return;
+    debug("executing command: {}", command);
+    executeCommand(command);
 }
 
 bool HotkeyEngine::isBlacklisted(std::string_view processName) const {

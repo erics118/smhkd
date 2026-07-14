@@ -16,7 +16,7 @@
 
 class HotkeyEngine {
    public:
-    void applyConfig(std::map<Hotkey, std::string> hotkeys, std::vector<RemapBinding> remaps, ConfigProperties config);
+    void applyConfig(std::vector<Binding> bindings, ConfigProperties config);
     [[nodiscard]] bool handleEvent(const Chord& current, CGEventType type, bool isRepeat);
     void reset();
     static void synthesizeKeyPress(const Chord& target);
@@ -24,8 +24,7 @@ class HotkeyEngine {
     static constexpr int64_t SYNTHETIC_REMAP_TAG = 0x534d484b44;
 
    private:
-    std::map<Hotkey, std::string> hotkeys_;
-    std::vector<RemapBinding> remaps_;
+    std::vector<Binding> bindings_;
     ConfigProperties config_;
     std::optional<Chord> lastChord_;
     std::vector<Chord> sequence_;
@@ -34,7 +33,7 @@ class HotkeyEngine {
     void clearSequence();
     void runSequenceCommand() const;
     [[nodiscard]] bool handleSequence(const Chord& chord);
-    [[nodiscard]] bool applyRemap(const Chord& chord, CGEventType type);
     [[nodiscard]] bool isBlacklisted(std::string_view processName) const;
+    void executeHotkeyCommand(const std::string& command) const;
     static void postKeyEvent(const Chord& target, bool keyDown);
 };

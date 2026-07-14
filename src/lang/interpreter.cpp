@@ -42,8 +42,8 @@ class Interpreter {
     // statement application
     void applyDefine(const ast::DefineModifier& node);
     void applyConfig(const ast::ConfigProperty& node, ConfigProperties& config);
-    void applyRemap(const ast::Remap& node, std::vector<RemapBinding>& remaps);
-    void applyHotkey(const ast::Hotkey& h, std::map<Hotkey, std::string>& hotkeys);
+    void applyRemap(const ast::Remap& node, std::vector<Binding>& bindings);
+    void applyHotkey(const ast::Hotkey& h, std::vector<Binding>& bindings);
 };
 
 void Interpreter::addError(std::string message) {
@@ -302,7 +302,7 @@ void Interpreter::applyConfig(const ast::ConfigProperty& node, ConfigProperties&
     }
 }
 
-void Interpreter::applyRemap(const ast::Remap& node, std::vector<RemapBinding>& remaps) {
+void Interpreter::applyRemap(const ast::Remap& node, std::vector<Binding>& bindings) {
     if (node.source.passthrough || node.source.repeat || node.source.onRelease) {
         addError("remaps do not support '@', '&', or '^' flags");
         return;
@@ -330,10 +330,10 @@ void Interpreter::applyRemap(const ast::Remap& node, std::vector<RemapBinding>& 
         addError("remaps do not support media-key targets yet");
         return;
     }
-    remaps.emplace_back(std::move(*source), *target);
+    bindings.emplace_back(std::move(*source), *target);
 }
 
-void Interpreter::applyHotkey(const ast::Hotkey& h, std::map<Hotkey, std::string>& hotkeys) {
+void Interpreter::applyHotkey(const ast::Hotkey& h, std::vector<Binding>& bindings) {
     const auto& syn = h.chords;
     auto base = buildBaseHotkey(syn);
     if (!base) {
@@ -374,7 +374,7 @@ void Interpreter::applyHotkey(const ast::Hotkey& h, std::map<Hotkey, std::string
         }
         std::string command = commandExpansions.empty() ? unescapeDoubleBraces(h.command) : commandExpansions[i];
         debug("adding command: {} : {}", hk, command);
-        hotkeys[hk] = command;
+        bindings.emplace_back(std::move(hk), std::move(command));
     }
 }
 
@@ -390,7 +390,7 @@ InterpreterResult Interpreter::interpret(const ast::Program& p) {
             } else if constexpr (std::is_same_v<T, ast::ConfigProperty>) {
                 applyConfig(node, result.config);
             } else if constexpr (std::is_same_v<T, ast::Remap>) {
-                applyRemap(node, result.remaps);
+                applyRemap(node, result.bindings);
             }
         },
             stmt);
@@ -399,7 +399,7 @@ InterpreterResult Interpreter::interpret(const ast::Program& p) {
     // second pass: hotkeys (need all defines resolved first)
     for (const auto& stmt : p.statements) {
         if (!std::holds_alternative<ast::Hotkey>(stmt)) continue;
-        applyHotkey(std::get<ast::Hotkey>(stmt), result.hotkeys);
+        applyHotkey(std::get<ast::Hotkey>(stmt), result.bindings);
     }
     result.errors = std::move(errors_);
     return result;

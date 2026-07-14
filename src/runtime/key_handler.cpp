@@ -102,5 +102,5 @@ void KeyHandler::loadConfig(const std::filesystem::path& configFile) {
     for (const auto& interpreter_error : result.interpreterErrors) {
         warn("config error: {}", interpreter_error.message);
     }
-    engine.applyConfig(std::move(result.hotkeys), std::move(result.remaps), std::move(result.config));
+    engine.applyConfig(std::move(result.bindings), std::move(result.config));
 }
