@@ -18,7 +18,7 @@ rhyper + lcmd + a:
 cmd + 0x21:
     echo cmd [
 
-fn + c @:
+fn + c ~:
     echo fn c passthrough
 
 shift + k & :
@@ -30,8 +30,8 @@ define_modifier bbb = aaa + lshift
 aaa + t ^ :
     echo cmd ctrl t up
 
-bbb + p ^ & @:
-    echo cmd ctrl shift p up repeat passthrough
+bbb + p & ~:
+    echo cmd ctrl shift p repeat passthrough
 
 alt + {1,2,3} :
     echo alt {1,2,3}
@@ -47,3 +47,26 @@ alt + i ; alt + {1,2,3} :
 
 cmd + alt + [c, d] :
     echo cmd alt with c and d pressed together
+
+# branched form
+
+# these two are the same:
+cmd + c : echo cmd c
+
+cmd + c [
+    * : echo cmd c
+]
+
+define_group browsers = [
+    "safari"
+    "firefox"
+    "chrome"
+]
+
+cmd + a [
+    "wezterm" : echo cmd a in wezterm
+    @browsers : echo cmd a in browsers
+    "slack" | cmd + b # remap
+    "code" ~ # do cmd a in code
+    * : echo cmd a in all other apps
+]

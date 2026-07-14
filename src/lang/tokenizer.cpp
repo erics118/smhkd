@@ -64,6 +64,10 @@ Token Tokenizer::getNextToken() {
             advance();
             return Token{TokenType::At, "@", startRow, startCol};
         }
+        if (c == '~') {
+            advance();
+            return Token{TokenType::Tilde, "~", startRow, startCol};
+        }
         if (c == '&') {
             advance();
             return Token{TokenType::Ampersand, "&", startRow, startCol};

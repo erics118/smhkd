@@ -316,7 +316,7 @@ bool Parser::isKeyToken(TokenType type) {
 }
 
 bool Parser::isFlagToken(TokenType type) {
-    return type == TokenType::At || type == TokenType::Ampersand || type == TokenType::Caret;
+    return type == TokenType::Tilde || type == TokenType::Ampersand || type == TokenType::Caret;
 }
 
 bool Parser::startsChord(const Token& tk) {
@@ -463,7 +463,7 @@ std::optional<ast::Stmt> Parser::parseBindingStmt() {
 
     while (true) {
         const Token& c = tokenizer.peek();
-        if (c.type == TokenType::At) {
+        if (c.type == TokenType::Tilde) {
             binding.passthrough = true;
             tokenizer.next();
         } else if (c.type == TokenType::Ampersand) {
