@@ -116,7 +116,7 @@ modifiers
 (* flags **********************************************************)
 (* allows event to pass through to other applications *)
 passthrough
-    = '@';
+    = '~';
 
 (* enables repeat based on macos settings, cannot be combined with ^ *)
 repeat
@@ -133,6 +133,17 @@ flags
     | on_release
     | passthrough , repeat
     | repeat , passthrough;
+
+(* process **********************************************************)
+(* list of app processes *)
+process_group
+    = 'define_group' , identifier , '=' , string_list;
+
+(* a list of conditions *)
+condition
+    = '*'
+    | '@' , identifier (* a group of processes *)
+    | string_literal (* list of processes *);
 
 (* command *****************************************************)
 command
@@ -151,10 +162,31 @@ simple_chord
 chords
     = chord , { ';' , chord } , [ flags ];
 
-(* hotkey is a list of chords followed by a command. there can be a newline after ':' for readability *)
-hotkey
-    = chords , ':' , ? optional whitespace/comments ? , command;
+(* a shell command *)
+hotkey_action
+    = ':' , ? optional whitespace/comments ? , command;
 
-(* a remap is a mapping of chords to a simple_chord *)
-remap
-    = chords , '|' , ? optional whitespace/comments ? , simple_chord;
+(* a mapping of a single chord to another chord *)
+remap_action
+    = '|' , ? optional whitespace/comments ? , simple_chord;
+
+(* chord that does nothing, allowing the event to pass through to apps *)
+passthrough_action
+    = '~';
+
+(* an action *)
+action
+    = hotkey_action
+    | remap_action
+    | passthrough_action;
+
+(* a single binding output *)
+binding_arm
+    = condition , action;
+
+(* a list of binding outputs *)
+branched_binding
+    = chords , '[' , binding_arm , { binding_arm } , ']';
+
+simple_binding
+    = chords , action;
