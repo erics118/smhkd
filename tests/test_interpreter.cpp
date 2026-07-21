@@ -205,8 +205,8 @@ TEST_CASE("remap produces source hotkey and target chord with correct flags/keyc
     CHECK(target.modifiers.flags == Hotkey_Flag_Shift);
 }
 
-TEST_CASE("remap with flags (@/&/^) is rejected") {
-    auto r = interpret_source("cmd + a @ | shift + b");
+TEST_CASE("remap with flags (~/&/^) is rejected") {
+    auto r = interpret_source("cmd + a ~ | shift + b");
     REQUIRE(!r.errors.empty());
     CHECK(r.errors[0].message.contains("remaps do not support"));
     CHECK(remap_bindings(r.bindings).empty());
@@ -224,7 +224,7 @@ TEST_CASE("blacklist preserves order and lowercases strings") {
 
 TEST_CASE("passthrough/repeat/release flags are propagated to Hotkey") {
     auto r = interpret_source(
-        "cmd + a @ : passthrough\n"
+        "cmd + a ~ : passthrough\n"
         "cmd + b & : repeat\n"
         "cmd + c ^ : release");
     REQUIRE(r.errors.empty());

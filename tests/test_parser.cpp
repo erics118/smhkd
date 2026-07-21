@@ -47,7 +47,7 @@ TEST_CASE("simple hotkey parses full AST content") {
 }
 
 TEST_CASE("hotkey flags and multi-chord sequence preserve parser structure") {
-    Parser p{"cmd + a ; shift + b ^ & @ : echo hi"};
+    Parser p{"cmd + a ; shift + b ^ & ~ : echo hi"};
     auto program = p.parseProgram();
 
     CHECK(p.errors().empty());
@@ -449,7 +449,7 @@ TEST_CASE("hotkey requires a non-empty command after colon") {
 }
 
 TEST_CASE("hotkey reports eof after flags with no chord") {
-    Parser p{"cmd + a ^ & @"};
+    Parser p{"cmd + a ^ & ~"};
     auto program = p.parseProgram();
 
     REQUIRE(program.statements.empty());
@@ -458,7 +458,7 @@ TEST_CASE("hotkey reports eof after flags with no chord") {
 }
 
 TEST_CASE("leading flags before the first chord are rejected") {
-    Parser p{"@ cmd + a : echo hi"};
+    Parser p{"~ cmd + a : echo hi"};
     auto program = p.parseProgram();
 
     REQUIRE(program.statements.empty());
