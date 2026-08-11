@@ -26,13 +26,18 @@ class Application {
     std::unique_ptr<KeyHandler> keyHandler_;
     ReloadContext reloadContext_{};
     std::array<int, 2> reloadSignalPipe_ = {-1, -1};
+    std::array<int, 2> quitSignalPipe_ = {-1, -1};
 
     static Application* instance_;
 
     static void sigusr1Handler(int signal);
+    static void terminateHandler(int signal);
     static void reloadSignalCallback(CFFileDescriptorRef fd, CFOptionFlags callbackTypes, void* info);
+    static void quitSignalCallback(CFFileDescriptorRef fd, CFOptionFlags callbackTypes, void* info);
 
     void installSignalHandlers() const;
     void setupReloadSignalSource(CFRunLoopRef runLoop);
+    void setupQuitSignalSource(CFRunLoopRef runLoop);
     void handleReloadSignal(CFFileDescriptorRef fd);
+    void handleQuitSignal();
 };

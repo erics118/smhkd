@@ -15,6 +15,11 @@ Application::~Application() {
             close(fd);
         }
     }
+    for (int fd : quitSignalPipe_) {
+        if (fd != -1) {
+            close(fd);
+        }
+    }
     if (instance_ == this) {
         instance_ = nullptr;
     }
@@ -30,6 +35,7 @@ void Application::run() {
     instance_ = this;
     installSignalHandlers();
     setupReloadSignalSource(CFRunLoopGetCurrent());
+    setupQuitSignalSource(CFRunLoopGetCurrent());
     keyHandler_->run();
 }
 
@@ -50,9 +56,20 @@ void Application::reloadSignalCallback(CFFileDescriptorRef fd, CFOptionFlags /*c
     instance_->handleReloadSignal(fd);
 }
 
+void Application::terminateHandler(int /*signal*/) {
+    if (!instance_ || instance_->quitSignalPipe_[1] == -1) {
+        return;
+    }
+    const char byte = '\n';
+    const ssize_t result = write(instance_->quitSignalPipe_[1], &byte, sizeof(byte));
+    (void)result;
+}
+
 void Application::installSignalHandlers() const {
     signal(SIGCHLD, SIG_IGN);
     signal(SIGUSR1, sigusr1Handler);
+    signal(SIGTERM, terminateHandler);
+    signal(SIGINT, terminateHandler);
 }
 
 void Application::setupReloadSignalSource(CFRunLoopRef runLoop) {
@@ -102,4 +119,60 @@ void Application::handleReloadSignal(CFFileDescriptorRef fd) {
     debug("SIGUSR1 received, reloading config");
     keyHandler_->reload();
     CFFileDescriptorEnableCallBacks(fd, kCFFileDescriptorReadCallBack);
+}
+
+void Application::quitSignalCallback(CFFileDescriptorRef /*fd*/, CFOptionFlags /*callbackTypes*/, void* info) {
+    auto* app = static_cast<Application*>(info);
+    if (!app || !instance_) {
+        return;
+    }
+    app->handleQuitSignal();
+}
+
+void Application::setupQuitSignalSource(CFRunLoopRef runLoop) {
+    if (pipe(quitSignalPipe_.data()) == -1) {
+        fatal("failed to create quit signal pipe");
+    }
+
+    for (int fd : quitSignalPipe_) {
+        const int flags = fcntl(fd, F_GETFL);  // NOLINT(cppcoreguidelines-pro-type-vararg)
+        if (flags == -1) {
+            fatal("failed to read quit signal pipe flags");
+        }
+        if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {  // NOLINT(cppcoreguidelines-pro-type-vararg)
+            fatal("failed to set quit signal pipe non-blocking");
+        }
+    }
+
+    CFFileDescriptorContext fdContext{};
+    fdContext.info = this;
+    auto* quitFd = CFFileDescriptorCreate(
+        kCFAllocatorDefault,
+        quitSignalPipe_[0],
+        false,
+        quitSignalCallback,
+        &fdContext);
+    if (!quitFd) {
+        fatal("failed to create quit signal file descriptor");
+    }
+
+    CFFileDescriptorEnableCallBacks(quitFd, kCFFileDescriptorReadCallBack);
+    CFRunLoopSourceRef source = CFFileDescriptorCreateRunLoopSource(kCFAllocatorDefault, quitFd, 0);
+    if (!source) {
+        CFRelease(quitFd);
+        fatal("failed to create quit signal run loop source");
+    }
+
+    CFRunLoopAddSource(runLoop, source, kCFRunLoopCommonModes);
+    CFRelease(source);
+    CFRelease(quitFd);
+}
+
+void Application::handleQuitSignal() {
+    std::array<char, 64> buffer{};
+    while (read(quitSignalPipe_[0], buffer.data(), buffer.size()) > 0) {
+    }
+
+    debug("termination signal received, stopping run loop");
+    CFRunLoopStop(CFRunLoopGetCurrent());
 }
