@@ -1,4 +1,5 @@
 build-type := "Debug"
+sanitize := "ON"
 sign-identity := env_var_or_default("SMHKD_SIGN_IDENTITY", "smhkd-cert")
 
 default: debug
@@ -9,7 +10,7 @@ configure:
         -DCMAKE_EXPORT_COMPILE_COMMANDS=1 \
         -DCMAKE_BUILD_TYPE={{ build-type }} \
         -DCMAKE_CXX_COMPILER=clang++ \
-        -DSMHKD_SANITIZERS=ON;
+        -DSMHKD_SANITIZERS={{ sanitize }};
 
 # Build with current configuration
 build: configure
@@ -22,7 +23,7 @@ debug:
 
 # Build specifically in release mode
 release:
-    just build-type="Release" build
+    just build-type="Release" sanitize="OFF" build
     just sign
 
 format:
