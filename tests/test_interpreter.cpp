@@ -282,15 +282,17 @@ TEST_CASE("brace expansion in more than one sequence chord is an error") {
     CHECK(hotkey_bindings(r.bindings).empty());
 }
 
-TEST_CASE("an empty command does not swallow the following line") {
-    Parser p{"cmd + a :\ncmd + b : echo hi"};
-    auto program = p.parseProgram();
-    REQUIRE(p.errors().size() == 1);
-    REQUIRE(program.statements.size() == 1);
-    auto r = interpretProgram(program);
+TEST_CASE("a command on the line after the colon attaches to its chord") {
+    auto r = interpret_source(
+        "cmd + a :\n"
+        "    echo one\n"
+        "cmd + b :\n"
+        "    sketchybar --bar hidden=toggle");
+    REQUIRE(r.errors.empty());
     const auto hotkeys = hotkey_bindings(r.bindings);
-    REQUIRE(hotkeys.size() == 1);
-    CHECK(std::get<std::string>(hotkeys[0].action) == "echo hi");
+    REQUIRE(hotkeys.size() == 2);
+    CHECK(std::get<std::string>(hotkeys[0].action) == "echo one");
+    CHECK(std::get<std::string>(hotkeys[1].action) == "sketchybar --bar hidden=toggle");
 }
 
 TEST_CASE("config values apply to the correct field") {

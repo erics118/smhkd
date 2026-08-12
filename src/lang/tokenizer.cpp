@@ -27,13 +27,13 @@ bool Tokenizer::hasRemainingInput(int offset) {
 
 Token Tokenizer::getNextToken() {
     while (true) {
-        if (nextTokenIsCommand) {
-            nextTokenIsCommand = false;
-            return readCommandToken();
-        }
         skipWhitespaceAndComments();
         if (position >= contents.size()) {
             return Token{TokenType::EndOfFile, "", row, col};
+        }
+        if (nextTokenIsCommand) {
+            nextTokenIsCommand = false;
+            return readCommandToken();
         }
         char c = peekChar();
         int startRow = row;
@@ -175,11 +175,6 @@ std::string Tokenizer::readQuotedString() {
 }
 
 Token Tokenizer::readCommandToken() {
-    while (position < contents.size()) {
-        char c = peekChar();
-        if (c != ' ' && c != '\t') break;
-        advance();
-    }
     int startRow = row;
     int startCol = col;
     std::string line;
