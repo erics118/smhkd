@@ -12,6 +12,7 @@
 #include "lang/config_loader.hpp"
 #include "lang/interpreter.hpp"
 #include "lang/parser.hpp"
+#include "runtime/hotkey_engine.hpp"
 
 namespace {
 
@@ -66,6 +67,123 @@ TEST_CASE("simple hotkey: keycode, modifier flag, command all set correctly") {
     CHECK_FALSE(hk.repeat);
     CHECK_FALSE(hk.on_release);
     CHECK(cmd == "echo hi");
+}
+
+TEST_CASE("trackpad_fingers(N) is carried onto the runtime chord") {
+    auto r = interpret_source("trackpad_fingers(2) + cmd + j : echo hi");
+    REQUIRE(r.errors.empty());
+    const auto hotkeys = hotkey_bindings(r.bindings);
+    REQUIRE(hotkeys.size() == 1);
+    const auto& chord = hotkeys[0].source.chords[0];
+    REQUIRE(chord.fingerCount.has_value());
+    CHECK(*chord.fingerCount == 2);
+    CHECK(chord.modifiers.flags == Hotkey_Flag_Cmd);
+}
+
+TEST_CASE("a hotkey without trackpad_fingers(N) has no finger requirement") {
+    auto r = interpret_source("cmd + j : echo hi");
+    REQUIRE(r.errors.empty());
+    const auto hotkeys = hotkey_bindings(r.bindings);
+    REQUIRE(hotkeys.size() == 1);
+    CHECK_FALSE(hotkeys[0].source.chords[0].fingerCount.has_value());
+}
+
+TEST_CASE("trackpad_fingers(N) works on a remap source") {
+    auto r = interpret_source("trackpad_fingers(2) + a | b");
+    REQUIRE(r.errors.empty());
+    const auto remaps = remap_bindings(r.bindings);
+    REQUIRE(remaps.size() == 1);
+    REQUIRE(remaps[0].source.chords[0].fingerCount.has_value());
+    CHECK(*remaps[0].source.chords[0].fingerCount == 2);
+}
+
+TEST_CASE("finger-count requirement matches only the live count") {
+    const Chord binding{.keysym = {.keycode = 5}, .modifiers = {.flags = Hotkey_Flag_Cmd}, .fingerCount = 2};
+    const Chord ev{.keysym = {.keycode = 5}, .modifiers = {.flags = Hotkey_Flag_Cmd}};
+    CHECK(binding.isActivatedBy(ev, 2));
+    CHECK_FALSE(binding.isActivatedBy(ev, 1));
+}
+
+TEST_CASE("no finger requirement matches any live count") {
+    const Chord binding{.keysym = {.keycode = 5}, .modifiers = {.flags = Hotkey_Flag_Cmd}};
+    const Chord ev{.keysym = {.keycode = 5}, .modifiers = {.flags = Hotkey_Flag_Cmd}};
+    CHECK(binding.isActivatedBy(ev, 3));
+    CHECK(binding.isActivatedBy(ev, 0));
+}
+
+TEST_CASE("trackpad_fingers(0) matches only when nothing is touching") {
+    const Chord binding{.keysym = {.keycode = 5}, .modifiers = {.flags = 0}, .fingerCount = 0};
+    const Chord ev{.keysym = {.keycode = 5}, .modifiers = {.flags = 0}};
+    CHECK(binding.isActivatedBy(ev, 0));
+    CHECK_FALSE(binding.isActivatedBy(ev, 1));
+}
+
+TEST_CASE("the event chord carries no finger count (so it never displays one)") {
+    const Chord ev{.keysym = {.keycode = 5}, .modifiers = {.flags = Hotkey_Flag_Cmd}};
+    CHECK_FALSE(ev.fingerCount.has_value());
+}
+
+TEST_CASE("corner_size and tap_timeout config knobs parse") {
+    auto r = interpret_source("corner_size = 20\ntap_timeout = 250\n");
+    REQUIRE(r.errors.empty());
+    CHECK(r.config.cornerSize == 20);
+    CHECK(r.config.tapTimeout == std::chrono::milliseconds(250));
+}
+
+TEST_CASE("corner_size out of range is an error") {
+    auto r = interpret_source("corner_size = 60\n");
+    CHECK_FALSE(r.errors.empty());
+}
+
+TEST_CASE("trackpad_tap lowers to a tap binding, not a keyboard binding") {
+    auto r = interpret_source("cmd + trackpad_tap(tr) : echo hi");
+    REQUIRE(r.errors.empty());
+    CHECK(r.bindings.empty());
+    REQUIRE(r.tapBindings.size() == 1);
+    CHECK(r.tapBindings[0].zone == Zone::TopRight);
+    CHECK(r.tapBindings[0].modifiers.flags == Hotkey_Flag_Cmd);
+    CHECK(std::get<std::string>(r.tapBindings[0].action) == "echo hi");
+}
+
+TEST_CASE("a bare trackpad_tap with no modifier is an error") {
+    auto r = interpret_source("trackpad_tap(tr) : echo hi");
+    CHECK_FALSE(r.errors.empty());
+    CHECK(r.tapBindings.empty());
+}
+
+TEST_CASE("a trackpad_tap remap lowers to a tap binding with a target chord") {
+    auto r = interpret_source("cmd + trackpad_tap(bl) | a");
+    REQUIRE(r.errors.empty());
+    REQUIRE(r.tapBindings.size() == 1);
+    CHECK(r.tapBindings[0].zone == Zone::BottomLeft);
+    CHECK(std::holds_alternative<Chord>(r.tapBindings[0].action));
+}
+
+TEST_CASE("a trackpad_tap remap to a media key is allowed") {
+    auto r = interpret_source("cmd + trackpad_tap(tr) | sound_up");
+    REQUIRE(r.errors.empty());
+    REQUIRE(r.tapBindings.size() == 1);
+    REQUIRE(std::holds_alternative<Chord>(r.tapBindings[0].action));
+    CHECK(std::get<Chord>(r.tapBindings[0].action).modifiers.has(Hotkey_Flag_NX));
+}
+
+TEST_CASE("a keyboard remap to a media key is allowed") {
+    auto r = interpret_source("cmd + m | mute");
+    REQUIRE(r.errors.empty());
+    const auto remaps = remap_bindings(r.bindings);
+    REQUIRE(remaps.size() == 1);
+    CHECK(std::get<Chord>(remaps[0].action).modifiers.has(Hotkey_Flag_NX));
+}
+
+TEST_CASE("engine matches a corner tap by zone and modifiers") {
+    auto r = interpret_source("cmd + trackpad_tap(tr) : echo hi");
+    REQUIRE(r.errors.empty());
+    HotkeyEngine engine;
+    engine.applyConfig({}, r.tapBindings, r.config);
+    CHECK(engine.hasTapBinding(Zone::TopRight, ModifierFlags{.flags = Hotkey_Flag_Cmd}));
+    CHECK_FALSE(engine.hasTapBinding(Zone::TopRight, ModifierFlags{.flags = Hotkey_Flag_Alt}));
+    CHECK_FALSE(engine.hasTapBinding(Zone::BottomLeft, ModifierFlags{.flags = Hotkey_Flag_Cmd}));
+    CHECK_FALSE(engine.handleTap(Zone::BottomRight, ModifierFlags{.flags = Hotkey_Flag_Cmd}));
 }
 
 TEST_CASE("multiple modifiers combine flags") {

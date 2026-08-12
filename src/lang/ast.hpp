@@ -8,6 +8,7 @@
 
 #include "../input/keysym.hpp"
 #include "../input/modifier.hpp"
+#include "../input/zone.hpp"
 
 namespace ast {
 
@@ -55,6 +56,8 @@ inline const SimpleKeysym* asSimple(const Keysym& k) {
 struct Chord {
     std::vector<Modifier> modifiers;
     std::optional<Keysym> key;
+    std::optional<int> fingerCount;
+    std::optional<Zone> tap;
 };
 
 struct Chords {
@@ -142,11 +145,17 @@ template <>
 struct std::formatter<ast::Chord> : std::formatter<std::string_view> {
     auto format(const ast::Chord& cs, std::format_context& ctx) const {
         auto out = ctx.out();
+        if (cs.fingerCount) {
+            out = std::format_to(out, "trackpad_fingers({}) + ", *cs.fingerCount);
+        }
         for (const auto& mod : cs.modifiers) {
             out = std::format_to(out, "{} + ", mod);
         }
         if (cs.key) {
             return std::format_to(out, "{}", *cs.key);
+        }
+        if (cs.tap) {
+            return std::format_to(out, "trackpad_tap({})", zoneName(*cs.tap));
         }
         return std::format_to(out, "<missing-key>");
     }

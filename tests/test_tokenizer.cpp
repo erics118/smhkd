@@ -56,6 +56,17 @@ TEST_CASE("multi-letter identifier is Modifier (not literal/config)") {
     CHECK(toks[0].type == TokenType::Modifier);
 }
 
+TEST_CASE("parentheses tokenize as OpenParen/CloseParen") {
+    auto toks = tokenize_all("trackpad_fingers(2)");
+    REQUIRE(toks.size() == 4);
+    CHECK(toks[0].type == TokenType::Modifier);
+    CHECK(toks[0].text == "trackpad_fingers");
+    CHECK(toks[1].type == TokenType::OpenParen);
+    CHECK(toks[2].type == TokenType::Integer);
+    CHECK(toks[2].text == "2");
+    CHECK(toks[3].type == TokenType::CloseParen);
+}
+
 TEST_CASE("f1 is recognized as Literal") {
     auto toks = tokenize_all("f1");
     REQUIRE(toks.size() == 1);

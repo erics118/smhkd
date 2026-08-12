@@ -335,6 +335,65 @@ std::optional<ast::Chord> Parser::parseChord(int row, const ChordParseOptions& o
             tokenizer.next();
             continue;
         }
+        if (tk.type == TokenType::Modifier && tk.text == "trackpad_fingers" && tokenizer.peek(1).type == TokenType::OpenParen
+            && !chord.key.has_value()) {
+            if (!options.allowFingerCount) {
+                addError(tk, "trackpad_fingers(...) is not allowed here");
+                return std::nullopt;
+            }
+            if (chord.fingerCount.has_value()) {
+                addError(tk, "duplicate trackpad_fingers(...) in chord");
+                return std::nullopt;
+            }
+            tokenizer.next();
+            tokenizer.next();
+            const Token numTk = tokenizer.peek();
+            if (numTk.type != TokenType::Integer) {
+                addUnexpectedTokenError(numTk, "in trackpad_fingers(...)", "integer");
+                return std::nullopt;
+            }
+            tokenizer.next();
+            int count = 0;
+            try {
+                count = std::stoi(numTk.text);
+            } catch (const std::out_of_range&) {
+                addError(numTk, std::format("finger count '{}' is out of range", numTk.text));
+                return std::nullopt;
+            }
+            if (!expect(TokenType::CloseParen, "after finger count")) {
+                return std::nullopt;
+            }
+            chord.fingerCount = count;
+            continue;
+        }
+        if (tk.type == TokenType::Modifier && tk.text == "trackpad_tap" && tokenizer.peek(1).type == TokenType::OpenParen) {
+            if (!options.allowTap) {
+                addError(tk, "trackpad_tap(...) is not allowed here");
+                return std::nullopt;
+            }
+            if (chord.key.has_value() || chord.tap.has_value()) {
+                addUnexpectedTokenError(tk, "after chord key");
+                return std::nullopt;
+            }
+            tokenizer.next();
+            tokenizer.next();
+            const Token zoneTk = tokenizer.peek();
+            if (zoneTk.type != TokenType::Modifier && zoneTk.type != TokenType::Key) {
+                addUnexpectedTokenError(zoneTk, "in trackpad_tap(...)", "corner zone tl/tr/bl/br");
+                return std::nullopt;
+            }
+            auto zone = parseZone(zoneTk.text);
+            if (!zone) {
+                addError(zoneTk, std::format("invalid corner zone '{}', expected tl, tr, bl, or br", zoneTk.text));
+                return std::nullopt;
+            }
+            tokenizer.next();
+            if (!expect(TokenType::CloseParen, "after corner zone")) {
+                return std::nullopt;
+            }
+            chord.tap = *zone;
+            break;
+        }
         if (tk.type == TokenType::Modifier && !chord.key.has_value()) {
             if (auto bi = parseBuiltinModifier(tk.text)) {
                 chord.modifiers.push_back(ast::Modifier{*bi});
@@ -381,7 +440,7 @@ std::optional<ast::Chord> Parser::parseChord(int row, const ChordParseOptions& o
         break;
     }
 
-    if (!chord.key.has_value()) {
+    if (!chord.key.has_value() && !chord.tap.has_value()) {
         const Token& tk = tokenizer.peek();
         addError(tk, "chord is missing a key");
         return std::nullopt;
@@ -521,7 +580,7 @@ std::optional<ast::Remap> Parser::parseRemapStmt(ast::Chords binding) {
         addUnexpectedEofError(start, "after '|'", "remap target chord");
         return std::nullopt;
     }
-    auto target = parseChord(start.row, ChordParseOptions{.allowBraceExpansion = false});
+    auto target = parseChord(start.row, ChordParseOptions{.allowBraceExpansion = false, .allowFingerCount = false, .allowTap = false});
     if (!target) {
         return std::nullopt;
     }

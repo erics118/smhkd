@@ -30,7 +30,9 @@ literal
 integer_config_property_name
     = 'max_chord_interval' (* max time between chords *)
     | 'hold_modifier_threshold' (* min time for a keysym to be held to be considered as a held_mod *)
-    | 'simultaneous_threshold' (* max time between keysyms to be considered as a simultaneous_keysym *);
+    | 'simultaneous_threshold' (* max time between keysyms to be considered as a simultaneous_keysym *)
+    | 'corner_size' (* corner zone size as a percent of each trackpad axis, 1-45 *)
+    | 'tap_timeout' (* max finger-contact time in ms for a corner tap *);
 
 list_config_property_name
     = 'blacklist' (* ignore input events when these processes names are frontmost (case-insensitive) *);
@@ -149,10 +151,18 @@ condition
 command
     = ? any shell command on a single line. supports brace expansions ?;
 
+(* condition requiring exactly n fingers on the trackpad, usable in modifier position *)
+finger_count
+    = 'trackpad_fingers' , '(' , number , ')';
+
+(* corner tap trigger, used in place of a keysym; requires at least one modifier *)
+tap_trigger
+    = 'trackpad_tap' , '(' , ( 'tl' | 'tr' | 'bl' | 'br' ) , ')';
+
 (* chords **************************************************)
-(* a chord is a zero or more modifiers plus a keysym *)
+(* a chord is zero or more modifiers, an optional finger-count condition, plus a keysym or a tap trigger *)
 chord
-    = [ modifiers , '+' ] , keysym;
+    = { ( modifier | finger_count ) , '+' } , ( keysym | tap_trigger );
 
 (* chord but only with  *)
 simple_chord

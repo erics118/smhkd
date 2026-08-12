@@ -100,6 +100,14 @@ Token Tokenizer::getNextToken() {
             advance();
             return Token{TokenType::CloseBracket, "]", startRow, startCol};
         }
+        if (c == '(') {
+            advance();
+            return Token{TokenType::OpenParen, "(", startRow, startCol};
+        }
+        if (c == ')') {
+            advance();
+            return Token{TokenType::CloseParen, ")", startRow, startCol};
+        }
         if (c == '"') {
             std::string value = readQuotedString();
             return Token{TokenType::String, value, startRow, startCol};
@@ -118,7 +126,7 @@ Token Tokenizer::getNextToken() {
         if (text == "define_modifier") {
             return Token{TokenType::DefineModifier, text, startRow, startCol};
         }
-        if (text == "max_chord_interval" || text == "hold_modifier_threshold" || text == "simultaneous_threshold" || text == "blacklist" || text == "sequence_command") {
+        if (text == "max_chord_interval" || text == "hold_modifier_threshold" || text == "simultaneous_threshold" || text == "blacklist" || text == "sequence_command" || text == "corner_size" || text == "tap_timeout") {
             return Token{TokenType::ConfigProperty, text, startRow, startCol};
         }
         if (std::ranges::all_of(text, [](unsigned char ch) { return std::isdigit(ch) != 0; })) {

@@ -21,6 +21,7 @@ class Interpreter {
     std::unordered_map<std::string, std::vector<ast::Modifier>> defines;
     std::unordered_map<std::string, int> cache;
     std::vector<InterpreterError> errors_;
+    std::vector<TapBinding> tapBindings_;
 
     void addError(std::string message);
 
@@ -44,6 +45,8 @@ class Interpreter {
     void applyConfig(const ast::ConfigProperty& node, ConfigProperties& config);
     void applyRemap(const ast::Remap& node, std::vector<Binding>& bindings);
     void applyHotkey(const ast::Hotkey& h, std::vector<Binding>& bindings);
+    void applyTapHotkey(const ast::Hotkey& h);
+    void applyTapRemap(const ast::Remap& node);
 };
 
 void Interpreter::addError(std::string message) {
@@ -134,7 +137,7 @@ std::optional<Hotkey> Interpreter::buildBaseHotkey(const ast::Chords& syn) {
     for (const auto& chordSyn : syn.sequence) {
         auto flags = resolveModifiers(chordSyn.modifiers);
         if (!flags) return std::nullopt;
-        base.chords.push_back(Chord{.modifiers = {.flags = *flags}});
+        base.chords.push_back(Chord{.modifiers = {.flags = *flags}, .fingerCount = chordSyn.fingerCount});
     }
     return base;
 }
@@ -291,18 +294,33 @@ void Interpreter::applyConfig(const ast::ConfigProperty& node, ConfigProperties&
         return;
     }
 
+    if (node.name == "corner_size") {
+        const int value = *node.intValue;
+        if (value < 1 || value > 45) {
+            addError(std::format("corner_size must be between 1 and 45 (got {})", value));
+            return;
+        }
+        config.cornerSize = value;
+        return;
+    }
+
     auto ms = std::chrono::milliseconds(*node.intValue);
     if (node.name == "max_chord_interval") config.maxChordInterval = ms;
     else if (node.name == "hold_modifier_threshold") config.holdModifierThreshold = ms;
     else if (node.name == "simultaneous_threshold") config.simultaneousThreshold = ms;
+    else if (node.name == "tap_timeout") config.tapTimeout = ms;
     else {
         addError(std::format(
-            "unknown config property: '{}'. Valid properties are: max_chord_interval, hold_modifier_threshold, simultaneous_threshold, blacklist, sequence_command",
+            "unknown config property: '{}'. Valid properties are: max_chord_interval, hold_modifier_threshold, simultaneous_threshold, corner_size, tap_timeout, blacklist, sequence_command",
             node.name));
     }
 }
 
 void Interpreter::applyRemap(const ast::Remap& node, std::vector<Binding>& bindings) {
+    if (std::ranges::any_of(node.source.sequence, [](const ast::Chord& c) { return c.tap.has_value(); })) {
+        applyTapRemap(node);
+        return;
+    }
     if (node.source.passthrough || node.source.repeat || node.source.onRelease) {
         addError("remaps do not support '@', '&', or '^' flags");
         return;
@@ -326,15 +344,15 @@ void Interpreter::applyRemap(const ast::Remap& node, std::vector<Binding>& bindi
     if (!target) {
         return;
     }
-    if (target->modifiers.has(Hotkey_Flag_NX)) {
-        addError("remaps do not support media-key targets yet");
-        return;
-    }
     bindings.emplace_back(std::move(*source), *target);
 }
 
 void Interpreter::applyHotkey(const ast::Hotkey& h, std::vector<Binding>& bindings) {
     const auto& syn = h.chords;
+    if (std::ranges::any_of(syn.sequence, [](const ast::Chord& c) { return c.tap.has_value(); })) {
+        applyTapHotkey(h);
+        return;
+    }
     auto base = buildBaseHotkey(syn);
     if (!base) {
         return;
@@ -378,6 +396,56 @@ void Interpreter::applyHotkey(const ast::Hotkey& h, std::vector<Binding>& bindin
     }
 }
 
+void Interpreter::applyTapHotkey(const ast::Hotkey& h) {
+    const auto& syn = h.chords;
+    if (syn.sequence.size() != 1) {
+        addError("trackpad_tap must be a single chord, not part of a sequence");
+        return;
+    }
+    if (syn.passthrough || syn.repeat || syn.onRelease) {
+        addError("trackpad_tap does not support '~', '&', or '^' flags");
+        return;
+    }
+    const auto& chord = syn.sequence[0];
+    if (chord.fingerCount) {
+        addError("trackpad_tap does not support trackpad_fingers");
+        return;
+    }
+    auto flags = resolveModifiers(chord.modifiers);
+    if (!flags) return;
+    if (*flags == 0) {
+        addError("trackpad_tap requires at least one modifier");
+        return;
+    }
+    tapBindings_.push_back(TapBinding{.zone = *chord.tap, .modifiers = {.flags = *flags}, .action = unescapeDoubleBraces(h.command)});
+}
+
+void Interpreter::applyTapRemap(const ast::Remap& node) {
+    const auto& syn = node.source;
+    if (syn.sequence.size() != 1) {
+        addError("trackpad_tap must be a single chord, not part of a sequence");
+        return;
+    }
+    if (syn.passthrough || syn.repeat || syn.onRelease) {
+        addError("remaps do not support '@', '&', or '^' flags");
+        return;
+    }
+    const auto& chord = syn.sequence[0];
+    if (chord.fingerCount) {
+        addError("trackpad_tap does not support trackpad_fingers");
+        return;
+    }
+    auto flags = resolveModifiers(chord.modifiers);
+    if (!flags) return;
+    if (*flags == 0) {
+        addError("trackpad_tap requires at least one modifier");
+        return;
+    }
+    auto target = buildChord(node.target);
+    if (!target) return;
+    tapBindings_.push_back(TapBinding{.zone = *chord.tap, .modifiers = {.flags = *flags}, .action = *target});
+}
+
 InterpreterResult Interpreter::interpret(const ast::Program& p) {
     InterpreterResult result{};
 
@@ -401,6 +469,7 @@ InterpreterResult Interpreter::interpret(const ast::Program& p) {
         if (!std::holds_alternative<ast::Hotkey>(stmt)) continue;
         applyHotkey(std::get<ast::Hotkey>(stmt), result.bindings);
     }
+    result.tapBindings = std::move(tapBindings_);
     result.errors = std::move(errors_);
     return result;
 }

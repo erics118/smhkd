@@ -14,6 +14,7 @@
 struct ConfigLoadResult {
     ast::Program program;
     std::vector<Binding> bindings;
+    std::vector<TapBinding> tapBindings;
     ConfigProperties config;
     std::vector<ParseError> parseErrors;
     std::vector<InterpreterError> interpreterErrors;

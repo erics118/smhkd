@@ -90,7 +90,7 @@ bool KeyObserverHandler::handleKeyEvent(CGEventRef event, CGEventType type) {
 
     auto exitChord = EXIT_CHORD;
 
-    if (exitChord.isActivatedBy(current)) {
+    if (exitChord.isActivatedBy(current, 0)) {
         // clear before exiting shell
         std::print("\033[J\n");
         info("exiting observer");

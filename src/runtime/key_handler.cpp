@@ -2,12 +2,14 @@
 
 #include <unistd.h>
 
+#include <algorithm>
 #include <chrono>
 
 #include "../common/log.hpp"
 #include "../common/signpost.hpp"
 #include "../lang/config_loader.hpp"
 #include "../runtime/service.hpp"
+#include "../runtime/touch_handler.hpp"
 
 namespace {
 
@@ -22,11 +24,15 @@ int64_t nowNs() {
         .count();
 }
 
+// how recently a finger must have been in a corner to suppress a click there
+constexpr int64_t kSuppressWindowNs = 200'000'000;
+
 }  // namespace
 
 KeyHandler::~KeyHandler() {
     watchdogStop.store(true, std::memory_order_release);
     if (watchdog.joinable()) watchdog.join();
+    touch::stop();
 }
 
 bool KeyHandler::init() {
@@ -35,13 +41,20 @@ bool KeyHandler::init() {
     debug("run loop initialized");
     if (!setupEventTap()) return false;
     debug("event tap initialized");
+
+    touch::setTapCallback([this](Zone zone) {
+        const ModifierFlags mods = eventModifierFlagsToHotkeyFlags(CGEventSourceFlagsState(kCGEventSourceStateCombinedSessionState));
+        (void)engine.handleTap(zone, mods);
+    });
+
     startWatchdog();
     debug("watchdog started");
     return true;
 }
 
 bool KeyHandler::setupEventTap() {
-    CGEventMask eventMask = CGEventMaskBit(kCGEventKeyDown) | CGEventMaskBit(kCGEventKeyUp);
+    CGEventMask eventMask = CGEventMaskBit(kCGEventKeyDown) | CGEventMaskBit(kCGEventKeyUp)
+                          | CGEventMaskBit(kCGEventLeftMouseDown) | CGEventMaskBit(kCGEventLeftMouseUp);
     CFMachPortRef tap = CGEventTapCreate(kCGSessionEventTap, kCGHeadInsertEventTap, kCGEventTapOptionDefault, eventMask, eventCallback, this);
     if (!tap) fatal("failed to create event tap");
     CFRunLoopSourceRef runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0);
@@ -76,6 +89,8 @@ CGEventRef KeyHandler::eventCallback(CGEventTapProxy /*proxy*/, CGEventType type
                     CGEventTapEnable(keyHandler->eventTap, true);
                     break;
             }
+        } else if (type == kCGEventLeftMouseDown || type == kCGEventLeftMouseUp) {
+            result = keyHandler->handleMouseEvent(type, event);
         } else {
             os_log_t log = signpostLog();
             os_signpost_id_t spid = SIGNPOST_GENERATE(log);
@@ -118,18 +133,40 @@ bool KeyHandler::handleKeyEvent(CGEventRef event, CGEventType type) {
         .keysym = {.keycode = keyCode},
         .modifiers = eventModifierFlagsToHotkeyFlags(flags),
     };
+    const int fingers = touch::fingerCount();
 
     auto exitChord = Chord{
         .keysym = {.keycode = 8},
         .modifiers = {.flags = Hotkey_Flag_RAlt},
     };
-    if (exitChord.isActivatedBy(current)) {
+    if (exitChord.isActivatedBy(current, fingers)) {
         error("exit hotkey, ralt-c, detected, ending program");
         service::stop();
         std::exit(1);
     }
 
-    return engine.handleEvent(current, type, isRepeat);
+    return engine.handleEvent(current, type, isRepeat, fingers);
+}
+
+CGEventRef KeyHandler::handleMouseEvent(CGEventType type, CGEventRef event) {
+    if (type == kCGEventLeftMouseUp) {
+        if (suppressNextMouseUp) {
+            suppressNextMouseUp = false;
+            return nullptr;
+        }
+        return event;
+    }
+
+    // left mouse down: swallow the tap-to-click that follows a modified corner tap
+    const auto zone = touch::recentCornerZone(kSuppressWindowNs);
+    if (zone) {
+        const ModifierFlags mods = eventModifierFlagsToHotkeyFlags(CGEventSourceFlagsState(kCGEventSourceStateCombinedSessionState));
+        if (engine.hasTapBinding(*zone, mods)) {
+            suppressNextMouseUp = true;
+            return nullptr;
+        }
+    }
+    return event;
 }
 
 void KeyHandler::startWatchdog() {
@@ -193,5 +230,14 @@ void KeyHandler::loadConfig(const std::filesystem::path& configFile) {
     for (const auto& interpreter_error : result.interpreterErrors) {
         warn("config error: {}", interpreter_error.message);
     }
-    engine.applyConfig(std::move(result.bindings), std::move(result.config));
+
+    const bool hasFingerBinding = std::ranges::any_of(result.bindings, [](const Binding& b) {
+        return std::ranges::any_of(b.source.chords, [](const Chord& c) { return c.fingerCount.has_value(); });
+    });
+    const bool needsTouch = hasFingerBinding || !result.tapBindings.empty();
+    touch::setTapConfig(result.config.cornerSize, static_cast<int>(result.config.tapTimeout.count()));
+    engine.applyConfig(std::move(result.bindings), std::move(result.tapBindings), std::move(result.config));
+    if (needsTouch) {
+        touch::start();
+    }
 }

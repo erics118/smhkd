@@ -16,6 +16,8 @@ struct ParseError {
 
 struct ChordParseOptions {
     bool allowBraceExpansion{false};
+    bool allowFingerCount{true};
+    bool allowTap{true};
 };
 
 class Parser {

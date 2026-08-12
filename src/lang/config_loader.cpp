@@ -15,6 +15,7 @@ ConfigLoadResult ConfigLoader::loadFromContents(std::string_view contents) {
 
     auto interpreterResult = interpretProgram(result.program);
     result.bindings = std::move(interpreterResult.bindings);
+    result.tapBindings = std::move(interpreterResult.tapBindings);
     result.config = interpreterResult.config;
     result.interpreterErrors = std::move(interpreterResult.errors);
 

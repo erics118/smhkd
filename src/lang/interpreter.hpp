@@ -22,6 +22,12 @@ struct ConfigProperties {
     // max time between keysyms to be considered as simultaneous
     std::chrono::milliseconds simultaneousThreshold{50};
 
+    // corner size as a percent of each trackpad axis
+    int cornerSize{15};
+
+    // max finger-contact time for a corner tap
+    std::chrono::milliseconds tapTimeout{300};
+
     // process names to ignore (case-insensitive)
     std::vector<std::string> blacklist;
 
@@ -42,8 +48,17 @@ struct Binding {
     BindingAction action;
 };
 
+// a corner-tap trigger and its action, dispatched by the touch layer rather than
+// the keyboard event tap
+struct TapBinding {
+    Zone zone;
+    ModifierFlags modifiers;
+    BindingAction action;
+};
+
 struct InterpreterResult {
     std::vector<Binding> bindings;
+    std::vector<TapBinding> tapBindings;
     ConfigProperties config;
     std::vector<InterpreterError> errors;
 };

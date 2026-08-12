@@ -68,6 +68,119 @@ TEST_CASE("hotkey flags and multi-chord sequence preserve parser structure") {
     CHECK(key_char(*stmt.chords.sequence[1].key).value == 'b');
 }
 
+TEST_CASE("trackpad_fingers(N) parses as a chord finger-count requirement") {
+    Parser p{"trackpad_fingers(2) + cmd + j : echo hi"};
+    auto program = p.parseProgram();
+
+    CHECK(p.errors().empty());
+    REQUIRE(program.statements.size() == 1);
+    auto& stmt = std::get<ast::Hotkey>(program.statements[0]);
+    REQUIRE(stmt.chords.sequence.size() == 1);
+    const auto& chord = stmt.chords.sequence[0];
+    REQUIRE(chord.fingerCount.has_value());
+    CHECK(*chord.fingerCount == 2);
+    REQUIRE(chord.modifiers.size() == 1);
+    CHECK(builtin_modifier(chord.modifiers[0]) == BuiltinModifier::Cmd);
+    REQUIRE(chord.key.has_value());
+    CHECK(key_char(*chord.key).value == 'j');
+}
+
+TEST_CASE("trackpad_fingers(N) is order-independent among modifiers") {
+    Parser p{"cmd + trackpad_fingers(3) + j : echo hi"};
+    auto program = p.parseProgram();
+
+    CHECK(p.errors().empty());
+    auto& stmt = std::get<ast::Hotkey>(program.statements[0]);
+    REQUIRE(stmt.chords.sequence[0].fingerCount.has_value());
+    CHECK(*stmt.chords.sequence[0].fingerCount == 3);
+}
+
+TEST_CASE("trackpad_fingers(0) is valid") {
+    Parser p{"trackpad_fingers(0) + a : echo hi"};
+    auto program = p.parseProgram();
+
+    CHECK(p.errors().empty());
+    auto& stmt = std::get<ast::Hotkey>(program.statements[0]);
+    REQUIRE(stmt.chords.sequence[0].fingerCount.has_value());
+    CHECK(*stmt.chords.sequence[0].fingerCount == 0);
+}
+
+TEST_CASE("trackpad_fingers with a non-integer argument is an error") {
+    Parser p{"trackpad_fingers(x) + a : echo hi"};
+    p.parseProgram();
+    CHECK_FALSE(p.errors().empty());
+}
+
+TEST_CASE("trackpad_fingers missing the closing paren is an error") {
+    Parser p{"trackpad_fingers(2 + a : echo hi"};
+    p.parseProgram();
+    CHECK_FALSE(p.errors().empty());
+}
+
+TEST_CASE("duplicate trackpad_fingers(...) in one chord is an error") {
+    Parser p{"trackpad_fingers(2) + trackpad_fingers(3) + a : echo hi"};
+    p.parseProgram();
+    CHECK_FALSE(p.errors().empty());
+}
+
+TEST_CASE("trackpad_fingers(...) is rejected in a remap target") {
+    Parser p{"a | trackpad_fingers(2) + b"};
+    p.parseProgram();
+    CHECK_FALSE(p.errors().empty());
+}
+
+TEST_CASE("trackpad_tap(zone) parses as a chord tap trigger") {
+    Parser p{"cmd + trackpad_tap(tr) : echo hi"};
+    auto program = p.parseProgram();
+
+    CHECK(p.errors().empty());
+    REQUIRE(program.statements.size() == 1);
+    auto& stmt = std::get<ast::Hotkey>(program.statements[0]);
+    const auto& chord = stmt.chords.sequence[0];
+    REQUIRE(chord.tap.has_value());
+    CHECK(*chord.tap == Zone::TopRight);
+    CHECK_FALSE(chord.key.has_value());
+    REQUIRE(chord.modifiers.size() == 1);
+    CHECK(builtin_modifier(chord.modifiers[0]) == BuiltinModifier::Cmd);
+}
+
+TEST_CASE("all four corner zones parse") {
+    struct Case {
+        const char* src;
+        Zone zone;
+    };
+    for (const auto& c : {Case{"cmd + trackpad_tap(tl) : x", Zone::TopLeft},
+             Case{"cmd + trackpad_tap(tr) : x", Zone::TopRight},
+             Case{"cmd + trackpad_tap(bl) : x", Zone::BottomLeft},
+             Case{"cmd + trackpad_tap(br) : x", Zone::BottomRight}}) {
+        Parser p{c.src};
+        auto program = p.parseProgram();
+        CHECK(p.errors().empty());
+        REQUIRE(program.statements.size() == 1);
+        auto& stmt = std::get<ast::Hotkey>(program.statements[0]);
+        REQUIRE(stmt.chords.sequence[0].tap.has_value());
+        CHECK(*stmt.chords.sequence[0].tap == c.zone);
+    }
+}
+
+TEST_CASE("an invalid corner zone is an error") {
+    Parser p{"cmd + trackpad_tap(xx) : echo hi"};
+    p.parseProgram();
+    CHECK_FALSE(p.errors().empty());
+}
+
+TEST_CASE("trackpad_tap missing the closing paren is an error") {
+    Parser p{"cmd + trackpad_tap(tr : echo hi"};
+    p.parseProgram();
+    CHECK_FALSE(p.errors().empty());
+}
+
+TEST_CASE("trackpad_tap is rejected in a remap target") {
+    Parser p{"a | trackpad_tap(tr)"};
+    p.parseProgram();
+    CHECK_FALSE(p.errors().empty());
+}
+
 TEST_CASE("unknown config assignment is rejected by the parser") {
     Parser p{"unknown_setting = 7"};
     auto program = p.parseProgram();

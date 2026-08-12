@@ -29,6 +29,8 @@ enum class TokenType {
     String,
     OpenBracket,
     CloseBracket,
+    OpenParen,
+    CloseParen,
 };
 
 template <>
@@ -60,6 +62,8 @@ struct std::formatter<TokenType> : std::formatter<std::string_view> {
             case TokenType::String: name = "String"; break;
             case TokenType::OpenBracket: name = "OpenBracket"; break;
             case TokenType::CloseBracket: name = "CloseBracket"; break;
+            case TokenType::OpenParen: name = "OpenParen"; break;
+            case TokenType::CloseParen: name = "CloseParen"; break;
             default: name = "Unknown";
         }
         return std::format_to(ctx.out(), "{}", name);

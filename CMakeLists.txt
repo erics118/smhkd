@@ -26,6 +26,7 @@ add_library(smhkd_lib OBJECT
     src/input/keysym.cpp
     src/input/locale.cpp
     src/input/modifier.cpp
+    src/input/zone.cpp
     src/lang/config_loader.cpp
     src/lang/interpreter.cpp
     src/lang/parser.cpp
@@ -34,13 +35,18 @@ add_library(smhkd_lib OBJECT
     src/runtime/key_handler.cpp
     src/runtime/key_observer_handler.cpp
     src/runtime/process.cpp
+    src/runtime/post_media_key.mm
+    src/runtime/safety_monitor.cpp
     src/runtime/service.cpp
+    src/runtime/tap_detector.cpp
+    src/runtime/touch_handler.cpp
     src/common/string_util.mm
 )
 
 set_source_files_properties(
     src/common/front_app.mm
     src/common/string_util.mm
+    src/runtime/post_media_key.mm
     PROPERTIES COMPILE_FLAGS "-fobjc-arc"
 )
 
@@ -91,11 +97,13 @@ endif()
 find_library(CARBON_FRAMEWORK Carbon REQUIRED)
 find_library(COCOA_FRAMEWORK Cocoa REQUIRED)
 find_library(CORE_FOUNDATION_FRAMEWORK CoreFoundation REQUIRED)
+find_library(MULTITOUCH_FRAMEWORK MultitouchSupport PATHS /System/Library/PrivateFrameworks REQUIRED)
 
 target_link_libraries(smhkd_lib PUBLIC
     ${CARBON_FRAMEWORK}
     ${COCOA_FRAMEWORK}
     ${CORE_FOUNDATION_FRAMEWORK}
+    ${MULTITOUCH_FRAMEWORK}
 )
 
 add_executable(smhkd src/cli/main.cpp)
@@ -111,6 +119,8 @@ add_executable(smhkd_tests
     tests/test_tokenizer.cpp
     tests/test_parser.cpp
     tests/test_interpreter.cpp
+    tests/test_safety.cpp
+    tests/test_touch.cpp
 )
 target_link_libraries(smhkd_tests PRIVATE smhkd_lib)
 target_include_directories(smhkd_tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests)

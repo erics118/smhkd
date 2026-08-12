@@ -29,11 +29,15 @@ class KeyHandler {
     // bumped when a callback returns, so the watchdog can tell a stuck callback finished
     std::atomic<uint64_t> callbackGen{0};
 
+    // set when a corner-tap click's down is suppressed, so its up is suppressed too
+    bool suppressNextMouseUp{false};
+
     bool setupEventTap();
     void startWatchdog();
     void watchdogLoop();
     [[nodiscard]] static CGEventRef eventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void* refcon);
     [[nodiscard]] bool handleKeyEvent(CGEventRef event, CGEventType type);
+    [[nodiscard]] CGEventRef handleMouseEvent(CGEventType type, CGEventRef event);
     void loadConfig(const std::filesystem::path& configFile);
 
    public:

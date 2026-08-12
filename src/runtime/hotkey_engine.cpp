@@ -12,6 +12,7 @@
 #include "../common/signpost.hpp"
 #include "../common/string_util.hpp"
 #include "../input/modifier.hpp"
+#include "post_media_key.hpp"
 
 namespace {
 
@@ -22,13 +23,35 @@ os_log_t signpostLog() {
 
 }  // namespace
 
-void HotkeyEngine::applyConfig(std::vector<Binding> bindings, ConfigProperties config) {
+void HotkeyEngine::applyConfig(std::vector<Binding> bindings, std::vector<TapBinding> tapBindings, ConfigProperties config) {
     bindings_ = std::move(bindings);
+    tapBindings_ = std::move(tapBindings);
     config_ = std::move(config);
     reset();
 }
 
-bool HotkeyEngine::handleEvent(const Chord& current, CGEventType type, bool isRepeat) {
+bool HotkeyEngine::handleTap(Zone zone, ModifierFlags mods) {
+    for (const auto& tb : tapBindings_) {
+        if (tb.zone != zone) continue;
+        if (!tb.modifiers.isActivatedBy(mods)) continue;
+        if (const auto* command = std::get_if<std::string>(&tb.action)) {
+            executeHotkeyCommand(*command);
+        } else {
+            synthesizeKeyPress(std::get<Chord>(tb.action));
+        }
+        return true;
+    }
+    return false;
+}
+
+bool HotkeyEngine::hasTapBinding(Zone zone, ModifierFlags mods) const {
+    for (const auto& tb : tapBindings_) {
+        if (tb.zone == zone && tb.modifiers.isActivatedBy(mods)) return true;
+    }
+    return false;
+}
+
+bool HotkeyEngine::handleEvent(const Chord& current, CGEventType type, bool isRepeat, int fingerCount) {
     os_log_t log = signpostLog();
     os_signpost_id_t spid = SIGNPOST_GENERATE(log);
     SIGNPOST_BEGIN(log, spid, "handleEvent");
@@ -50,7 +73,7 @@ bool HotkeyEngine::handleEvent(const Chord& current, CGEventType type, bool isRe
         lastChord_ = std::nullopt;
     }
 
-    if (type == kCGEventKeyDown && !isRepeat && handleSequence(current)) {
+    if (type == kCGEventKeyDown && !isRepeat && handleSequence(current, fingerCount)) {
         SIGNPOST_END(log, spid, "handleEvent", "path=sequence");
         return true;
     }
@@ -60,7 +83,7 @@ bool HotkeyEngine::handleEvent(const Chord& current, CGEventType type, bool isRe
     for (const auto& binding : bindings_) {
         const auto& hotkey = binding.source;
         if (hotkey.chords.size() > 1) continue;
-        if (!hotkey.chords[0].isActivatedBy(current)) continue;
+        if (!hotkey.chords[0].isActivatedBy(current, fingerCount)) continue;
 
         if (const auto* target = std::get_if<Chord>(&binding.action)) {
             if (type != kCGEventKeyDown && type != kCGEventKeyUp) continue;
@@ -130,7 +153,7 @@ void HotkeyEngine::runSequenceCommand() const {
     executeCommand(command);
 }
 
-bool HotkeyEngine::handleSequence(const Chord& chord) {
+bool HotkeyEngine::handleSequence(const Chord& chord, int fingerCount) {
     const auto now = std::chrono::system_clock::now();
     if (lastPressTime_ != std::chrono::time_point<std::chrono::system_clock>::min() && now - lastPressTime_ > config_.maxChordInterval) {
         clearSequence();
@@ -146,7 +169,7 @@ bool HotkeyEngine::handleSequence(const Chord& chord) {
 
         bool matches = true;
         for (size_t i = 0; i < sequence_.size(); i++) {
-            if (!hotkey.chords[i].isActivatedBy(sequence_[i])) {
+            if (!hotkey.chords[i].isActivatedBy(sequence_[i], fingerCount)) {
                 matches = false;
                 break;
             }
@@ -184,6 +207,10 @@ bool HotkeyEngine::isBlacklisted(std::string_view processName) const {
 }
 
 void HotkeyEngine::postKeyEvent(const Chord& target, bool keyDown) {
+    if (target.modifiers.has(Hotkey_Flag_NX)) {
+        postMediaKey(static_cast<int>(target.keysym.keycode), keyDown);
+        return;
+    }
     CGEventRef event = CGEventCreateKeyboardEvent(nullptr, static_cast<CGKeyCode>(target.keysym.keycode), keyDown);
     if (!event) {
         warn("failed to create synthetic key event for remap");
