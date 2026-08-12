@@ -4,7 +4,7 @@
 
 #include <chrono>
 #include <cstdint>
-#include <map>
+#include <mutex>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -34,8 +34,10 @@ class HotkeyEngine {
     std::vector<Binding> bindings_;
     std::vector<TapBinding> tapBindings_;
     ConfigProperties config_;
-    std::optional<Chord> lastChord_;
+    // guards tapBindings_ across the MultitouchSupport callback thread and run-loop reloads
+    mutable std::mutex tapMutex_;
     std::vector<Chord> sequence_;
+    std::vector<int> sequenceFingers_;
     std::chrono::time_point<std::chrono::system_clock> lastPressTime_;
 
     void clearSequence();

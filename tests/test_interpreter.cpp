@@ -258,6 +258,41 @@ TEST_CASE("escaped braces in command are literal and do not trigger expansion") 
     CHECK(std::get<std::string>(hotkeys[0].action) == "echo {literal}");
 }
 
+TEST_CASE("a comma inside escaped braces stays literal, not split") {
+    auto r = interpret_source("cmd + a : echo {{one,two}}");
+    REQUIRE(r.errors.empty());
+    const auto hotkeys = hotkey_bindings(r.bindings);
+    REQUIRE(hotkeys.size() == 1);
+    CHECK(std::get<std::string>(hotkeys[0].action) == "echo {one,two}");
+}
+
+TEST_CASE("escaped command braces coexist with a key brace expansion") {
+    auto r = interpret_source("cmd + {a,b} : echo {{lit}}");
+    REQUIRE(r.errors.empty());
+    const auto hotkeys = hotkey_bindings(r.bindings);
+    REQUIRE(hotkeys.size() == 2);
+    CHECK(std::get<std::string>(hotkeys[0].action) == "echo {lit}");
+    CHECK(std::get<std::string>(hotkeys[1].action) == "echo {lit}");
+}
+
+TEST_CASE("brace expansion in more than one sequence chord is an error") {
+    auto r = interpret_source("cmd + {a,b} ; cmd + {c,d} : echo");
+    REQUIRE(!r.errors.empty());
+    CHECK(r.errors[0].message.contains("only one chord"));
+    CHECK(hotkey_bindings(r.bindings).empty());
+}
+
+TEST_CASE("an empty command does not swallow the following line") {
+    Parser p{"cmd + a :\ncmd + b : echo hi"};
+    auto program = p.parseProgram();
+    REQUIRE(p.errors().size() == 1);
+    REQUIRE(program.statements.size() == 1);
+    auto r = interpretProgram(program);
+    const auto hotkeys = hotkey_bindings(r.bindings);
+    REQUIRE(hotkeys.size() == 1);
+    CHECK(std::get<std::string>(hotkeys[0].action) == "echo hi");
+}
+
 TEST_CASE("config values apply to the correct field") {
     auto r = interpret_source(
         "max_chord_interval = 1234\n"

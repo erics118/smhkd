@@ -5,6 +5,7 @@
 #include <sys/fcntl.h>
 #include <unistd.h>
 
+#include <cerrno>
 #include <filesystem>
 #include <fstream>
 #include <string>

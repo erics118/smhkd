@@ -129,8 +129,6 @@ struct std::formatter<ModifierFlags> : std::formatter<std::string_view> {
     }
 };
 
-int eventFlagsToHotkeyFlags(CGEventFlags eventFlags, const LRModifierGroup& group);
-
 ModifierFlags eventModifierFlagsToHotkeyFlags(CGEventFlags flags);
 
 CGEventFlags hotkeyFlagsToEventFlags(ModifierFlags flags);

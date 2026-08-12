@@ -17,7 +17,6 @@ enum class TokenType {
     Command,
     Literal,
     Caret,
-    At,
     Tilde,
     Ampersand,
     EndOfFile,
@@ -50,9 +49,9 @@ struct std::formatter<TokenType> : std::formatter<std::string_view> {
             case TokenType::Colon: name = "Colon"; break;
             case TokenType::Command: name = "Command"; break;
             case TokenType::Literal: name = "Literal"; break;
-            case TokenType::At: name = "At"; break;
+            case TokenType::Caret: name = "Caret"; break;
             case TokenType::Tilde: name = "Tilde"; break;
-            case TokenType::Ampersand: name = "Repeat"; break;
+            case TokenType::Ampersand: name = "Ampersand"; break;
             case TokenType::EndOfFile: name = "EndOfFile"; break;
             case TokenType::OpenBrace: name = "OpenBrace"; break;
             case TokenType::CloseBrace: name = "CloseBrace"; break;

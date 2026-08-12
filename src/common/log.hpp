@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cerrno>
 #include <format>
 #include <iostream>
 #include <print>

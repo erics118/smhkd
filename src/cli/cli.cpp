@@ -20,6 +20,9 @@ cli::Args cli::parseArgs(const std::vector<std::string>& argv, const cli::Config
             }
         } else if (a.starts_with("-")) {
             a = a.substr(1);
+            if (a.empty()) {
+                fatal("unexpected argument: -");
+            }
             for (size_t j = 0; j < a.length() - 1; ++j) {
                 char ch = a[j];
                 if (config.short_args.contains(std::string{ch})) {

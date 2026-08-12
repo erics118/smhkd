@@ -3,8 +3,8 @@
 #include <CoreFoundation/CoreFoundation.h>
 
 // MultitouchSupport is a private framework with no public headers, so its API and
-// frame struct are declared here. callbacks are delivered on the run loop of the
-// thread that starts the devices.
+// frame struct are declared here. callbacks are delivered on a framework-managed
+// background thread, not the run loop, so shared state must be synchronized.
 extern "C" {
 typedef struct {
     float x;

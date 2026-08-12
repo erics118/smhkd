@@ -24,13 +24,17 @@ os_log_t signpostLog() {
 }  // namespace
 
 void HotkeyEngine::applyConfig(std::vector<Binding> bindings, std::vector<TapBinding> tapBindings, ConfigProperties config) {
-    bindings_ = std::move(bindings);
-    tapBindings_ = std::move(tapBindings);
-    config_ = std::move(config);
+    {
+        std::lock_guard<std::mutex> lock(tapMutex_);
+        bindings_ = std::move(bindings);
+        tapBindings_ = std::move(tapBindings);
+        config_ = std::move(config);
+    }
     reset();
 }
 
 bool HotkeyEngine::handleTap(Zone zone, ModifierFlags mods) {
+    std::lock_guard<std::mutex> lock(tapMutex_);
     for (const auto& tb : tapBindings_) {
         if (tb.zone != zone) continue;
         if (!tb.modifiers.isActivatedBy(mods)) continue;
@@ -45,6 +49,7 @@ bool HotkeyEngine::handleTap(Zone zone, ModifierFlags mods) {
 }
 
 bool HotkeyEngine::hasTapBinding(Zone zone, ModifierFlags mods) const {
+    std::lock_guard<std::mutex> lock(tapMutex_);
     for (const auto& tb : tapBindings_) {
         if (tb.zone == zone && tb.modifiers.isActivatedBy(mods)) return true;
     }
@@ -63,14 +68,9 @@ bool HotkeyEngine::handleEvent(const Chord& current, CGEventType type, bool isRe
         SIGNPOST_END(log, bp, "frontProcessLookup");
         if (isBlacklisted(front)) {
             clearSequence();
-            lastChord_ = std::nullopt;
             SIGNPOST_END(log, spid, "handleEvent", "path=blacklisted");
             return false;
         }
-    }
-
-    if (type == kCGEventKeyUp && lastChord_ && lastChord_->keysym.keycode == current.keysym.keycode) {
-        lastChord_ = std::nullopt;
     }
 
     if (type == kCGEventKeyDown && !isRepeat && handleSequence(current, fingerCount)) {
@@ -93,21 +93,16 @@ bool HotkeyEngine::handleEvent(const Chord& current, CGEventType type, bool isRe
             return true;
         }
 
-        const bool typeMatches =
-            (!hotkey.on_release && type == kCGEventKeyDown) || (hotkey.on_release && type == kCGEventKeyUp);
-        const bool repeatMatches = (isRepeat && hotkey.repeat) || !isRepeat;
-        if (!typeMatches || !repeatMatches) continue;
-
         const auto& command = std::get<std::string>(binding.action);
         debug("hotkey matched: {}", hotkey);
-        if (!command.empty()) {
+
+        const bool runOnDown = !hotkey.on_release && type == kCGEventKeyDown && (!isRepeat || hotkey.repeat);
+        const bool runOnUp = hotkey.on_release && type == kCGEventKeyUp;
+        if ((runOnDown || runOnUp) && !command.empty()) {
             os_signpost_id_t cp = SIGNPOST_GENERATE(log);
             SIGNPOST_BEGIN(log, cp, "executeCommand");
             executeHotkeyCommand(command);
             SIGNPOST_END(log, cp, "executeCommand");
-            if (type == kCGEventKeyDown) {
-                lastChord_ = current;
-            }
         }
         SIGNPOST_END(log, mp, "hotkeyMatch", "matched=1");
         SIGNPOST_END(log, spid, "handleEvent", "path=hotkey");
@@ -126,12 +121,12 @@ void HotkeyEngine::synthesizeKeyPress(const Chord& target) {
 
 void HotkeyEngine::reset() {
     clearSequence();
-    lastChord_ = std::nullopt;
 }
 
 void HotkeyEngine::clearSequence() {
     const bool wasActive = !sequence_.empty();
     sequence_.clear();
+    sequenceFingers_.clear();
     lastPressTime_ = std::chrono::time_point<std::chrono::system_clock>::min();
     if (wasActive) runSequenceCommand();
 }
@@ -157,10 +152,10 @@ bool HotkeyEngine::handleSequence(const Chord& chord, int fingerCount) {
     const auto now = std::chrono::system_clock::now();
     if (lastPressTime_ != std::chrono::time_point<std::chrono::system_clock>::min() && now - lastPressTime_ > config_.maxChordInterval) {
         clearSequence();
-        return false;
     }
     lastPressTime_ = now;
     sequence_.push_back(chord);
+    sequenceFingers_.push_back(fingerCount);
 
     for (const auto& binding : bindings_) {
         const auto& hotkey = binding.source;
@@ -169,7 +164,7 @@ bool HotkeyEngine::handleSequence(const Chord& chord, int fingerCount) {
 
         bool matches = true;
         for (size_t i = 0; i < sequence_.size(); i++) {
-            if (!hotkey.chords[i].isActivatedBy(sequence_[i], fingerCount)) {
+            if (!hotkey.chords[i].isActivatedBy(sequence_[i], sequenceFingers_[i])) {
                 matches = false;
                 break;
             }
@@ -190,6 +185,7 @@ bool HotkeyEngine::handleSequence(const Chord& chord, int fingerCount) {
     }
 
     sequence_.pop_back();
+    sequenceFingers_.pop_back();
     clearSequence();
     return false;
 }

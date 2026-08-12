@@ -75,6 +75,10 @@ bool KeyObserverHandler::setupEventTap() {
 CGEventRef KeyObserverHandler::eventCallback(
     CGEventTapProxy /*proxy*/, CGEventType type, CGEventRef event, void* refcon) {
     auto* self = static_cast<KeyObserverHandler*>(refcon);
+    if (type == kCGEventTapDisabledByTimeout || type == kCGEventTapDisabledByUserInput) {
+        CGEventTapEnable(self->eventTap, true);
+        return event;
+    }
     if (self->handleKeyEvent(event, type)) return nullptr;
     return event;
 }

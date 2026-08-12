@@ -196,8 +196,9 @@ void KeyHandler::watchdogLoop() {
                 CGEventTapEnable(eventTap, false);
                 _exit(1);
             }
-            if (elapsed > softNs && !softDisabled) {
+            if (elapsed > softNs && !softDisabled && callbackStartNs.load(std::memory_order_acquire) == start) {
                 // transient slowness: drop the tap so input flows now
+                // re-check start so a callback that finished mid-sample is not soft-disabled with a stale generation
                 genWhenDisabled = gen;
                 CGEventTapEnable(eventTap, false);
                 softDisabled = true;
@@ -231,6 +232,11 @@ void KeyHandler::loadConfig(const std::filesystem::path& configFile) {
         warn("config error: {}", interpreter_error.message);
     }
 
+    if (result.fileError || !result.parseErrors.empty() || !result.interpreterErrors.empty()) {
+        warn("config has errors, keeping previous config");
+        return;
+    }
+
     const bool hasFingerBinding = std::ranges::any_of(result.bindings, [](const Binding& b) {
         return std::ranges::any_of(b.source.chords, [](const Chord& c) { return c.fingerCount.has_value(); });
     });
@@ -239,5 +245,7 @@ void KeyHandler::loadConfig(const std::filesystem::path& configFile) {
     engine.applyConfig(std::move(result.bindings), std::move(result.tapBindings), std::move(result.config));
     if (needsTouch) {
         touch::start();
+    } else {
+        touch::stop();
     }
 }

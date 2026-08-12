@@ -8,6 +8,7 @@
 #include <chrono>
 #include <cstdio>
 #include <functional>
+#include <mutex>
 #include <optional>
 #include <unordered_map>
 #include <vector>
@@ -25,7 +26,8 @@ int64_t nowNs() {
 
 std::atomic<int> g_totalFingers{0};
 
-// run-loop only unless marked atomic
+// guards state shared between the MultitouchSupport callback thread and the run loop
+std::mutex g_touchMtx;
 std::unordered_map<int, int> g_perDevice;
 std::unordered_map<int, TapDetector> g_detectors;
 TapDetector::Config g_tapConfig;
@@ -39,6 +41,9 @@ CFMutableArrayRef g_deviceList = nullptr;
 bool g_started = false;
 
 int contactCallback(int device, Finger* fingers, int nFingers, double /*timestamp*/, int /*frame*/) {
+    std::lock_guard<std::mutex> lock(g_touchMtx);
+    if (!g_started) return 0;
+
     const int64_t now = nowNs();
 
     g_perDevice[device] = nFingers;
@@ -74,6 +79,7 @@ int contactCallback(int device, Finger* fingers, int nFingers, double /*timestam
 }  // namespace
 
 void touch::start() {
+    std::lock_guard<std::mutex> lock(g_touchMtx);
     if (g_started) return;
 
     // MultitouchSupport logs a device-recognition line on start
@@ -113,6 +119,7 @@ void touch::start() {
 }
 
 void touch::stop() {
+    std::lock_guard<std::mutex> lock(g_touchMtx);
     if (!g_started) return;
 
     const CFIndex n = CFArrayGetCount(g_deviceList);
@@ -134,10 +141,12 @@ int touch::fingerCount() {
 }
 
 void touch::setTapConfig(int cornerSizePct, int tapTimeoutMs) {
+    std::lock_guard<std::mutex> lock(g_touchMtx);
     g_tapConfig = {.cornerSizePct = cornerSizePct, .tapTimeoutMs = tapTimeoutMs};
 }
 
 void touch::setTapCallback(std::function<void(Zone)> callback) {
+    std::lock_guard<std::mutex> lock(g_touchMtx);
     g_tapCallback = std::move(callback);
 }
 

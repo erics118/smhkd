@@ -558,7 +558,7 @@ TEST_CASE("hotkey requires a non-empty command after colon") {
 
     REQUIRE(program.statements.empty());
     REQUIRE(p.errors().size() == 1);
-    CHECK(p.errors()[0].message.contains("expected Command after ':'"));
+    CHECK(p.errors()[0].message.contains("non-empty command"));
 }
 
 TEST_CASE("hotkey reports eof after flags with no chord") {

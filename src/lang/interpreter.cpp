@@ -147,6 +147,10 @@ std::optional<Chord> Interpreter::buildChord(const ast::Chord& ch) {
     if (!flags) return std::nullopt;
     Chord chord{.modifiers = {.flags = *flags}};
 
+    if (!ch.key) {
+        addError("remap target must contain exactly one key");
+        return std::nullopt;
+    }
     const auto* simple = ast::asSimple(*ch.key);
     if (!simple) {
         addError("remap target must contain exactly one key");
@@ -209,7 +213,11 @@ std::string Interpreter::unescapeDoubleBraces(std::string_view s) {
 std::vector<std::string> Interpreter::parseCommandBraceExpansion(const std::string& command) {
     size_t braceStart = std::string::npos;
     for (size_t i = 0; i < command.size(); i++) {
-        if (command[i] == '{' && (i + 1 >= command.size() || command[i + 1] != '{')) {
+        if (command[i] == '{') {
+            if (i + 1 < command.size() && command[i + 1] == '{') {
+                i++;
+                continue;
+            }
             braceStart = i;
             break;
         }
@@ -218,7 +226,11 @@ std::vector<std::string> Interpreter::parseCommandBraceExpansion(const std::stri
 
     size_t braceEnd = std::string::npos;
     for (size_t i = braceStart + 1; i < command.size(); i++) {
-        if (command[i] == '}' && (i + 1 >= command.size() || command[i + 1] != '}')) {
+        if (command[i] == '}') {
+            if (i + 1 < command.size() && command[i + 1] == '}') {
+                i++;
+                continue;
+            }
             braceEnd = i;
             break;
         }
@@ -227,7 +239,11 @@ std::vector<std::string> Interpreter::parseCommandBraceExpansion(const std::stri
 
     // a second unescaped '{' in the suffix would silently be ignored, so flag it
     for (size_t i = braceEnd + 1; i < command.size(); i++) {
-        if (command[i] == '{' && (i + 1 >= command.size() || command[i + 1] != '{')) {
+        if (command[i] == '{') {
+            if (i + 1 < command.size() && command[i + 1] == '{') {
+                i++;
+                continue;
+            }
             addError(std::format(
                 "command brace expansion supports only one '{{...}}' group; found another at position {}. escape literal braces as '{{{{' / '}}}}'.",
                 i));
@@ -322,7 +338,7 @@ void Interpreter::applyRemap(const ast::Remap& node, std::vector<Binding>& bindi
         return;
     }
     if (node.source.passthrough || node.source.repeat || node.source.onRelease) {
-        addError("remaps do not support '@', '&', or '^' flags");
+        addError("remaps do not support '~', '&', or '^' flags");
         return;
     }
     auto source = buildBaseHotkey(node.source);
@@ -361,8 +377,11 @@ void Interpreter::applyHotkey(const ast::Hotkey& h, std::vector<Binding>& bindin
     std::optional<size_t> braceChordIndex;
     for (size_t i = 0; i < syn.sequence.size(); i++) {
         if (syn.sequence[i].key && ast::isBrace(*syn.sequence[i].key)) {
+            if (braceChordIndex) {
+                addError("brace expansion is supported in only one chord of a sequence");
+                return;
+            }
             braceChordIndex = i;
-            break;
         }
     }
 
@@ -427,7 +446,7 @@ void Interpreter::applyTapRemap(const ast::Remap& node) {
         return;
     }
     if (syn.passthrough || syn.repeat || syn.onRelease) {
-        addError("remaps do not support '@', '&', or '^' flags");
+        addError("remaps do not support '~', '&', or '^' flags");
         return;
     }
     const auto& chord = syn.sequence[0];

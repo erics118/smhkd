@@ -13,7 +13,6 @@ pid_t readPidFile() {
     const auto* user = std::getenv("USER");
     if (!user) {
         fatal("could not create path to pid file because 'env USER' is not set");
-        std::exit(1);
     }
     auto pid_file = std::format(PIDFILE_FMT, user);
     int handle = open(pid_file.c_str(), O_RDWR);  // NOLINT(cppcoreguidelines-pro-type-vararg)
@@ -23,7 +22,6 @@ pid_t readPidFile() {
     if (flock(handle, LOCK_EX | LOCK_NB) == 0) {
         close(handle);
         fatal("Could not locate existing instance");
-        std::exit(1);
     }
     pid_t pid = 0;
     if (read(handle, &pid, sizeof(pid_t)) == -1) {
@@ -38,7 +36,6 @@ void createPidFile() {
     const auto* user = std::getenv("USER");
     if (!user) {
         fatal("could not create path to pid file because 'env USER' is not set");
-        std::exit(1);
     }
     auto pid_file = std::format(PIDFILE_FMT, user);
     pid_t pid = getpid();
