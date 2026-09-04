@@ -27,13 +27,18 @@ bool Tokenizer::hasRemainingInput(int offset) {
 
 Token Tokenizer::getNextToken() {
     while (true) {
+        if (nextTokenIsCommand) {
+            // skip only whitespace, not comments: a command may start with '#'
+            nextTokenIsCommand = false;
+            skipWhitespace();
+            if (position >= contents.size()) {
+                return Token{TokenType::EndOfFile, "", row, col};
+            }
+            return readCommandToken();
+        }
         skipWhitespaceAndComments();
         if (position >= contents.size()) {
             return Token{TokenType::EndOfFile, "", row, col};
-        }
-        if (nextTokenIsCommand) {
-            nextTokenIsCommand = false;
-            return readCommandToken();
         }
         char c = peekChar();
         int startRow = row;
@@ -105,7 +110,11 @@ Token Tokenizer::getNextToken() {
             return Token{TokenType::CloseParen, ")", startRow, startCol};
         }
         if (c == '"') {
-            std::string value = readQuotedString();
+            bool terminated = false;
+            std::string value = readQuotedString(terminated);
+            if (!terminated) {
+                return Token{TokenType::Invalid, value, startRow, startCol};
+            }
             return Token{TokenType::String, value, startRow, startCol};
         }
 
@@ -150,8 +159,9 @@ std::string Tokenizer::readHex() {
     return result;
 }
 
-std::string Tokenizer::readQuotedString() {
+std::string Tokenizer::readQuotedString(bool& terminated) {
     std::string result;
+    terminated = false;
     advance();
     while (hasRemainingInput()) {
         char c = peekChar();
@@ -163,6 +173,7 @@ std::string Tokenizer::readQuotedString() {
         }
         if (c == '"') {
             advance();
+            terminated = true;
             break;
         }
         if (c == '\n') {
@@ -170,6 +181,9 @@ std::string Tokenizer::readQuotedString() {
         }
         result.push_back(c);
         advance();
+    }
+    if (!result.empty() && result.back() == '\r') {
+        result.pop_back();
     }
     return result;
 }
@@ -185,6 +199,9 @@ Token Tokenizer::readCommandToken() {
         }
         line.push_back(c);
         advance();
+    }
+    if (!line.empty() && line.back() == '\r') {
+        line.pop_back();
     }
     if (peekChar() == '\n') {
         advanceNewline();

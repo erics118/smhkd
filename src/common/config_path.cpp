@@ -5,13 +5,15 @@
 
 #include <cstdlib>
 #include <filesystem>
+#include <system_error>
 
 #include "log.hpp"
 
 namespace {
 
 [[nodiscard]] bool fileExists(const std::filesystem::path& filename) {
-    return std::filesystem::exists(filename) && std::filesystem::is_regular_file(filename);
+    std::error_code ec;
+    return std::filesystem::is_regular_file(filename, ec);
 }
 
 std::optional<std::filesystem::path> getHome() {

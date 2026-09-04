@@ -46,7 +46,12 @@ int contactCallback(int device, Finger* fingers, int nFingers, double /*timestam
 
     const int64_t now = nowNs();
 
-    g_perDevice[device] = nFingers;
+    // drop a device on its lift frame so a stale count can't linger in the sum
+    if (nFingers == 0) {
+        g_perDevice.erase(device);
+    } else {
+        g_perDevice[device] = nFingers;
+    }
     int total = 0;
     for (const auto& [id, count] : g_perDevice) {
         total += count;

@@ -24,6 +24,7 @@ os_log_t signpostLog() {
 }  // namespace
 
 void HotkeyEngine::applyConfig(std::vector<Binding> bindings, std::vector<TapBinding> tapBindings, ConfigProperties config) {
+    releaseHeldRemaps();
     {
         std::lock_guard<std::mutex> lock(tapMutex_);
         bindings_ = std::move(bindings);
@@ -61,6 +62,15 @@ bool HotkeyEngine::handleEvent(const Chord& current, CGEventType type, bool isRe
     os_signpost_id_t spid = SIGNPOST_GENERATE(log);
     SIGNPOST_BEGIN(log, spid, "handleEvent");
 
+    if (type == kCGEventKeyUp) {
+        if (auto it = heldRemaps_.find(current.keysym.keycode); it != heldRemaps_.end()) {
+            postKeyEvent(it->second, false);
+            heldRemaps_.erase(it);
+            SIGNPOST_END(log, spid, "handleEvent", "path=remapUp");
+            return true;
+        }
+    }
+
     if (!config_.blacklist.empty()) {
         os_signpost_id_t bp = SIGNPOST_GENERATE(log);
         SIGNPOST_BEGIN(log, bp, "frontProcessLookup");
@@ -86,8 +96,10 @@ bool HotkeyEngine::handleEvent(const Chord& current, CGEventType type, bool isRe
         if (!hotkey.chords[0].isActivatedBy(current, fingerCount)) continue;
 
         if (const auto* target = std::get_if<Chord>(&binding.action)) {
-            if (type != kCGEventKeyDown && type != kCGEventKeyUp) continue;
-            postKeyEvent(*target, type == kCGEventKeyDown);
+            // key-up is handled above via heldRemaps_, so the target always releases
+            if (type != kCGEventKeyDown) continue;
+            postKeyEvent(*target, true);
+            heldRemaps_[current.keysym.keycode] = *target;
             SIGNPOST_END(log, mp, "hotkeyMatch", "matched=1");
             SIGNPOST_END(log, spid, "handleEvent", "path=remap");
             return true;
@@ -117,6 +129,13 @@ void HotkeyEngine::synthesizeKeyPress(const Chord& target) {
     postKeyEvent(target, true);
     std::this_thread::sleep_for(std::chrono::milliseconds(3));
     postKeyEvent(target, false);
+}
+
+void HotkeyEngine::releaseHeldRemaps() {
+    for (const auto& [keycode, target] : heldRemaps_) {
+        postKeyEvent(target, false);
+    }
+    heldRemaps_.clear();
 }
 
 void HotkeyEngine::reset() {

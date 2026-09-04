@@ -85,6 +85,9 @@ void Application::setupReloadSignalSource(CFRunLoopRef runLoop) {
         if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {  // NOLINT(cppcoreguidelines-pro-type-vararg)
             fatal("failed to set reload signal pipe non-blocking");
         }
+        if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1) {  // NOLINT(cppcoreguidelines-pro-type-vararg)
+            fatal("failed to set reload signal pipe close-on-exec");
+        }
     }
 
     CFFileDescriptorContext fdContext{};
@@ -141,6 +144,9 @@ void Application::setupQuitSignalSource(CFRunLoopRef runLoop) {
         }
         if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {  // NOLINT(cppcoreguidelines-pro-type-vararg)
             fatal("failed to set quit signal pipe non-blocking");
+        }
+        if (fcntl(fd, F_SETFD, FD_CLOEXEC) == -1) {  // NOLINT(cppcoreguidelines-pro-type-vararg)
+            fatal("failed to set quit signal pipe close-on-exec");
         }
     }
 

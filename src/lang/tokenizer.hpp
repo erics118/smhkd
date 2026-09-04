@@ -24,7 +24,7 @@ class Tokenizer {
     [[nodiscard]] bool hasRemainingInput(int offset = 0);
     Token getNextToken();
     [[nodiscard]] std::string readHex();
-    [[nodiscard]] std::string readQuotedString();
+    [[nodiscard]] std::string readQuotedString(bool& terminated);
     [[nodiscard]] Token readCommandToken();
     [[nodiscard]] bool isIdentifierChar(char c);
     [[nodiscard]] std::string readIdentifier();

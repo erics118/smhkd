@@ -107,8 +107,10 @@ void Interpreter::setChordKeyFromKeysym(Chord& chord, const ast::SimpleKeysym& k
         } else if constexpr (std::is_same_v<T, ast::KeyChar>) {
             if (v.isHex) {
                 chord.keysym.keycode = static_cast<uint32_t>(static_cast<unsigned char>(v.value));
+            } else if (auto keycode = getKeycode(v.value)) {
+                chord.keysym.keycode = *keycode;
             } else {
-                chord.keysym.keycode = getKeycode(v.value);
+                addError(std::format("unknown key '{}'; only a-z, 0-9, and 0xNN keycodes are supported", v.value));
             }
         }
     },
@@ -185,6 +187,10 @@ bool Interpreter::setHotkeyKeys(Hotkey& hk, const ast::Chords& syn, std::optiona
             return false;
         }
         setChordKeyFromKeysym(hk.chords[i], *ks);
+        if (hk.chords[i].modifiers.has(Hotkey_Flag_NX)) {
+            addError(std::format("media key in chord {} cannot be used as a trigger; media keys work only as remap targets", i + 1));
+            return false;
+        }
     }
     return true;
 }
@@ -235,7 +241,10 @@ std::vector<std::string> Interpreter::parseCommandBraceExpansion(const std::stri
             break;
         }
     }
-    if (braceEnd == std::string::npos) return {};
+    if (braceEnd == std::string::npos) {
+        addError("unterminated '{' in command brace expansion; escape a literal brace as '{{'");
+        return {};
+    }
 
     // a second unescaped '{' in the suffix would silently be ignored, so flag it
     for (size_t i = braceEnd + 1; i < command.size(); i++) {

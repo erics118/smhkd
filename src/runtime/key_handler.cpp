@@ -44,7 +44,8 @@ bool KeyHandler::init() {
 
     touch::setTapCallback([this](Zone zone) {
         const ModifierFlags mods = eventModifierFlagsToHotkeyFlags(CGEventSourceFlagsState(kCGEventSourceStateCombinedSessionState));
-        (void)engine.handleTap(zone, mods);
+        const bool matched = engine.handleTap(zone, mods);
+        info("tap detected: zone={} mods=[{}] matched={}", zoneName(zone), mods, matched);
     });
 
     startWatchdog();
@@ -68,13 +69,15 @@ bool KeyHandler::setupEventTap() {
 CGEventRef KeyHandler::eventCallback(CGEventTapProxy /*proxy*/, CGEventType type, CGEventRef event, void* refcon) {
     auto* keyHandler = static_cast<KeyHandler*>(refcon);
 
-    keyHandler->callbackStartNs.store(nowNs(), std::memory_order_release);
+    const int64_t startNs = nowNs();
+    keyHandler->callbackStartNs.store(startNs, std::memory_order_release);
 
     // fail open: on any error, pass the event through untouched, never consume
     CGEventRef result = event;
     try {
         if (type == kCGEventTapDisabledByUserInput) {
             // macOS disabled for secure input (password fields), not our fault
+            keyHandler->suppressNextMouseUp.store(false, std::memory_order_relaxed);
             CGEventTapEnable(keyHandler->eventTap, true);
         } else if (type == kCGEventTapDisabledByTimeout) {
             // a callback overran the OS timeout, the breaker decides recover vs bail
@@ -86,6 +89,7 @@ CGEventRef KeyHandler::eventCallback(CGEventTapProxy /*proxy*/, CGEventType type
                 case SafetyMonitor::Action::ReEnable:
                 case SafetyMonitor::Action::None:
                     warn("event tap disabled by timeout; re-enabled");
+                    keyHandler->suppressNextMouseUp.store(false, std::memory_order_relaxed);
                     CGEventTapEnable(keyHandler->eventTap, true);
                     break;
             }
@@ -105,7 +109,13 @@ CGEventRef KeyHandler::eventCallback(CGEventTapProxy /*proxy*/, CGEventType type
                 CGEventTapEnable(keyHandler->eventTap, false);
                 _exit(1);
             }
-            keyHandler->safety.recordHealthy();
+            // only a callback that finished promptly proves recovery; a slow one
+            // must not clear the timeout streak or Mode A could never trip
+            const int64_t elapsedNs = nowNs() - startNs;
+            const auto softNs = std::chrono::duration_cast<std::chrono::nanoseconds>(SafetyMonitor::kSoftOverrun).count();
+            if (elapsedNs <= softNs) {
+                keyHandler->safety.recordHealthy();
+            }
 
             result = consumed ? nullptr : event;
         }
@@ -142,7 +152,9 @@ bool KeyHandler::handleKeyEvent(CGEventRef event, CGEventType type) {
     if (exitChord.isActivatedBy(current, fingers)) {
         error("exit hotkey, ralt-c, detected, ending program");
         service::stop();
-        std::exit(1);
+        // running on the event-tap thread while other threads are live;
+        // _exit skips static destructors that std::exit would race against
+        _exit(1);
     }
 
     return engine.handleEvent(current, type, isRepeat, fingers);
@@ -150,8 +162,7 @@ bool KeyHandler::handleKeyEvent(CGEventRef event, CGEventType type) {
 
 CGEventRef KeyHandler::handleMouseEvent(CGEventType type, CGEventRef event) {
     if (type == kCGEventLeftMouseUp) {
-        if (suppressNextMouseUp) {
-            suppressNextMouseUp = false;
+        if (suppressNextMouseUp.exchange(false, std::memory_order_relaxed)) {
             return nullptr;
         }
         return event;
@@ -162,7 +173,7 @@ CGEventRef KeyHandler::handleMouseEvent(CGEventType type, CGEventRef event) {
     if (zone) {
         const ModifierFlags mods = eventModifierFlagsToHotkeyFlags(CGEventSourceFlagsState(kCGEventSourceStateCombinedSessionState));
         if (engine.hasTapBinding(*zone, mods)) {
-            suppressNextMouseUp = true;
+            suppressNextMouseUp.store(true, std::memory_order_relaxed);
             return nullptr;
         }
     }
@@ -207,6 +218,8 @@ void KeyHandler::watchdogLoop() {
 
         // the stuck callback has since returned (generation moved): restore the tap
         if (softDisabled && callbackGen.load(std::memory_order_acquire) != genWhenDisabled) {
+            // input was dropped while the tap was down; a pending suppress is stale
+            suppressNextMouseUp.store(false, std::memory_order_relaxed);
             CGEventTapEnable(eventTap, true);
             softDisabled = false;
         }
@@ -226,7 +239,7 @@ void KeyHandler::loadConfig(const std::filesystem::path& configFile) {
         warn("config error: {}", *result.fileError);
     }
     for (const auto& parse_error : result.parseErrors) {
-        warn("parse error at line {}, column {}: {}", parse_error.row, parse_error.col, parse_error.message);
+        warn("parse error at line {}, column {}: {}", parse_error.row + 1, parse_error.col + 1, parse_error.message);
     }
     for (const auto& interpreter_error : result.interpreterErrors) {
         warn("config error: {}", interpreter_error.message);

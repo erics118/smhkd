@@ -11,6 +11,16 @@
 namespace {
 
 void spawnCommand(const std::string& command) {
+    // build argv in the parent: only async-signal-safe calls are legal in the child
+    // use bash without startup files
+    std::vector<std::string> stringStorage = {"/bin/bash", "--norc", "--noprofile", "-c", command};
+    std::vector<char*> args;
+    args.reserve(stringStorage.size() + 1);
+    for (auto& str : stringStorage) {
+        args.push_back(str.data());
+    }
+    args.push_back(nullptr);
+
     pid_t cpid = fork();
 
     if (cpid < 0) {
@@ -20,19 +30,8 @@ void spawnCommand(const std::string& command) {
 
     if (cpid == 0) {
         setsid();
-
-        // use bash without startup files, so especially PATH is inherited
-        std::vector<std::string> stringStorage = {"/bin/bash", "--norc", "--noprofile", "-c", command};
-        std::vector<char*> args;
-        args.reserve(stringStorage.size());
-        for (auto& str : stringStorage) {
-            args.push_back(str.data());
-        }
-        args.push_back(nullptr);
-
-        int status = execvp(args[0], args.data());
-        warn("failed to execute command '{}'", command);
-        _exit(status);
+        execv(args[0], args.data());
+        _exit(127);
     }
 }
 

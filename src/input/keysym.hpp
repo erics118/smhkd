@@ -109,8 +109,8 @@ std::optional<LiteralKey> parseLiteralKey(const std::string& name);
 
 int getImplicitFlags(LiteralKey k);
 
-// convert a single character to a keycode
-uint32_t getKeycode(char key);
+// convert a single character to a keycode, or nullopt if it maps to no known key
+std::optional<uint32_t> getKeycode(char key);
 
 template <>
 struct std::formatter<Keysym> : std::formatter<std::string_view> {

@@ -2,7 +2,6 @@
 
 #include <Carbon/Carbon.h>
 #include <fcntl.h>
-#include <sys/file.h>
 #include <unistd.h>
 
 #include <format>
@@ -19,7 +18,14 @@ pid_t readPidFile() {
     if (handle == -1) {
         fatal("could not open pid file '{}'", pid_file);
     }
-    if (flock(handle, LOCK_EX | LOCK_NB) == 0) {
+    // probe with the same lock type the daemon holds (fcntl), not flock;
+    // on macOS the two are independent lock spaces
+    struct flock probe = {.l_start = 0, .l_len = 0, .l_type = F_WRLCK, .l_whence = SEEK_SET};
+    if (fcntl(handle, F_GETLK, &probe) == -1) {  // NOLINT(cppcoreguidelines-pro-type-vararg)
+        close(handle);
+        fatal("could not check lock on pid file '{}'", pid_file);
+    }
+    if (probe.l_type == F_UNLCK) {
         close(handle);
         fatal("Could not locate existing instance");
     }
@@ -48,6 +54,8 @@ void createPidFile() {
         close(handle);
         fatal("could not lock pid file '{}'", pid_file);
     }
+    // don't leak the lock fd into spawned commands
+    fcntl(handle, F_SETFD, FD_CLOEXEC);  // NOLINT(cppcoreguidelines-pro-type-vararg)
     if (write(handle, &pid, sizeof(pid_t)) == -1) {
         close(handle);
         fatal("could not write pid {} to file '{}'", pid, pid_file);

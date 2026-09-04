@@ -61,7 +61,7 @@ TEST_CASE("simple hotkey: keycode, modifier flag, command all set correctly") {
     const auto& hk = hotkeys[0].source;
     const auto& cmd = std::get<std::string>(hotkeys[0].action);
     REQUIRE(hk.chords.size() == 1);
-    CHECK(hk.chords[0].keysym.keycode == getKeycode('a'));
+    CHECK(hk.chords[0].keysym.keycode == *getKeycode('a'));
     CHECK(hk.chords[0].modifiers.flags == Hotkey_Flag_Cmd);
     CHECK_FALSE(hk.passthrough);
     CHECK_FALSE(hk.repeat);
@@ -202,7 +202,7 @@ TEST_CASE("brace key expansion: each expansion gets the right keycode and shared
     REQUIRE(hotkeys.size() == 3);
 
     const auto keycodes = keycodes_of(hotkeys);
-    CHECK(keycodes == std::set<uint32_t>{getKeycode('a'), getKeycode('b'), getKeycode('c')});
+    CHECK(keycodes == std::set<uint32_t>{*getKeycode('a'), *getKeycode('b'), *getKeycode('c')});
 
     // every expansion shares the same command and modifier set
     for (const auto& b : hotkeys) {
@@ -221,10 +221,10 @@ TEST_CASE("brace key + brace command: pairs by index") {
     bool saw_b = false;
     for (const auto& b : hotkeys) {
         const auto& cmd = std::get<std::string>(b.action);
-        if (b.source.chords[0].keysym.keycode == getKeycode('a')) {
+        if (b.source.chords[0].keysym.keycode == *getKeycode('a')) {
             CHECK(cmd == "echo one");
             saw_a = true;
-        } else if (b.source.chords[0].keysym.keycode == getKeycode('b')) {
+        } else if (b.source.chords[0].keysym.keycode == *getKeycode('b')) {
             CHECK(cmd == "echo two");
             saw_b = true;
         }
@@ -353,10 +353,10 @@ TEST_CASE("remap produces source hotkey and target chord with correct flags/keyc
     REQUIRE(remaps.size() == 1);
     const auto& remap = remaps[0];
     REQUIRE(remap.source.chords.size() == 1);
-    CHECK(remap.source.chords[0].keysym.keycode == getKeycode('a'));
+    CHECK(remap.source.chords[0].keysym.keycode == *getKeycode('a'));
     CHECK(remap.source.chords[0].modifiers.flags == Hotkey_Flag_Cmd);
     const auto& target = std::get<Chord>(remap.action);
-    CHECK(target.keysym.keycode == getKeycode('b'));
+    CHECK(target.keysym.keycode == *getKeycode('b'));
     CHECK(target.modifiers.flags == Hotkey_Flag_Shift);
 }
 
@@ -443,8 +443,8 @@ TEST_CASE("multi-chord sequence preserves chord order") {
     REQUIRE(hotkeys.size() == 1);
     const auto& hk = hotkeys[0].source;
     REQUIRE(hk.chords.size() == 2);
-    CHECK(hk.chords[0].keysym.keycode == getKeycode('a'));
-    CHECK(hk.chords[1].keysym.keycode == getKeycode('b'));
+    CHECK(hk.chords[0].keysym.keycode == *getKeycode('a'));
+    CHECK(hk.chords[1].keysym.keycode == *getKeycode('b'));
     CHECK(hk.chords[0].modifiers.flags == Hotkey_Flag_Cmd);
     CHECK(hk.chords[1].modifiers.flags == Hotkey_Flag_Cmd);
 }

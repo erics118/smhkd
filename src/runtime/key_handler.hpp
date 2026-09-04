@@ -30,7 +30,8 @@ class KeyHandler {
     std::atomic<uint64_t> callbackGen{0};
 
     // set when a corner-tap click's down is suppressed, so its up is suppressed too
-    bool suppressNextMouseUp{false};
+    // atomic so the watchdog thread can clear a stale flag on tap re-enable
+    std::atomic<bool> suppressNextMouseUp{false};
 
     bool setupEventTap();
     void startWatchdog();

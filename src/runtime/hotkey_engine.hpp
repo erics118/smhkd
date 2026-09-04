@@ -8,6 +8,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 #include "../input/chord.hpp"
@@ -39,7 +40,11 @@ class HotkeyEngine {
     std::vector<Chord> sequence_;
     std::vector<int> sequenceFingers_;
     std::chrono::time_point<std::chrono::system_clock> lastPressTime_;
+    // source keycode -> remap target currently held down, so a source key-up
+    // always releases the target even if the modifiers no longer match
+    std::unordered_map<uint32_t, Chord> heldRemaps_;
 
+    void releaseHeldRemaps();
     void clearSequence();
     void runSequenceCommand() const;
     [[nodiscard]] bool handleSequence(const Chord& chord, int fingerCount);
